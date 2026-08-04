@@ -2,9 +2,7 @@ import type { IconType } from "react-icons"
 import {
   FiActivity,
   FiAlertTriangle,
-  FiBell,
   FiCheckSquare,
-  FiCreditCard,
   FiFileText,
   FiFolder,
   FiGrid,
@@ -12,7 +10,6 @@ import {
   FiList,
   FiMessageSquare,
   FiPlusCircle,
-  FiRepeat,
   FiSettings,
   FiShield,
   FiTool,
@@ -64,17 +61,9 @@ export const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Finance",
-    items: [
-      { label: "Wallet", path: "/wallet", icon: FiCreditCard },
-      { label: "Transactions", path: "/transactions", icon: FiRepeat },
-    ],
-  },
-  {
     title: "Communication",
     items: [
       { label: "Chat", path: "/chat", icon: FiMessageSquare },
-      { label: "Notifications", path: "/notifications", icon: FiBell },
     ],
   },
   {

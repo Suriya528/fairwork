@@ -1,6 +1,5 @@
 import { FiSearch, FiMenu } from "react-icons/fi"
 import { WalletAddress } from "@/components/common/WalletAddress"
-import { NotificationBell } from "./NotificationBell"
 import { AccountMenu } from "./AccountMenu"
 import { useAuth } from "@/context/AuthContext"
 
@@ -42,7 +41,6 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
         {user?.walletAddress && (
           <WalletAddress address={user.walletAddress} className="hidden md:inline-flex" />
         )}
-        <NotificationBell />
         <AccountMenu />
       </div>
     </header>

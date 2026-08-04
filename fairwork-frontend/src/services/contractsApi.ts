@@ -1,0 +1,9 @@
+import { apiFetch } from "./apiClient"
+interface Person { _id: string; firstName: string; lastName: string }
+interface BackendContract { _id: string; projectId: string | { _id: string; title: string }; clientId: string | Person; freelancerId: string | Person; aiGeneratedText: string; blockchainHash: string; signedByClient: boolean; signedByFreelancer: boolean; createdAt: string }
+export interface ApiContract { id: string; projectId: string; projectTitle: string | null; clientId: string; freelancerId: string; aiGeneratedText: string; blockchainHash: string; signedByClient: boolean; signedByFreelancer: boolean; createdAt: string }
+function id(v: string | Person): string { return typeof v === "string" ? v : v._id }
+function toApiContract(c: BackendContract): ApiContract { return { id: c._id, projectId: typeof c.projectId === "string" ? c.projectId : c.projectId._id, projectTitle: typeof c.projectId === "string" ? null : c.projectId.title, clientId: id(c.clientId), freelancerId: id(c.freelancerId), aiGeneratedText: c.aiGeneratedText, blockchainHash: c.blockchainHash, signedByClient: c.signedByClient, signedByFreelancer: c.signedByFreelancer, createdAt: c.createdAt } }
+export async function generateContract(projectId: string, freelancerId: string, token: string): Promise<ApiContract> { return toApiContract(await apiFetch<BackendContract>("/contracts/generate", { method: "POST", token, body: { projectId, freelancerId } })) }
+export async function getContract(contractId: string, token: string): Promise<ApiContract> { return toApiContract(await apiFetch<BackendContract>(`/contracts/${contractId}`, { token })) }
+export async function signContract(contractId: string, token: string): Promise<ApiContract> { return toApiContract(await apiFetch<BackendContract>(`/contracts/${contractId}/sign`, { method: "PUT", token })) }

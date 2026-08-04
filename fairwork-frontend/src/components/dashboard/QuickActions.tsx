@@ -11,7 +11,7 @@ export function QuickActions() {
         Quick actions
       </h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {quickActions.map((action) => {
+        {quickActions.filter((action) => action.to !== "/wallet").map((action) => {
           const Icon = action.icon
           return (
             <Card key={action.id} interactive className="group">

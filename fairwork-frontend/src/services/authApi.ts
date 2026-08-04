@@ -33,6 +33,7 @@ export interface AuthUser {
   rating: number
   /** Backend field is totalReviews. */
   reviewCount: number
+  createdAt: string
 }
 
 export interface AuthSession {
@@ -98,6 +99,7 @@ interface BackendUser {
   reputationScore?: number
   /** Only present on GET /me — register/login responses don't include it. */
   totalReviews?: number
+  createdAt?: string
 }
 
 interface BackendAuthResponse {
@@ -116,6 +118,7 @@ function toAuthUser(user: BackendUser): AuthUser {
     bio: user.bio ?? "",
     rating: user.reputationScore ?? 0,
     reviewCount: user.totalReviews ?? 0,
+    createdAt: user.createdAt ?? "",
   }
 }
 
@@ -201,6 +204,21 @@ export async function getMe(token: string): Promise<AuthUser> {
   return toAuthUser(data)
 }
 
+/** Updates the one account field the backend currently persists. */
+export async function updateWallet(walletAddress: string, token: string): Promise<AuthUser> {
+  const data = await fetch(`${API_URL}/auth/wallet`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ walletAddress }),
+  })
+  if (!data.ok) {
+    let message = "Unable to update wallet."
+    try { message = ((await data.json()) as { message?: string }).message ?? message } catch { /* ignore */ }
+    throw new AuthError(message, { status: data.status })
+  }
+  return toAuthUser((await data.json()) as BackendUser)
+}
+
 export async function requestPasswordReset(
   payload: ForgotPasswordPayload,
 ): Promise<{ ok: true }> {
@@ -247,6 +265,19 @@ export function getStoredSession(): AuthSession | null {
     return parsed
   } catch {
     return null
+  }
+}
+
+/** Replaces the stored session without changing its original persistence choice. */
+export function updateStoredSession(session: AuthSession): void {
+  try {
+    if (localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    } else if (sessionStorage.getItem(STORAGE_KEY)) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    }
+  } catch {
+    // The in-memory session remains valid if storage is unavailable.
   }
 }
 

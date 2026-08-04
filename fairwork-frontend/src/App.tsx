@@ -13,14 +13,11 @@ import { ContractsPage } from "@/pages/ContractsPage"
 import { MilestonesPage } from "@/pages/MilestonesPage"
 import { EscrowPage } from "@/pages/EscrowPage"
 import { DisputesPage } from "@/pages/DisputesPage"
-import { WalletPage } from "@/pages/WalletPage"
-import { TransactionsPage } from "@/pages/TransactionsPage"
 import { ActivityPage } from "@/pages/ActivityPage"
 import { ProfilePage } from "@/pages/ProfilePage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { HelpCenterPage } from "@/pages/HelpCenterPage"
 import { ChatPage } from "@/pages/ChatPage"
-import { NotificationsPage } from "@/pages/NotificationsPage"
 import { AdminDashboardPage } from "@/pages/AdminDashboardPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { LoginPage } from "@/pages/auth/LoginPage"
@@ -59,14 +56,11 @@ export function App() {
             <Route path="milestones" element={<MilestonesPage />} />
             <Route path="escrow" element={<EscrowPage />} />
             <Route path="disputes" element={<DisputesPage />} />
-            <Route path="wallet" element={<WalletPage />} />
-            <Route path="transactions" element={<TransactionsPage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="help" element={<HelpCenterPage />} />
             <Route path="chat" element={<ChatPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="admin" element={<AdminDashboardPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
