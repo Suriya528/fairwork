@@ -78,6 +78,7 @@
   html {
     background-color: var(--color-background);
     color-scheme: dark;
+    scroll-padding-top: 5rem;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }

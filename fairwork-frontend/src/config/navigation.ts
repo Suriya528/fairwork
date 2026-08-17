@@ -21,8 +21,6 @@ export interface NavItem {
   label: string
   path: string
   icon: IconType
-  /** Optional badge count shown in the sidebar. */
-  badge?: number
 }
 
 export interface NavSection {
@@ -38,7 +36,7 @@ export const navSections: NavSection[] = [
   {
     title: "Overview",
     items: [
-      { label: "Dashboard", path: "/", icon: FiGrid },
+      { label: "Dashboard", path: "/dashboard", icon: FiGrid },
       { label: "Activity", path: "/activity", icon: FiActivity },
       { label: "Analytics", path: "/analytics", icon: FiTrendingUp },
     ],
@@ -57,7 +55,7 @@ export const navSections: NavSection[] = [
       { label: "Contracts", path: "/contracts", icon: FiFileText },
       { label: "Escrow", path: "/escrow", icon: FiShield },
       { label: "Milestones", path: "/milestones", icon: FiCheckSquare },
-      { label: "Disputes", path: "/disputes", icon: FiAlertTriangle, badge: 1 },
+      { label: "Disputes", path: "/disputes", icon: FiAlertTriangle },
     ],
   },
   {
@@ -76,7 +74,13 @@ export const navSections: NavSection[] = [
   },
   {
     title: "Administration",
-    items: [{ label: "Admin Dashboard", path: "/admin", icon: FiTool }],
+    items: [
+      { label: "Overview", path: "/admin", icon: FiTool },
+      { label: "Users", path: "/admin/users", icon: FiUser },
+      { label: "Projects", path: "/admin/projects", icon: FiFolder },
+      { label: "Disputes", path: "/admin/disputes", icon: FiAlertTriangle },
+      { label: "System health", path: "/admin/system", icon: FiActivity },
+    ],
   },
 ]
 

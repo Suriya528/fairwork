@@ -19,7 +19,7 @@ export class ApiError extends Error {
 }
 
 interface ApiFetchOptions {
-  method?: "GET" | "POST" | "PUT" | "DELETE"
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   /** Bearer token for routes behind the backend's `auth` middleware. */
   token?: string
   body?: unknown

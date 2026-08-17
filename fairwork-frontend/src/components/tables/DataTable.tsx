@@ -11,6 +11,8 @@ export interface Column<T> {
   align?: "left" | "right" | "center"
   className?: string
   headerClassName?: string
+  /** Fixed column width when a table needs stable alignment across sparse rows. */
+  width?: string
 }
 
 export interface DataTableProps<T> {
@@ -52,7 +54,10 @@ export function DataTable<T>({
       )}
     >
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full table-fixed border-collapse text-sm">
+          <colgroup>
+            {columns.map((col) => <col key={col.key} style={col.width ? { width: col.width } : undefined} />)}
+          </colgroup>
           <thead>
             <tr className="border-b border-border">
               {columns.map((col) => (
@@ -105,17 +110,20 @@ export function DataTable<T>({
                     ))}
                   </tr>
                 ))}
+            {!loading && data.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="p-0">
+                  <EmptyState
+                    title={emptyTitle}
+                    description={emptyDescription}
+                    className="border-0 bg-transparent"
+                  />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-
-      {!loading && data.length === 0 && (
-        <EmptyState
-          title={emptyTitle}
-          description={emptyDescription}
-          className="border-0 bg-transparent"
-        />
-      )}
     </div>
   )
 }

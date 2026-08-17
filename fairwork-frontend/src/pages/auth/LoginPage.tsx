@@ -52,8 +52,6 @@ export function LoginPage() {
         title: "Welcome back",
         description: `Signed in as ${session.user.name}.`,
       })
-      // ProtectedRoute redirects here with the originally-requested page
-      // in location.state — return there instead of always going to "/".
       const redirectTo =
         (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/"
       navigate(redirectTo, { replace: true })
@@ -61,7 +59,7 @@ export function LoginPage() {
       const message =
         err instanceof AuthError ? err.message : "Something went wrong. Try again."
       toast({ tone: "error", title: "Sign in failed", description: message })
-      setErrors((prev) => ({ ...prev, password: " " }))
+      setErrors((prev) => ({ ...prev, password: message }))
     } finally {
       setSubmitting(false)
     }
@@ -69,16 +67,17 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Sign in to manage your contracts, escrow, and milestones."
+      variant="login"
+      title="Sign in to FairWork"
+      subtitle="Access your projects, milestone deliverables, and payment escrow."
       footer={
         <>
           Don&apos;t have an account?{" "}
           <Link
             to="/register"
-            className="font-medium text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline"
+            className="font-semibold text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline"
           >
-            Create one
+            Create an account
           </Link>
         </>
       }
@@ -86,7 +85,7 @@ export function LoginPage() {
       <div className="flex flex-col gap-6">
         <SocialAuth action="sign in" />
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4.5">
           <FormField id="email" label="Email" required error={errors.email}>
             <Input
               id="email"
@@ -108,7 +107,7 @@ export function LoginPage() {
             id="password"
             label="Password"
             required
-            error={errors.password?.trim() ? errors.password : undefined}
+            error={errors.password}
             labelAccessory={
               <Link
                 to="/forgot-password"
@@ -124,9 +123,7 @@ export function LoginPage() {
               placeholder="Enter your password"
               value={password}
               invalid={!!errors.password}
-              aria-describedby={
-                errors.password?.trim() ? "password-error" : undefined
-              }
+              aria-describedby={errors.password ? "password-error" : undefined}
               onChange={(e) => {
                 setPassword(e.target.value)
                 if (errors.password) setErrors((p) => ({ ...p, password: undefined }))
@@ -136,12 +133,12 @@ export function LoginPage() {
 
           <Checkbox
             id="remember"
-            label="Keep me signed in"
+            label={<span className="text-xs">Keep me signed in</span>}
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
           />
 
-          <Button type="submit" fullWidth loading={submitting}>
+          <Button type="submit" fullWidth loading={submitting} className="h-11 font-semibold rounded-xl text-sm mt-1">
             {submitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>

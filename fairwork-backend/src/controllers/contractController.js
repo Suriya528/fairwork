@@ -47,7 +47,10 @@ Make it professional and legally structured.`;
       aiGeneratedText,
     });
 
-    await Project.findByIdAndUpdate(projectId, { contractId: contract._id });
+    // Contract generation is the established freelancer-assignment path for
+    // these projects. Keep the Project relationship in sync so every project
+    // access check reads the same assignment state.
+    await Project.findByIdAndUpdate(projectId, { contractId: contract._id, freelancerId });
 
     res.status(201).json(contract);
   } catch (err) {

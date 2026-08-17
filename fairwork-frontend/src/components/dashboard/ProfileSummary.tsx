@@ -1,9 +1,7 @@
-import { useNavigate } from "react-router-dom"
 import { FiStar } from "react-icons/fi"
 import { Card, CardBody } from "@/components/ui/Card"
 import { Avatar } from "@/components/ui/Avatar"
 import { Badge } from "@/components/ui/Badge"
-import { Button } from "@/components/ui/Button"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { useAuth } from "@/context/AuthContext"
 
@@ -28,8 +26,6 @@ import { useAuth } from "@/context/AuthContext"
  */
 export function ProfileSummary() {
   const { user } = useAuth()
-  const navigate = useNavigate()
-
   if (!user) return null
 
   return (
@@ -56,7 +52,7 @@ export function ProfileSummary() {
           </span>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <div className="border-t border-border pt-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-subtle">Wallet</span>
             {user.walletAddress ? (
@@ -67,15 +63,6 @@ export function ProfileSummary() {
           </div>
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          fullWidth
-          className="mt-1"
-          onClick={() => navigate("/profile")}
-        >
-          View profile
-        </Button>
       </CardBody>
     </Card>
   )

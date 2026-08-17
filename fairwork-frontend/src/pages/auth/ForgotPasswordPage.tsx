@@ -46,14 +46,14 @@ export function ForgotPasswordPage() {
         subtitle={
           <>
             If an account exists for{" "}
-            <span className="font-medium text-foreground">{email}</span>, we&apos;ve
+            <span className="font-semibold text-foreground">{email}</span>, we&apos;ve
             sent a link to reset your password.
           </>
         }
         footer={
           <Link
             to="/login"
-            className="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline"
+            className="inline-flex items-center gap-1.5 font-semibold text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline text-xs"
           >
             <FiArrowLeft className="h-4 w-4" aria-hidden />
             Back to sign in
@@ -61,12 +61,12 @@ export function ForgotPasswordPage() {
         }
       >
         <div className="flex flex-col gap-6">
-          <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4">
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success-soft text-success">
-              <FiCheckCircle className="h-5 w-5" aria-hidden />
+          <div className="flex items-start gap-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+              <FiCheckCircle className="h-4 w-4" aria-hidden />
             </span>
-            <div className="text-sm leading-relaxed text-muted">
-              <p className="font-medium text-foreground">Email on its way</p>
+            <div className="text-xs leading-relaxed text-muted">
+              <p className="font-bold text-foreground">Reset link dispatched</p>
               <p className="mt-0.5">
                 The link expires in 30 minutes. Be sure to check your spam folder
                 if you don&apos;t see it.
@@ -78,6 +78,7 @@ export function ForgotPasswordPage() {
             variant="secondary"
             fullWidth
             type="button"
+            className="h-11 rounded-xl font-semibold text-sm"
             onClick={() => setSent(false)}
           >
             Use a different email
@@ -89,19 +90,20 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      title="Forgot your password?"
-      subtitle="Enter the email tied to your account and we'll send you a reset link."
+      variant="forgot-password"
+      title="Reset your password"
+      subtitle="Enter the email address associated with your account and we'll send you a password reset link."
       footer={
         <Link
           to="/login"
-          className="inline-flex items-center gap-1.5 font-medium text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline"
+          className="inline-flex items-center gap-1.5 font-semibold text-primary underline-offset-2 transition-colors hover:text-primary-hover hover:underline text-xs"
         >
           <FiArrowLeft className="h-4 w-4" aria-hidden />
           Back to sign in
         </Link>
       }
     >
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4.5">
         <FormField id="email" label="Email" required error={error}>
           <Input
             id="email"
@@ -119,7 +121,7 @@ export function ForgotPasswordPage() {
           />
         </FormField>
 
-        <Button type="submit" fullWidth loading={submitting}>
+        <Button type="submit" fullWidth loading={submitting} className="h-11 font-semibold rounded-xl text-sm mt-1">
           {submitting ? "Sending link..." : "Send reset link"}
         </Button>
       </form>

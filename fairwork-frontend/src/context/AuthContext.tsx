@@ -13,7 +13,6 @@ import {
   getStoredSession,
   login as apiLogin,
   register as apiRegister,
-  updateWallet as apiUpdateWallet,
   storeSession,
   updateStoredSession,
 } from "@/services/authApi"
@@ -141,11 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate])
 
   const updateWallet = useCallback(async (walletAddress: string) => {
-    if (!token) throw new Error("You must be signed in to update your wallet.")
-    const updated = await apiUpdateWallet(walletAddress, token)
+    if (!token || !user) throw new Error("You must be signed in to update your wallet.")
+    const updated = { ...user, walletAddress }
     setUser(updated)
     updateStoredSession({ user: updated, token })
-  }, [token])
+  }, [token, user])
 
   return (
     <AuthContext.Provider value={{ user, token, status, login, register, logout, updateWallet }}>

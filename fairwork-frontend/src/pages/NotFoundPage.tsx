@@ -22,7 +22,7 @@ export function NotFoundPage() {
               moved or never existed.
             </p>
           </div>
-          <Button variant="primary" size="sm" onClick={() => navigate("/")}>
+          <Button variant="primary" size="sm" onClick={() => navigate("/dashboard")}>
             Back to dashboard
           </Button>
         </CardBody>

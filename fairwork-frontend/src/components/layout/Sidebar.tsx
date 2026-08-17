@@ -2,12 +2,19 @@ import { NavLink } from "react-router-dom"
 import { FiShield } from "react-icons/fi"
 import { navSections } from "@/config/navigation"
 import { cn } from "@/lib/utils"
+import { useDisputeSummary } from "@/context/DisputeSummaryContext"
+import { useAuth } from "@/context/AuthContext"
 
 /**
  * Desktop sidebar. Fixed to the left on lg+ screens; hidden on mobile
  * (mobile uses the bottom nav / drawer instead).
  */
 export function Sidebar() {
+  const { openDisputeCount, loading } = useDisputeSummary()
+  const { user } = useAuth()
+  const sections = user?.role === "admin"
+    ? navSections.filter((section) => section.title === "Administration")
+    : navSections.filter((section) => section.title !== "Administration").map((section) => user?.role === "freelancer" ? { ...section, items: section.items.filter((item) => item.path !== "/projects/new") } : section).filter((section) => section.items.length > 0)
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-30 border-r border-border bg-surface">
       <div className="flex h-16 items-center gap-2.5 px-6 border-b border-border">
@@ -18,7 +25,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Primary">
-        {navSections.map((section) => (
+        {sections.map((section) => (
           <div key={section.title} className="mb-6 last:mb-0">
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle">
               {section.title}
@@ -50,9 +57,9 @@ export function Sidebar() {
                             aria-hidden
                           />
                           <span className="flex-1">{item.label}</span>
-                          {item.badge ? (
+                          {item.path === "/disputes" && !loading && openDisputeCount > 0 ? (
                             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[10px] font-semibold text-danger-foreground">
-                              {item.badge}
+                              {openDisputeCount}
                             </span>
                           ) : null}
                         </>
@@ -66,15 +73,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-border p-3">
-        <div className="rounded-lg bg-elevated/60 p-3">
-          <p className="text-xs font-medium text-foreground">Protocol status</p>
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
-            All systems operational
-          </p>
-        </div>
-      </div>
     </aside>
   )
 }

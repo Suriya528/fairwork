@@ -1,47 +1,47 @@
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import type { ComponentType, SVGProps } from "react"
 import { useNavigate } from "react-router-dom"
-import { FiBell } from "react-icons/fi"
+import { FiBell, FiAlertTriangle, FiCheckCircle, FiPlusCircle, FiShield, FiUnlock, FiActivity as FiActivityIcon } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
-import { Badge } from "@/components/ui/Badge"
 import { PageHeader } from "@/components/common/PageHeader"
 import { Tabs, type TabItem } from "@/components/ui/Tabs"
+import { LoadingState } from "@/components/feedback/LoadingState"
+import { ErrorState } from "@/components/feedback/ErrorState"
 import { cn } from "@/lib/utils"
 import { formatRelativeTime } from "@/lib/format"
-import { getNotificationsForUser } from "@/data/notifications"
-import { NOTIFICATION_META } from "@/components/common/notificationMeta"
-import type { Notification } from "@/types"
+import { useAuth } from "@/context/AuthContext"
+import { getActivities, markActivitiesRead, type ApiActivity } from "@/services/activityApi"
 
+type IconType = ComponentType<SVGProps<SVGSVGElement>>
 type FilterTab = "all" | "unread"
 
-// TODO: replace with the real authenticated user once session/auth
-// context exists (only services/authApi.ts is wired up so far).
-const CURRENT_USER_ID = "usr_client_01"
+const NOTIFICATION_META: Record<string, { icon: IconType; tone: "neutral" | "success" | "danger" }> = {
+  project_created: { icon: FiPlusCircle, tone: "neutral" },
+  freelancer_assigned: { icon: FiCheckCircle, tone: "success" },
+  escrow_created: { icon: FiShield, tone: "neutral" },
+  escrow_funded: { icon: FiShield, tone: "success" },
+  escrow_refunded: { icon: FiUnlock, tone: "neutral" },
+  milestone_released: { icon: FiUnlock, tone: "success" },
+  dispute_opened: { icon: FiAlertTriangle, tone: "danger" },
+  dispute_resolved: { icon: FiCheckCircle, tone: "success" },
+}
 
 function NotificationRow({
   item,
-  isRead,
   onOpen,
 }: {
-  item: Notification
-  isRead: boolean
+  item: ApiActivity
   onOpen: () => void
 }) {
-  const meta = NOTIFICATION_META[item.type]
+  const meta = NOTIFICATION_META[item.type] ?? { icon: FiActivityIcon, tone: "neutral" }
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors",
-        isRead
+        "flex w-full text-left cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        item.read
           ? "border-border bg-surface hover:border-border-strong"
           : "border-primary/25 bg-primary/[0.04] hover:border-primary/40",
       )}
@@ -58,44 +58,68 @@ function NotificationRow({
       </span>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={cn("text-sm font-medium", isRead ? "text-muted" : "text-foreground")}>
-            {item.title}
-          </span>
-          {item.priority === "high" && !isRead && (
-            <Badge tone="danger">Important</Badge>
-          )}
-        </div>
+        <span className={cn("text-sm font-medium", item.read ? "text-muted" : "text-foreground")}>
+          {item.title}
+        </span>
         <p className="text-xs leading-relaxed text-subtle">{item.message}</p>
-        <span className="text-xs text-subtle">{formatRelativeTime(item.createdAt)}</span>
+        <span className="text-[11px] text-subtle/80 mt-1">{formatRelativeTime(item.createdAt)}</span>
       </div>
 
-      {!isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />}
-    </div>
+      {!item.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />}
+    </button>
   )
 }
 
 export function NotificationsPage() {
   const navigate = useNavigate()
+  const { token } = useAuth()
   const [tab, setTab] = useState<FilterTab>("all")
-  const [locallyReadIds, setLocallyReadIds] = useState<string[]>([])
+  const [items, setItems] = useState<ApiActivity[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const myNotifications = useMemo(() => getNotificationsForUser(CURRENT_USER_ID), [])
+  const load = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    setError("")
+    try {
+      const data = await getActivities(token, 1, 50)
+      setItems(data.activities)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't load notifications.")
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
 
-  const isRead = (item: Notification) => item.read || locallyReadIds.includes(item.id)
-  const unreadCount = myNotifications.filter((item) => !isRead(item)).length
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const visible = tab === "unread" ? myNotifications.filter((item) => !isRead(item)) : myNotifications
+  const unreadCount = items.filter((item) => !item.read).length
+  const visible = useMemo(() => (tab === "unread" ? items.filter((item) => !item.read) : items), [items, tab])
 
-  const handleOpen = (item: Notification) => {
-    if (!isRead(item)) setLocallyReadIds((prev) => [...prev, item.id])
+  const handleOpen = (item: ApiActivity) => {
+    if (!item.read && token) {
+      void markActivitiesRead([item.id], token)
+      setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, read: true } : n)))
+    }
     if (item.projectId) navigate(`/projects/${item.projectId}`)
   }
 
-  const markAllRead = () => setLocallyReadIds(myNotifications.map((item) => item.id))
+  const markAllRead = async () => {
+    if (!token || unreadCount === 0) return
+    const unreadIds = items.filter((n) => !n.read).map((n) => n.id)
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+    try {
+      await markActivitiesRead(unreadIds, token)
+    } catch {
+      void load()
+    }
+  }
 
   const tabItems: TabItem[] = [
-    { label: "All", value: "all", count: myNotifications.length },
+    { label: "All", value: "all", count: items.length },
     { label: "Unread", value: "unread", count: unreadCount },
   ]
 
@@ -104,7 +128,7 @@ export function NotificationsPage() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <PageHeader
           title="Notifications"
-          description="Alerts about your projects, payments, and messages."
+          description="Alerts and logs about your projects, milestone escrow, and disputes."
           actions={
             unreadCount > 0 && (
               <Button variant="outline" size="sm" onClick={markAllRead}>
@@ -116,7 +140,11 @@ export function NotificationsPage() {
 
         <Tabs items={tabItems} value={tab} onChange={(v) => setTab(v as FilterTab)} />
 
-        {visible.length === 0 ? (
+        {loading ? (
+          <LoadingState label="Loading notifications…" />
+        ) : error ? (
+          <ErrorState title="Couldn't load notifications" description={error} onRetry={() => void load()} />
+        ) : visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-20 text-center">
             <FiBell className="mb-3 h-6 w-6 text-subtle" />
             <p className="text-sm font-medium text-foreground">
@@ -129,7 +157,6 @@ export function NotificationsPage() {
               <NotificationRow
                 key={item.id}
                 item={item}
-                isRead={isRead(item)}
                 onOpen={() => handleOpen(item)}
               />
             ))}

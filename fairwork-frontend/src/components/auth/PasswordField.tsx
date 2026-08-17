@@ -26,7 +26,6 @@ export const PasswordField = forwardRef<HTMLInputElement, InputProps>(
           className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-subtle transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={visible ? "Hide password" : "Show password"}
           aria-pressed={visible}
-          tabIndex={-1}
         >
           {visible ? (
             <FiEyeOff className="h-4 w-4" aria-hidden />

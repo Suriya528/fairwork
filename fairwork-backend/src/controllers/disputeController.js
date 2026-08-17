@@ -1,5 +1,6 @@
 const Dispute = require("../models/Dispute");
 const Project = require("../models/Project");
+const { recordActivitySafely } = require("../services/activityService");
 
 exports.raiseDispute = async (req, res) => {
   try {
@@ -9,7 +10,8 @@ exports.raiseDispute = async (req, res) => {
       raisedBy: req.user.id,
       reason,
     });
-    await Project.findByIdAndUpdate(projectId, { status: "disputed" });
+    const project = await Project.findByIdAndUpdate(projectId, { status: "disputed" }, { new: true });
+    if (project) recordActivitySafely({ userIds: [project.clientId, project.freelancerId], eventKey: `dispute-raised:${dispute._id}`, actorId: req.user.id, type: "dispute_opened", title: "Dispute raised", message: `A dispute was raised on “${project.title}”.`, projectId: project._id, disputeId: dispute._id });
     res.status(201).json(dispute);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -40,6 +42,10 @@ exports.resolveDispute = async (req, res) => {
       { status: "resolved", winner },
       { new: true }
     );
+    if (dispute) {
+      const project = await Project.findById(dispute.projectId).select("clientId freelancerId title");
+      if (project) recordActivitySafely({ userIds: [project.clientId, project.freelancerId], eventKey: `dispute-resolved:${dispute._id}`, actorId: req.user.id, type: "dispute_resolved", title: "Dispute resolved", message: `A dispute was resolved on “${project.title}”.`, projectId: project._id, disputeId: dispute._id });
+    }
     res.json(dispute);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -11,7 +11,7 @@
 /* Users                                                               */
 /* ------------------------------------------------------------------ */
 
-export type UserRole = "client" | "freelancer"
+export type UserRole = "client" | "freelancer" | "admin"
 
 export interface User {
   id: string
@@ -336,9 +336,8 @@ export interface NotificationPreferences {
 /* ------------------------------------------------------------------ */
 
 /**
- * Deliberately NOT added to UserRole. That union is load-bearing across
- * every page (isClient-style checks), so admin access is modeled as a
- * separate flag rather than a breaking third role value.
+ * Administrative access is represented by the authenticated user's real
+ * `admin` role; these legacy types are not used for authorization.
  */
 export interface AdminFlag {
   userId: string

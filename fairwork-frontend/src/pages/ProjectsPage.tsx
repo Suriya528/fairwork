@@ -35,8 +35,11 @@ function SortControl({ sort, onChange }: { sort: SortKey; onChange: (sort: SortK
   return (
     <div className="relative">
       <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-border-strong hover:text-foreground"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <FiFilter className="h-3 w-3" />
         {currentSort?.label}
@@ -44,10 +47,13 @@ function SortControl({ sort, onChange }: { sort: SortKey; onChange: (sort: SortK
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-border bg-surface py-1 shadow-xl shadow-black/30">
+        <div role="listbox" className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-border bg-surface py-1 shadow-xl shadow-black/30">
           {SORT_OPTIONS.map((option) => (
             <button
               key={option.value}
+              type="button"
+              role="option"
+              aria-selected={sort === option.value}
               onClick={() => {
                 onChange(option.value)
                 setOpen(false)
@@ -55,7 +61,7 @@ function SortControl({ sort, onChange }: { sort: SortKey; onChange: (sort: SortK
               className={cn(
                 "w-full px-3 py-2 text-left text-xs transition-colors",
                 sort === option.value
-                  ? "text-info"
+                  ? "text-info font-medium"
                   : "text-muted hover:bg-elevated hover:text-foreground",
               )}
             >
@@ -76,7 +82,19 @@ export function ProjectsPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [sort, setSort] = useState<SortKey>("newest")
-  const [viewMode, setViewMode] = useState<ViewMode>("grid")
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      return (localStorage.getItem("fairwork_projects_view_mode") as ViewMode) || "grid"
+    } catch {
+      return "grid"
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("fairwork_projects_view_mode", viewMode)
+    } catch {}
+  }, [viewMode])
 
   useEffect(() => {
     if (!token) return

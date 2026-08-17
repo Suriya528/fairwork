@@ -1,9 +1,11 @@
-import { Routes, Route } from "react-router-dom"
+import { Navigate, Routes, Route } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 import { ToastProvider } from "@/components/ui/Toast"
 import { AuthProvider } from "@/context/AuthContext"
+import { useAuth } from "@/context/AuthContext"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { LandingPage } from "@/pages/LandingPage"
 import { AnalyticsPage } from "@/pages/AnalyticsPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { CreateProjectPage } from "@/pages/CreateProjectPage"
@@ -24,6 +26,21 @@ import { LoginPage } from "@/pages/auth/LoginPage"
 import { RegisterPage } from "@/pages/auth/RegisterPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 
+function RoleHome() {
+  const { user } = useAuth()
+  return user?.role === "admin" ? <Navigate to="/admin" replace /> : <DashboardPage />
+}
+
+/**
+ * Public home: authenticated users go straight to their dashboard;
+ * everyone else sees the public landing page.
+ */
+function PublicHome() {
+  const { status } = useAuth()
+  if (status === "authenticated") return <Navigate to="/dashboard" replace />
+  return <LandingPage />
+}
+
 /**
  * App root: global providers + the route table.
  * All primary routes render inside the AppLayout shell (sidebar + topbar),
@@ -34,6 +51,9 @@ export function App() {
     <ToastProvider>
       <AuthProvider>
         <Routes>
+          {/* Public landing page — visible to unauthenticated visitors */}
+          <Route index element={<PublicHome />} />
+
           {/* Auth routes render standalone (no app shell) */}
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
@@ -46,7 +66,7 @@ export function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<RoleHome />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/new" element={<CreateProjectPage />} />
@@ -61,7 +81,11 @@ export function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="help" element={<HelpCenterPage />} />
             <Route path="chat" element={<ChatPage />} />
-            <Route path="admin" element={<AdminDashboardPage />} />
+            <Route path="admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="admin/users" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="admin/projects" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="admin/disputes" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="admin/system" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

@@ -3,6 +3,8 @@ import { NavLink } from "react-router-dom"
 import { FiShield, FiX } from "react-icons/fi"
 import { navSections } from "@/config/navigation"
 import { cn } from "@/lib/utils"
+import { useDisputeSummary } from "@/context/DisputeSummaryContext"
+import { useAuth } from "@/context/AuthContext"
 
 interface MobileNavProps {
   open: boolean
@@ -11,6 +13,11 @@ interface MobileNavProps {
 
 /** Slide-in navigation drawer for small screens. */
 export function MobileNav({ open, onClose }: MobileNavProps) {
+  const { openDisputeCount, loading } = useDisputeSummary()
+  const { user } = useAuth()
+  const sections = user?.role === "admin"
+    ? navSections.filter((section) => section.title === "Administration")
+    : navSections.filter((section) => section.title !== "Administration").map((section) => user?.role === "freelancer" ? { ...section, items: section.items.filter((item) => item.path !== "/projects/new") } : section).filter((section) => section.items.length > 0)
   // Lock body scroll while the drawer is open.
   useEffect(() => {
     if (!open) return
@@ -30,6 +37,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose])
+  if (!open) return null
 
   return (
     <div
@@ -74,7 +82,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Mobile">
-          {navSections.map((section) => (
+          {sections.map((section) => (
             <div key={section.title} className="mb-6 last:mb-0">
               <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle">
                 {section.title}
@@ -107,9 +115,9 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                               aria-hidden
                             />
                             <span className="flex-1">{item.label}</span>
-                            {item.badge ? (
+                            {item.path === "/disputes" && !loading && openDisputeCount > 0 ? (
                               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-[10px] font-semibold text-danger-foreground">
-                                {item.badge}
+                                {openDisputeCount}
                               </span>
                             ) : null}
                           </>

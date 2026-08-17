@@ -12,8 +12,8 @@ import { useAuth } from "@/context/AuthContext"
  *    to /login, remembering where we came from.
  *  - authenticated: render children as normal.
  */
-export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { status } = useAuth()
+export function ProtectedRoute({ children, requiredRole }: { children: ReactNode; requiredRole?: "admin" }) {
+  const { status, user } = useAuth()
   const location = useLocation()
 
   if (status === "loading") {
@@ -26,6 +26,10 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (status === "unauthenticated") {
     return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>
