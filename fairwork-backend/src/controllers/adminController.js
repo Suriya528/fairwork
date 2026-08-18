@@ -250,10 +250,9 @@ exports.userDetail = async (req, res) => {
 
 exports.suspendUser = async (req, res) => {
   try {
-    const { reason } = req.body;
-    if (!reason || typeof reason !== "string" || !reason.trim()) {
-      return res.status(400).json({ message: "A reason is required to suspend a user." });
-    }
+    const reasonText = (req.body && typeof req.body.reason === "string" && req.body.reason.trim())
+      ? req.body.reason.trim()
+      : "Suspended by platform administrator";
 
     const targetUser = await User.findById(req.params.id);
     if (!targetUser) return res.status(404).json({ message: "User not found" });
@@ -268,14 +267,14 @@ exports.suspendUser = async (req, res) => {
 
     targetUser.isSuspended = true;
     targetUser.suspendedAt = new Date();
-    targetUser.suspendedReason = reason.trim();
+    targetUser.suspendedReason = reasonText;
     await targetUser.save();
 
     await logAudit(req, {
       action: "SUSPEND_USER",
       targetType: "User",
       targetId: targetUser._id,
-      reason: reason.trim(),
+      reason: reasonText,
       details: { email: targetUser.email, role: targetUser.role },
     });
 

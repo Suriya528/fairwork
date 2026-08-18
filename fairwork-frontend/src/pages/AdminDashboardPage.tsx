@@ -249,13 +249,28 @@ export function AdminDashboardPage() {
 
   const handleToggleSuspend = async () => {
     if (!token || !suspendModalUser) return
+    const targetId = suspendModalUser.id
+    const wasSuspended = suspendModalUser.isSuspended
     setActionLoading(true)
     try {
-      if (suspendModalUser.isSuspended) {
-        await unsuspendUser(token, suspendModalUser.id, suspendReason)
+      if (wasSuspended) {
+        await unsuspendUser(token, targetId, suspendReason)
       } else {
-        await suspendUser(token, suspendModalUser.id, suspendReason)
+        await suspendUser(token, targetId, suspendReason)
       }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === targetId
+            ? {
+                ...u,
+                isSuspended: !wasSuspended,
+                suspendedReason: wasSuspended ? "" : (suspendReason || "Suspended by platform administrator"),
+              }
+            : u
+        )
+      )
+
       setSuspendModalUser(null)
       setSuspendReason("")
       await loadData()

@@ -236,14 +236,14 @@ export const suspendUser = (token: string, userId: string, reason: string) =>
   apiFetch<{ message: string; user: { id: string; isSuspended: boolean } }>(`/admin/users/${userId}/suspend`, {
     token,
     method: "POST",
-    body: JSON.stringify({ reason }),
+    body: { reason },
   })
 
 export const unsuspendUser = (token: string, userId: string, reason?: string) =>
   apiFetch<{ message: string; user: { id: string; isSuspended: boolean } }>(`/admin/users/${userId}/unsuspend`, {
     token,
     method: "POST",
-    body: JSON.stringify({ reason }),
+    body: { reason },
   })
 
 export const getAdminProjects = (
@@ -284,7 +284,7 @@ export const updateAdminReport = (token: string, reportId: string, status: strin
   apiFetch<AdminReport>(`/admin/reports/${reportId}`, {
     token,
     method: "PATCH",
-    body: JSON.stringify({ status, resolutionNotes }),
+    body: { status, resolutionNotes },
   })
 
 export const getAdminAnalytics = (token: string) =>

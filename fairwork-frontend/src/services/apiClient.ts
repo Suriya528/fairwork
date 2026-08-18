@@ -36,7 +36,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined,
     })
   } catch {
     throw new ApiError("Can't reach the server. Check your connection and try again.")
