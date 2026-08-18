@@ -77,8 +77,10 @@ const registerHighlights = [
  * Shared Authentication Shell for FairWork.
  * Structure:
  *  - TOP BAR: Global Public Auth Navigation (Home | Login | Sign Up)
- *  - LEFT PANEL: Branded content + Exactly ONE contextual "← Back to Home" action
- *  - RIGHT PANEL: Auth form card (Login / Register / Forgot Password)
+ *  - RESPONSIVE ORDERING:
+ *      * Desktop (lg+): Left Branding Panel | Right Form Section
+ *      * Small Screens (<lg): Form Section FIRST | Branding Panel SECOND
+ *  - SCROLLING: Single document window flow (zero nested scrollbars)
  */
 export function AuthLayout({
   variant = "login",
@@ -132,17 +134,63 @@ export function AuthLayout({
         </nav>
       </header>
 
-      {/* TWO-COLUMN LAYOUT BODY */}
+      {/* RESPONSIVE LAYOUT BODY */}
       <main className="flex-1 flex flex-col lg:flex-row w-full">
-        {/* LEFT BRAND PANEL (50% desktop width) */}
-        <aside className="relative flex w-full lg:w-1/2 flex-col justify-between border-b lg:border-b-0 lg:border-r border-border bg-surface p-6 sm:p-8 xl:p-12">
+        {/* FORM SECTION — First on Mobile/Tablet (order-1), Second on Desktop (lg:order-2) */}
+        <section className="order-1 lg:order-2 flex w-full lg:w-1/2 flex-col justify-between p-4 sm:p-8 lg:p-12">
+          {/* Form Card Container */}
+          <div className="w-full max-w-md mx-auto py-4 sm:py-6">
+            <div className="rounded-2xl border border-border bg-surface/90 p-6 sm:p-8 shadow-xl shadow-black/30 backdrop-blur-md">
+              <header className="mb-6">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground text-balance">
+                  {title}
+                </h2>
+                <p className="mt-2 text-xs leading-relaxed text-muted text-pretty">
+                  {subtitle}
+                </p>
+              </header>
+
+              {children}
+
+              {footer && (
+                <div className="mt-6 pt-5 border-t border-border/80 text-center text-xs text-muted">
+                  {footer}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer Legal Links */}
+          <footer className="w-full max-w-md mx-auto text-center py-2">
+            <p className="text-[11px] leading-relaxed text-subtle font-mono">
+              By continuing you agree to FairWork&apos;s{" "}
+              <a
+                href="#"
+                className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="#"
+                className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
+          </footer>
+        </section>
+
+        {/* BRANDING PANEL — Second on Mobile/Tablet (order-2), First on Desktop (lg:order-1) */}
+        <aside className="order-2 lg:order-1 relative flex w-full lg:w-1/2 flex-col justify-between border-t lg:border-t-0 lg:border-r border-border bg-surface p-6 sm:p-8 xl:p-12">
           {/* Ambient lighting background glow */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
             <div className="absolute left-0 top-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
             <div className="absolute bottom-0 right-0 h-[350px] w-[350px] translate-x-1/3 translate-y-1/3 rounded-full bg-emerald-500/10 blur-3xl" />
           </div>
 
-          {/* EXACTLY ONE Contextual "Back to Home" Link */}
+          {/* Contextual "Back to Home" Link */}
           <div className="relative z-10 flex items-center justify-between mb-6">
             <Link
               to="/"
@@ -153,8 +201,8 @@ export function AuthLayout({
             </Link>
           </div>
 
-          {/* Left panel marketing content */}
-          <div className="relative z-10 my-auto py-4 sm:py-8 max-w-lg">
+          {/* Left panel marketing content with natural vertical rhythm */}
+          <div className="relative z-10 max-w-lg py-2 sm:py-4 flex-1 flex flex-col justify-start gap-6">
             {isRegister ? (
               /* Register Left Panel — Connected vertical timeline */
               <div>
@@ -170,7 +218,7 @@ export function AuthLayout({
                   Create your account to post project briefs or deliver work with escrow-backed milestone security.
                 </p>
 
-                <div className="relative mt-8 ml-2 pl-6 border-l border-border/80 flex flex-col gap-6">
+                <div className="relative mt-6 ml-2 pl-6 border-l border-border/80 flex flex-col gap-5">
                   {registerHighlights.map((item) => {
                     const Icon = item.icon
                     return (
@@ -233,7 +281,7 @@ export function AuthLayout({
           </div>
 
           {/* Left Footer Protocol Status */}
-          <div className="relative z-10 flex items-center justify-between border-t border-border/80 pt-5 text-xs text-subtle font-mono mt-6 lg:mt-0">
+          <div className="relative z-10 flex items-center justify-between border-t border-border/80 pt-4 text-xs text-subtle font-mono mt-6">
             <div className="flex items-center gap-2">
               <FiCpu className="h-3.5 w-3.5 text-primary" />
               <span>Arbitrum & ETH Testnet</span>
@@ -244,52 +292,6 @@ export function AuthLayout({
             </div>
           </div>
         </aside>
-
-        {/* RIGHT FORM SECTION (50% desktop width) */}
-        <section className="flex w-full lg:w-1/2 flex-col justify-between p-6 sm:p-10 lg:p-12">
-          {/* Form Card Container */}
-          <div className="my-auto w-full max-w-md mx-auto py-4">
-            <div className="rounded-2xl border border-border bg-surface/90 p-6 sm:p-8 shadow-xl shadow-black/30 backdrop-blur-md">
-              <header className="mb-6">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground text-balance">
-                  {title}
-                </h2>
-                <p className="mt-2 text-xs leading-relaxed text-muted text-pretty">
-                  {subtitle}
-                </p>
-              </header>
-
-              {children}
-
-              {footer && (
-                <div className="mt-6 pt-5 border-t border-border/80 text-center text-xs text-muted">
-                  {footer}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer Legal Links */}
-          <footer className="w-full max-w-md mx-auto text-center py-2">
-            <p className="text-[11px] leading-relaxed text-subtle font-mono">
-              By continuing you agree to FairWork&apos;s{" "}
-              <a
-                href="#"
-                className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="#"
-                className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Privacy Policy
-              </a>
-              .
-            </p>
-          </footer>
-        </section>
       </main>
     </div>
   )
