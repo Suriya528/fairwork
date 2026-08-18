@@ -100,7 +100,7 @@ export function LandingHeader() {
             <>
               <Link
                 to="/login"
-                className={cn(btnBase, btnGhost, "h-9 px-3.5 text-xs")}
+                className={cn(btnBase, btnGhost, "h-9 px-3.5 text-xs ai-glow-cta")}
               >
                 Log In
               </Link>
@@ -197,7 +197,7 @@ export function LandingHeader() {
                   <Link
                     to="/login"
                     onClick={() => setMobileOpen(false)}
-                    className={cn(btnBase, btnOutline, "h-11 w-full px-4 text-xs font-bold")}
+                    className={cn(btnBase, btnOutline, "h-11 w-full px-4 text-xs font-bold ai-glow-cta")}
                   >
                     Log In
                   </Link>

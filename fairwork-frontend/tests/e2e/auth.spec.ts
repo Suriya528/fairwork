@@ -41,6 +41,13 @@ test("login rejects invalid credentials and redirects valid sessions to protecte
   await expect(page).toHaveURL(/\/dashboard$/)
 })
 
+test("login button renders premium AI hover glow effect class", async ({ page }) => {
+  await page.goto("/login")
+  const loginBtn = page.getByRole("button", { name: "Sign in" })
+  await expect(loginBtn).toBeVisible()
+  await expect(loginBtn).toHaveClass(/ai-glow-cta/)
+})
+
 test("protected project routes redirect unauthenticated visitors", async ({ page }) => {
   await page.goto("/projects/project-1")
   await expect(page).toHaveURL(/\/login$/)

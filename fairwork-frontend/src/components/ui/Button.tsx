@@ -70,7 +70,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={cn(
-          "inline-flex items-center justify-center rounded-lg font-medium",
+          "relative inline-flex items-center justify-center rounded-xl font-semibold overflow-visible",
           "transition-colors duration-150",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           "disabled:pointer-events-none disabled:opacity-50",
@@ -82,13 +82,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         {...props}
       >
-        {loading ? (
-          <Spinner className="h-4 w-4" />
-        ) : (
-          leftIcon && <span className="shrink-0">{leftIcon}</span>
-        )}
-        {children}
-        {!loading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
+        <span className="relative z-10 inline-flex items-center justify-center gap-2">
+          {loading ? (
+            <Spinner className="h-4 w-4" />
+          ) : (
+            leftIcon && <span className="shrink-0">{leftIcon}</span>
+          )}
+          {children}
+          {!loading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
+        </span>
       </button>
     )
   },

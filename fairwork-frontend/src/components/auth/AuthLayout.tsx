@@ -109,7 +109,7 @@ export function AuthLayout({
           <Link
             to="/login"
             className={cn(
-              "transition-colors",
+              "transition-colors rounded-md px-2 py-0.5 ai-glow-cta",
               variant === "login"
                 ? "font-bold text-primary"
                 : "text-muted hover:text-foreground",
