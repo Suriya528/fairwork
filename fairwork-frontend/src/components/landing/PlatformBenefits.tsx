@@ -28,8 +28,8 @@ export function PlatformBenefits() {
   const destination = isAuthed ? "/projects" : "/register"
 
   return (
-    <section className="border-t border-border bg-surface/30 py-20 sm:py-28">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section className="w-full bg-surface border-b border-border/40 py-20 sm:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
             Dual-Sided Protocol
@@ -44,7 +44,7 @@ export function PlatformBenefits() {
 
         <div className="mt-14 grid gap-8 md:grid-cols-2">
           {/* Client Card */}
-          <div className="flex flex-col justify-between rounded-2xl border border-border bg-surface p-7 shadow-xl shadow-black/20 hover:border-primary/40 transition-colors">
+          <div className="flex flex-col justify-between rounded-2xl border border-border bg-base p-7 shadow-xl shadow-black/20 hover:border-primary/40 transition-colors">
             <div>
               <div className="flex items-center justify-between border-b border-border pb-5">
                 <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ export function PlatformBenefits() {
           </div>
 
           {/* Freelancer Card */}
-          <div className="flex flex-col justify-between rounded-2xl border border-border bg-surface p-7 shadow-xl shadow-black/20 hover:border-emerald-500/40 transition-colors">
+          <div className="flex flex-col justify-between rounded-2xl border border-border bg-base p-7 shadow-xl shadow-black/20 hover:border-emerald-500/40 transition-colors">
             <div>
               <div className="flex items-center justify-between border-b border-border pb-5">
                 <div className="flex items-center gap-3">

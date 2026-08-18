@@ -81,72 +81,74 @@ export function CategoryGrid() {
   const destination = isAuthed ? "/projects" : "/register"
 
   return (
-    <section id="categories" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
-            Marketplace Taxonomy
-          </span>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            Explore core technical disciplines
-          </h2>
-          <p className="mt-3 max-w-xl text-base text-muted">
-            Connect with specialized freelancers across core development, design, and protocol engineering domains.
-          </p>
+    <section id="categories" className="w-full bg-base border-b border-border/40 py-20 sm:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
+              Marketplace Taxonomy
+            </span>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              Explore core technical disciplines
+            </h2>
+            <p className="mt-3 max-w-xl text-base text-muted">
+              Connect with specialized freelancers across core development, design, and protocol engineering domains.
+            </p>
+          </div>
+
+          <Link
+            to={destination}
+            className="mt-4 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover transition-colors"
+          >
+            View all project categories
+            <FiArrowUpRight className="h-4 w-4" />
+          </Link>
         </div>
 
-        <Link
-          to={destination}
-          className="mt-4 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover transition-colors"
-        >
-          View all project categories
-          <FiArrowUpRight className="h-4 w-4" />
-        </Link>
-      </div>
+        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {categories.map(({ label, icon: Icon, description, tags, highlight }) => (
+            <Link
+              key={label}
+              to={destination}
+              className={`group relative flex flex-col justify-between rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40 ${
+                highlight
+                  ? "border-primary/50 bg-gradient-to-b from-primary/10 via-surface to-surface shadow-md shadow-primary/10"
+                  : "border-border bg-surface hover:border-border-strong hover:bg-surface-hover"
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+                      highlight
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-elevated text-primary group-hover:bg-primary/15"
+                    }`}
+                  >
+                    <Icon className="h-5.5 w-5.5" aria-hidden />
+                  </span>
+                  <FiArrowUpRight className="h-4 w-4 text-subtle transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+                </div>
 
-      <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {categories.map(({ label, icon: Icon, description, tags, highlight }) => (
-          <Link
-            key={label}
-            to={destination}
-            className={`group relative flex flex-col justify-between rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40 ${
-              highlight
-                ? "border-primary/50 bg-gradient-to-b from-primary/10 via-surface to-surface shadow-md shadow-primary/10"
-                : "border-border bg-surface hover:border-border-strong hover:bg-surface-hover"
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
-                    highlight
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-elevated text-primary group-hover:bg-primary/15"
-                  }`}
-                >
-                  <Icon className="h-5.5 w-5.5" aria-hidden />
-                </span>
-                <FiArrowUpRight className="h-4 w-4 text-subtle transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+                <h3 className="mt-5 text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                  {label}
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted">{description}</p>
               </div>
 
-              <h3 className="mt-5 text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                {label}
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-muted">{description}</p>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-1.5 pt-3 border-t border-border/60">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-md bg-base px-2 py-0.5 font-mono text-[10px] text-subtle border border-border/80"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </Link>
-        ))}
+              <div className="mt-6 flex flex-wrap gap-1.5 pt-3 border-t border-border/60">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-md bg-base px-2 py-0.5 font-mono text-[10px] text-subtle border border-border/80"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </section>
   )

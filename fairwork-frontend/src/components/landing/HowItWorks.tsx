@@ -42,8 +42,8 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="border-t border-border bg-surface/40 py-20 sm:py-28">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section id="how-it-works" className="w-full bg-surface border-b border-border/40 py-20 sm:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
             Protocol Workflow
@@ -61,10 +61,10 @@ export function HowItWorks() {
           {/* Subtle connecting line across desktop steps */}
           <div className="pointer-events-none absolute top-1/2 left-0 hidden h-0.5 w-full -translate-y-6 bg-gradient-to-r from-primary/10 via-primary/30 to-emerald-500/20 lg:block" aria-hidden />
 
-          {steps.map(({ step, icon: Icon, title, description, statusBadge }, index) => (
+          {steps.map(({ step, icon: Icon, title, description, statusBadge }) => (
             <div
               key={step}
-              className="relative flex flex-col justify-between rounded-2xl border border-border bg-surface p-6 shadow-lg shadow-black/20 backdrop-blur-sm transition-all duration-200 hover:border-border-strong hover:-translate-y-1"
+              className="relative flex flex-col justify-between rounded-2xl border border-border bg-base p-6 shadow-lg shadow-black/20 backdrop-blur-sm transition-all duration-200 hover:border-border-strong hover:-translate-y-1"
             >
               <div>
                 {/* Step header */}

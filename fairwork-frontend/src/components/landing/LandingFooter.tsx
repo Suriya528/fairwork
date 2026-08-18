@@ -33,8 +33,8 @@ export function LandingFooter() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-border bg-surface/80 text-foreground backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+    <footer className="w-full border-t border-border bg-surface/80 text-foreground backdrop-blur-md">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand & Protocol Status column */}
           <div className="lg:col-span-1">

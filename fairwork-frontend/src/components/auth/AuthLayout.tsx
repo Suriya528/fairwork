@@ -4,12 +4,13 @@ import {
   FiShield,
   FiLock,
   FiCheckCircle,
-  FiCpu,
   FiZap,
+  FiCpu,
   FiLayers,
   FiCheck,
   FiUserPlus,
   FiFileText,
+  FiArrowLeft,
 } from "react-icons/fi"
 
 interface AuthLayoutProps {
@@ -71,10 +72,10 @@ const registerHighlights = [
 ]
 
 /**
- * Unified two-pane authentication shell for FairWork.
- *  - Login: Features 3 full protocol pillars to reinforce platform security & trust.
- *  - Register: Lightweight, milestone-connected vertical timeline matching the taller form without card clutter.
- *  - Unified Page Scroll: Entire page scrolls naturally as one document.
+ * Unified two-column authentication shell for FairWork.
+ *  - Left Panel (lg:w-1/2): Branded marketing panel with logo, value proposition, and protocol highlights.
+ *  - Right Panel (lg:w-1/2): Centered auth form card with top navigation link back to public landing (`/`).
+ *  - Responsive: Collapses back to a single column below `lg:` with a mobile header.
  */
 export function AuthLayout({
   variant = "login",
@@ -86,21 +87,137 @@ export function AuthLayout({
   const isRegister = variant === "register"
 
   return (
-    <main className="min-h-screen bg-base text-foreground flex flex-col justify-between">
-      {/* Two-Column Document Flow Container */}
-      <div className="flex-1 flex flex-col lg:flex-row w-full max-w-[1440px] mx-auto">
-        {/* Left Brand Panel — visible on desktop (lg+) */}
-        <aside className="relative hidden w-[42%] max-w-lg shrink-0 flex-col justify-between border-r border-border bg-surface p-8 lg:flex xl:p-12 min-h-screen">
-          {/* Ambient lighting background glow */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-            <div className="absolute left-0 top-0 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
-            <div className="absolute bottom-0 right-0 h-[300px] w-[300px] translate-x-1/3 translate-y-1/3 rounded-full bg-emerald-500/10 blur-3xl" />
-          </div>
+    <main className="min-h-screen w-full bg-base text-foreground flex flex-col lg:flex-row">
+      {/* Left Brand Panel — visible at lg: and above (50% desktop split) */}
+      <aside className="relative hidden lg:flex lg:w-1/2 flex-col justify-between border-r border-border bg-surface p-8 xl:p-12 min-h-screen">
+        {/* Ambient lighting background glow */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute left-0 top-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute bottom-0 right-0 h-[350px] w-[350px] translate-x-1/3 translate-y-1/3 rounded-full bg-emerald-500/10 blur-3xl" />
+        </div>
 
-          {/* Brand logo link */}
+        {/* Brand logo & home link */}
+        <div className="relative z-10 flex items-center justify-between">
           <Link
             to="/"
-            className="relative z-10 inline-flex items-center gap-2.5 self-start rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            className="inline-flex items-center gap-2.5 rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+              <FiShield className="h-5 w-5" aria-hidden />
+            </span>
+            <span className="text-xl font-bold tracking-tight text-foreground font-sans">
+              FairWork
+            </span>
+          </Link>
+
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground font-mono"
+          >
+            <FiArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+
+        {/* Left panel marketing content */}
+        <div className="relative z-10 my-auto py-8 max-w-lg">
+          {isRegister ? (
+            /* Register Left Panel — Connected vertical timeline */
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary font-mono mb-4">
+                <FiUserPlus className="h-3.5 w-3.5" />
+                <span>Onboarding Protocol</span>
+              </div>
+
+              <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-foreground xl:text-3xl text-balance">
+                Start building with guaranteed payment protection.
+              </h1>
+              <p className="mt-3 text-xs leading-relaxed text-muted">
+                Create your account to post project briefs or deliver work with escrow-backed milestone security.
+              </p>
+
+              <div className="relative mt-8 ml-2 pl-6 border-l border-border/80 flex flex-col gap-6">
+                {registerHighlights.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={item.title} className="relative flex items-start gap-3">
+                      <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface border border-border text-primary shadow-sm">
+                        <Icon className="h-3 w-3 text-emerald-400" aria-hidden />
+                      </span>
+                      <div>
+                        <h3 className="text-xs font-bold text-foreground tracking-tight">{item.title}</h3>
+                        <p className="mt-1 text-xs leading-relaxed text-muted">{item.description}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            /* Login Left Panel — Concise 3 protocol pillars */
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-400 font-mono mb-4">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Escrow Protocol Active</span>
+              </div>
+
+              <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-foreground xl:text-3xl text-balance">
+                The trust layer for independent work.
+              </h1>
+              <p className="mt-3 text-xs leading-relaxed text-muted">
+                Contracts, milestone escrow, and arbitrator dispute resolution in one unified platform.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3.5">
+                {loginPillars.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div
+                      key={item.title}
+                      className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-base/60 p-3.5 backdrop-blur-sm transition-colors hover:border-border-strong"
+                    >
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-elevated text-primary border border-border">
+                        <Icon className="h-4 w-4" aria-hidden />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-foreground">{item.title}</p>
+                          <span className="rounded bg-elevated px-1.5 py-0.5 font-mono text-[9px] font-medium text-subtle border border-border">
+                            {item.badge}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Left Footer Protocol Status */}
+        <div className="relative z-10 flex items-center justify-between border-t border-border/80 pt-5 text-xs text-subtle font-mono">
+          <div className="flex items-center gap-2">
+            <FiCpu className="h-3.5 w-3.5 text-primary" />
+            <span>Arbitrum & ETH Testnet</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <FiLayers className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Escrow v1.0</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Right Form Section (50% desktop split) */}
+      <section className="flex w-full lg:w-1/2 flex-col justify-between p-6 sm:p-10 lg:p-12 min-h-screen">
+        {/* Navigation Bar (Top of Right Panel) */}
+        <header className="flex justify-between items-center w-full max-w-md mx-auto mb-6">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity hover:opacity-90"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
               <FiShield className="h-5 w-5" aria-hidden />
@@ -110,164 +227,58 @@ export function AuthLayout({
             </span>
           </Link>
 
-          {/* Left panel content based on page variant */}
-          <div className="relative z-10 my-auto py-8">
-            {isRegister ? (
-              /* Register Left Panel — Lightweight connected vertical timeline for taller form */
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary font-mono mb-4">
-                  <FiUserPlus className="h-3.5 w-3.5" />
-                  <span>Onboarding Protocol</span>
-                </div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground font-mono"
+          >
+            <FiArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Home</span>
+          </Link>
+        </header>
 
-                <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-foreground xl:text-3xl text-balance">
-                  Start building with guaranteed payment protection.
-                </h1>
-                <p className="mt-3 text-xs leading-relaxed text-muted">
-                  Create your account to post project briefs or deliver work with escrow-backed milestone security.
-                </p>
+        {/* Form Card Container — Perfectly centered in right half */}
+        <div className="my-auto w-full max-w-md mx-auto py-4">
+          <div className="rounded-2xl border border-border bg-surface/90 p-6 sm:p-8 shadow-xl shadow-black/30 backdrop-blur-md">
+            <header className="mb-6">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground text-balance">
+                {title}
+              </h2>
+              <p className="mt-2 text-xs leading-relaxed text-muted text-pretty">
+                {subtitle}
+              </p>
+            </header>
 
-                {/* Lightweight vertical timeline with connected line */}
-                <div className="relative mt-8 ml-2 pl-6 border-l border-border/80 flex flex-col gap-6">
-                  {registerHighlights.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <div key={item.title} className="relative flex items-start gap-3">
-                        {/* Connected milestone dot */}
-                        <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface border border-border text-primary shadow-sm">
-                          <Icon className="h-3 w-3 text-emerald-400" aria-hidden />
-                        </span>
-                        <div>
-                          <h3 className="text-xs font-bold text-foreground tracking-tight">{item.title}</h3>
-                          <p className="mt-1 text-xs leading-relaxed text-muted">{item.description}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : (
-              /* Login Left Panel — Concise 3 protocol pillars */
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 font-mono mb-4">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Escrow Protocol Active</span>
-                </div>
+            {children}
 
-                <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-foreground xl:text-3xl text-balance">
-                  The trust layer for independent work.
-                </h1>
-                <p className="mt-3 text-xs leading-relaxed text-muted">
-                  Contracts, milestone escrow, and arbitrator dispute resolution in one unified platform.
-                </p>
-
-                <div className="mt-6 flex flex-col gap-3.5">
-                  {loginPillars.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <div
-                        key={item.title}
-                        className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-base/60 p-3.5 backdrop-blur-sm transition-colors hover:border-border-strong"
-                      >
-                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-elevated text-primary border border-border">
-                          <Icon className="h-4 w-4" aria-hidden />
-                        </span>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-foreground">{item.title}</p>
-                            <span className="rounded bg-elevated px-1.5 py-0.5 font-mono text-[9px] font-medium text-subtle border border-border">
-                              {item.badge}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-                            {item.description}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+            {footer && (
+              <div className="mt-6 pt-5 border-t border-border/80 text-center text-xs text-muted">
+                {footer}
               </div>
             )}
           </div>
+        </div>
 
-          {/* Footer Protocol Status */}
-          <div className="relative z-10 flex items-center justify-between border-t border-border/80 pt-5 text-xs text-subtle font-mono">
-            <div className="flex items-center gap-2">
-              <FiCpu className="h-3.5 w-3.5 text-primary" />
-              <span>Arbitrum & ETH Testnet</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <FiLayers className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Escrow v1.0</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Right Form Section — Unified document scroll */}
-        <section className="flex flex-1 flex-col justify-between p-4 sm:p-8 lg:p-10 xl:p-12">
-          {/* Mobile Header Logo */}
-          <div className="flex justify-between items-center lg:hidden mb-6">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        {/* Footer Legal Links */}
+        <footer className="w-full max-w-md mx-auto text-center py-2">
+          <p className="text-[11px] leading-relaxed text-subtle font-mono">
+            By continuing you agree to FairWork&apos;s{" "}
+            <a
+              href="#"
+              className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
-                <FiShield className="h-5 w-5" aria-hidden />
-              </span>
-              <span className="text-lg font-bold tracking-tight text-foreground font-sans">
-                FairWork
-              </span>
-            </Link>
-            <span className="font-mono text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-              Escrow Protected
-            </span>
-          </div>
-
-          {/* Form Card Container — Positioned with tight gap near the left panel border */}
-          <div className="my-auto w-full max-w-md mx-auto lg:mx-0 lg:ml-8 xl:ml-12 py-4">
-            <div className="rounded-2xl border border-border bg-surface/90 p-6 sm:p-8 shadow-xl shadow-black/30 backdrop-blur-md">
-              <header className="mb-6">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground text-balance">
-                  {title}
-                </h2>
-                <p className="mt-2 text-xs leading-relaxed text-muted text-pretty">
-                  {subtitle}
-                </p>
-              </header>
-
-              {children}
-
-              {footer && (
-                <div className="mt-6 pt-5 border-t border-border/80 text-center text-xs text-muted">
-                  {footer}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer Legal Links */}
-          <footer className="w-full max-w-md mx-auto lg:mx-0 lg:ml-8 xl:ml-12 text-center py-2">
-            <p className="text-[11px] leading-relaxed text-subtle font-mono">
-              By continuing you agree to FairWork&apos;s{" "}
-              <a
-                href="#"
-                className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="#"
-                className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Privacy Policy
-              </a>
-              .
-            </p>
-          </footer>
-        </section>
-      </div>
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="#"
+              className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
+        </footer>
+      </section>
     </main>
   )
 }

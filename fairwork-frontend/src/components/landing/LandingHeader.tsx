@@ -55,14 +55,14 @@ export function LandingHeader() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-200",
+        "fixed inset-x-0 top-0 z-50 w-full transition-all duration-200",
         scrolled
-          ? "border-b border-border/80 bg-base/85 backdrop-blur-md shadow-lg shadow-black/20"
+          ? "border-b border-border/80 bg-base/90 backdrop-blur-md shadow-lg shadow-black/20"
           : "bg-transparent",
       )}
     >
       <nav
-        className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
         aria-label="Landing"
       >
         {/* Brand */}
