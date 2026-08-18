@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { formatCurrency, USD_TO_INR_RATE } from "@/lib/format"
 
 export type DisplayCurrency = "INR" | "USD"
 
@@ -6,7 +7,9 @@ interface CurrencyContextType {
   currency: DisplayCurrency
   setCurrency: (currency: DisplayCurrency) => void
   symbol: string
-  formatAmount: (amount: number) => string
+  exchangeRate: number
+  convertAmount: (amountInUSD: number) => number
+  formatAmount: (amountInUSD: number) => string
 }
 
 const STORAGE_KEY = "fairwork-display-currency"
@@ -40,25 +43,25 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   const symbol = currency === "INR" ? "₹" : "$"
 
-  const formatAmount = (amount: number): string => {
-    if (currency === "INR") {
-      return new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-        maximumFractionDigits: 2,
-      }).format(amount)
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
+  const convertAmount = (amountInUSD: number): number => {
+    return currency === "INR" ? amountInUSD * USD_TO_INR_RATE : amountInUSD
+  }
+
+  const formatAmount = (amountInUSD: number): string => {
+    return formatCurrency(amountInUSD, currency)
   }
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, symbol, formatAmount }}>
+    <CurrencyContext.Provider
+      value={{
+        currency,
+        setCurrency,
+        symbol,
+        exchangeRate: USD_TO_INR_RATE,
+        convertAmount,
+        formatAmount,
+      }}
+    >
       {children}
     </CurrencyContext.Provider>
   )

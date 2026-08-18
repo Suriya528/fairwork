@@ -3,12 +3,33 @@
  * Kept framework-agnostic so they compose easily with future API data.
  */
 
+export const USD_TO_INR_RATE = 83
+
 /**
- * Format an application/project monetary amount in the user's preferred display currency.
- * Defaults to reading 'fairwork-display-currency' from localStorage ("INR" | "USD"), fallback "INR".
- * Formats INR using 'en-IN' locale (e.g. ₹25,000) and USD using 'en-US' locale (e.g. $25,000).
+ * Convert a base USD monetary amount to the target display currency numeric value.
  */
-export function formatCurrency(amount: number, currency?: string): string {
+export function convertCurrencyAmount(amountInUSD: number, targetCurrency?: string): number {
+  let selectedCurrency = targetCurrency
+  if (!selectedCurrency) {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("fairwork-display-currency") : null
+      if (stored === "INR" || stored === "USD") {
+        selectedCurrency = stored
+      }
+    } catch {
+      // Fallback on storage errors
+    }
+    selectedCurrency = selectedCurrency || "INR"
+  }
+
+  return selectedCurrency === "INR" ? amountInUSD * USD_TO_INR_RATE : amountInUSD
+}
+
+/**
+ * Format a base USD monetary amount into the user's preferred display currency.
+ * Converts base USD to INR (at 1 USD = 83 INR) when display currency is "INR".
+ */
+export function formatCurrency(amountInUSD: number, currency?: string): string {
   let selectedCurrency = currency
   if (!selectedCurrency) {
     try {
@@ -23,25 +44,26 @@ export function formatCurrency(amount: number, currency?: string): string {
   }
 
   if (selectedCurrency === "INR") {
+    const converted = amountInUSD * USD_TO_INR_RATE
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      minimumFractionDigits: converted % 1 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
-    }).format(amount)
+    }).format(converted)
   }
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    minimumFractionDigits: amountInUSD % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  }).format(amountInUSD)
 }
 
 /** Explicit helper for formatting application budgets in INR. */
-export function formatINR(amount: number): string {
-  return formatCurrency(amount, "INR")
+export function formatINR(amountInUSD: number): string {
+  return formatCurrency(amountInUSD, "INR")
 }
 
 /** Format a crypto/token amount with its symbol, e.g. "250.00 USDC" or "0.85 ETH". */

@@ -74,6 +74,8 @@ export function CreateProjectPage() {
       return
     }
 
+    const budgetInUSD = currency === "INR" ? value / 83 : value
+
     setSaving(true)
     setError("")
     try {
@@ -83,10 +85,10 @@ export function CreateProjectPage() {
           category,
           customCategory: category === "Other" ? customCategory.trim() : "",
           description: description.trim(),
-          budget: value,
+          budget: budgetInUSD,
           milestones: milestones.map((m) => ({
             title: m.title.trim(),
-            amount: Number(m.amount),
+            amount: currency === "INR" ? Number(m.amount) / 83 : Number(m.amount),
           })),
         },
         token,

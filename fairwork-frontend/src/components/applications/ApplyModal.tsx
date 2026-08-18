@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { applyToProject, type ApiApplication } from "@/services/applicationsApi"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 
 interface ApplyModalProps {
   projectId: string
@@ -23,8 +24,9 @@ export function ApplyModal({
   onSuccess,
 }: ApplyModalProps) {
   const { token } = useAuth()
+  const { currency, symbol, convertAmount, formatAmount } = useCurrency()
   const [proposalText, setProposalText] = useState("")
-  const [proposedAmount, setProposedAmount] = useState(String(projectBudget))
+  const [proposedAmount, setProposedAmount] = useState(String(convertAmount(projectBudget)))
   const [estimatedDelivery, setEstimatedDelivery] = useState("7 days")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -52,13 +54,15 @@ export function ApplyModal({
       return
     }
 
+    const amountInUSD = currency === "INR" ? numAmount / 83 : numAmount
+
     setLoading(true)
     try {
       const app = await applyToProject(
         {
           projectId,
           proposalText: proposalText.trim(),
-          proposedAmount: numAmount,
+          proposedAmount: amountInUSD,
           estimatedDelivery: estimatedDelivery.trim(),
         },
         token,
@@ -121,7 +125,7 @@ export function ApplyModal({
                 leftIcon={<FiDollarSign className="h-4 w-4" />}
                 placeholder="e.g. 500"
               />
-              <span className="mt-1 block text-[11px] text-subtle">Client budget: ${projectBudget}</span>
+              <span className="mt-1 block text-[11px] text-subtle">Client budget: {formatAmount(projectBudget)}</span>
             </div>
 
             <div>
