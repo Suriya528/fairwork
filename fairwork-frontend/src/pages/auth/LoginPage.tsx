@@ -32,8 +32,9 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   function validate(): boolean {
+    const trimmedEmail = email.trim()
     const next: Errors = {
-      email: validateEmail(email),
+      email: validateEmail(trimmedEmail),
       password: validateRequired(password, "Password"),
     }
     setErrors(next)
@@ -44,9 +45,10 @@ export function LoginPage() {
     event.preventDefault()
     if (!validate()) return
 
+    const cleanEmail = email.trim()
     setSubmitting(true)
     try {
-      const session = await login({ email, password, remember })
+      const session = await login({ email: cleanEmail, password, remember })
       toast({
         tone: "success",
         title: "Welcome back",

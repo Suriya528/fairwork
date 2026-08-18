@@ -4,14 +4,19 @@
  * Kept framework-agnostic so pages can compose them however they need.
  */
 
-// Pragmatic email pattern — good enough for client-side UX; the server remains
-// the source of truth.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/**
+ * Strict RFC 5322-compliant practical email format regex.
+ * Verifies syntax only (local part, @ symbol, domain name, and minimum 2-character TLD).
+ * Rejects consecutive dots (..), leading/trailing dots, missing domain/TLD parts, and invalid characters.
+ */
+const STRICT_EMAIL_RE =
+  /^(?!\.)(?!.*\.\.)[a-zA-Z0-9._%+-]+(?<!\.)@(?!\.)(?!.*\.\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
 export function validateEmail(value: string): string | undefined {
+  if (!value) return "Email is required"
   const trimmed = value.trim()
   if (!trimmed) return "Email is required"
-  if (!EMAIL_RE.test(trimmed)) return "Enter a valid email address"
+  if (!STRICT_EMAIL_RE.test(trimmed)) return "Enter a valid email address"
   return undefined
 }
 

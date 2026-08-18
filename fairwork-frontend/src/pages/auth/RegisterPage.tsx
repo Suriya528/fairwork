@@ -56,7 +56,7 @@ export function RegisterPage() {
     const next: Errors = {
       firstName: validateName(firstName),
       lastName: validateName(lastName),
-      email: validateEmail(email),
+      email: validateEmail(email.trim()),
       role: role ? undefined : "Select how you want to use FairWork",
       password: validatePassword(password),
       confirm: validateConfirmPassword(confirm, password),
@@ -70,12 +70,16 @@ export function RegisterPage() {
     event.preventDefault()
     if (!validate()) return
 
+    const cleanEmail = email.trim()
+    const cleanFirstName = firstName.trim()
+    const cleanLastName = lastName.trim()
+
     setSubmitting(true)
     try {
       const session = await register({
-        firstName,
-        lastName,
-        email,
+        firstName: cleanFirstName,
+        lastName: cleanLastName,
+        email: cleanEmail,
         password,
         role: role as Role,
       })

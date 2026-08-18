@@ -41,6 +41,17 @@ test("login rejects invalid credentials and redirects valid sessions to protecte
   await expect(page).toHaveURL(/\/dashboard$/)
 })
 
+test("validates strict email format on login and register", async ({ page }) => {
+  await page.goto("/login")
+
+  for (const invalidEmail of ["abc", "abc@", "abc@gmail", "@gmail.com", "test@", "test..test@gmail.com"]) {
+    await page.getByLabel("Email").fill(invalidEmail)
+    await page.locator("#password").fill("StrongPass1")
+    await page.getByRole("button", { name: "Sign in" }).click()
+    await expect(page.locator("#email-error")).toHaveText("Enter a valid email address")
+  }
+})
+
 test("login button renders premium AI hover glow effect class", async ({ page }) => {
   await page.goto("/login")
   const loginBtn = page.getByRole("button", { name: "Sign in" })
