@@ -229,7 +229,7 @@ export function ProjectDetailPage() {
                 <ProjectStatusBadge status={project.status} />
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
-                <span className="flex items-center gap-1.5"><FiDollarSign className="h-4 w-4 text-subtle" />{formatCurrency(project.budget)}</span>
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">{formatCurrency(project.budget)}</span>
                 <span className="flex items-center gap-1.5"><FiCalendar className="h-4 w-4 text-subtle" />Created {formatDate(project.createdAt)}</span>
               </div>
             </div>

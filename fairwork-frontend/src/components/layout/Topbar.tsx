@@ -3,14 +3,16 @@ import { WalletAddress } from "@/components/common/WalletAddress"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { AccountMenu } from "./AccountMenu"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 
 interface TopbarProps {
   onOpenMobileNav: () => void
 }
 
-/** Sticky top bar with search, wallet, theme toggle, notifications, and user account. */
+/** Sticky top bar with search, wallet, theme toggle, currency selector, notifications, and user account. */
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const { user } = useAuth()
+  const { currency, setCurrency } = useCurrency()
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/80 px-4 backdrop-blur-md lg:px-8">
@@ -40,6 +42,15 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
         {user?.walletAddress && (
           <WalletAddress address={user.walletAddress} className="hidden md:inline-flex" />
         )}
+        <button
+          type="button"
+          onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
+          title={`Switch currency preference (Current: ${currency})`}
+          aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
+          className="flex h-9 items-center gap-1 rounded-lg border border-border bg-base px-2.5 text-xs font-mono font-bold text-muted transition hover:border-border-strong hover:bg-elevated hover:text-foreground"
+        >
+          <span>{currency === "INR" ? "₹ INR" : "$ USD"}</span>
+        </button>
         <ThemeToggle />
         <AccountMenu />
       </div>

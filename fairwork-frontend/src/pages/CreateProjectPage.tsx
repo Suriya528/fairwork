@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/Label"
 import { Textarea } from "@/components/ui/Textarea"
 import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { createProject } from "@/services/projectsApi"
-import { formatCurrency } from "@/lib/format"
 
 interface Draft {
   id: string
@@ -25,6 +25,7 @@ const draft = (): Draft => ({
 
 export function CreateProjectPage() {
   const { token } = useAuth()
+  const { currency, formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -33,6 +34,7 @@ export function CreateProjectPage() {
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
 
+  const currencyTag = currency === "INR" ? "₹ INR" : "$ USD"
   const allocation = milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0)
 
   const update = (id: string, field: "title" | "amount", value: string) =>
@@ -83,7 +85,7 @@ export function CreateProjectPage() {
       <div className="mx-auto max-w-3xl">
         <PageHeader
           title="Post a new project"
-          description="Describe the work and divide its budget into milestone amounts (₹)."
+          description={`Describe the work and divide its budget into milestone amounts (${currencyTag}).`}
         />
         <Card className="mt-6">
           <CardHeader>
@@ -115,20 +117,20 @@ export function CreateProjectPage() {
             </div>
             <div>
               <Label htmlFor="budget" required>
-                Total budget (₹)
+                Total budget ({currencyTag})
               </Label>
               <Input
                 id="budget"
                 type="number"
                 min="0"
-                placeholder="e.g. 50000"
+                placeholder={currency === "INR" ? "e.g. 50000" : "e.g. 500"}
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
               />
             </div>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <Label>Milestones (₹)</Label>
+                <Label>Milestones ({currencyTag})</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -150,7 +152,7 @@ export function CreateProjectPage() {
                     min="0"
                     value={m.amount}
                     onChange={(e) => update(m.id, "amount", e.target.value)}
-                    placeholder="Amount (₹)"
+                    placeholder={`Amount (${currencyTag})`}
                   />
                   <Button
                     variant="ghost"
@@ -171,8 +173,8 @@ export function CreateProjectPage() {
                     : "text-xs text-muted"
                 }
               >
-                Allocated: {formatCurrency(allocation)} of{" "}
-                {formatCurrency(Number(budget) || 0)}
+                Allocated: {formatAmount(allocation)} of{" "}
+                {formatAmount(Number(budget) || 0)}
               </p>
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}

@@ -55,7 +55,6 @@ export function ApiProjectCard({ project }: { project: ApiProject }) {
 
       <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
         <div className="flex items-center gap-1 text-sm font-semibold text-foreground">
-          <FiDollarSign className="h-3.5 w-3.5 text-subtle" />
           {formatCurrency(project.budget)}
         </div>
         <div className="flex items-center gap-1 text-xs text-subtle">

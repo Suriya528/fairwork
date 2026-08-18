@@ -10,6 +10,7 @@ import {
   FiLayers,
 } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
 
 const btnBase =
@@ -21,6 +22,7 @@ const btnOutline =
 
 export function HeroSection() {
   const { status } = useAuth()
+  const { formatAmount } = useCurrency()
   const isAuthed = status === "authenticated"
   const destination = isAuthed ? "/projects" : "/register"
 
@@ -98,7 +100,7 @@ export function HeroSection() {
                         Active
                       </span>
                     </div>
-                    <p className="text-xs text-subtle font-mono">ID: prj_01 • ₹90,000 (900 USDC Escrow)</p>
+                    <p className="text-xs text-subtle font-mono">ID: prj_01 • {formatAmount(90000)} (900 USDC Escrow)</p>
                   </div>
                 </div>
 
@@ -118,7 +120,7 @@ export function HeroSection() {
                     {
                       step: 1,
                       title: "1. Audit & Kickoff",
-                      amount: "₹25,000",
+                      amount: formatAmount(25000),
                       token: "250 USDC",
                       status: "Released",
                       badgeTone: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -127,7 +129,7 @@ export function HeroSection() {
                     {
                       step: 2,
                       title: "2. Component Library",
-                      amount: "₹40,000",
+                      amount: formatAmount(40000),
                       token: "400 USDC",
                       status: "Submitted / Review",
                       badgeTone: "bg-blue-500/10 text-blue-400 border-blue-500/30",
@@ -136,7 +138,7 @@ export function HeroSection() {
                     {
                       step: 3,
                       title: "3. Token Handoff",
-                      amount: "₹25,000",
+                      amount: formatAmount(25000),
                       token: "250 USDC",
                       status: "In Escrow",
                       badgeTone: "bg-slate-800 text-slate-400 border-slate-700",

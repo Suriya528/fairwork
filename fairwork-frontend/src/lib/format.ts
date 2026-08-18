@@ -4,11 +4,25 @@
  */
 
 /**
- * Format an application/project monetary amount in INR by default using Indian locale (en-IN).
- * Produces standard Indian formatting, e.g. 25000 -> "₹25,000", 125000 -> "₹1,25,000".
+ * Format an application/project monetary amount in the user's preferred display currency.
+ * Defaults to reading 'fairwork-display-currency' from localStorage ("INR" | "USD"), fallback "INR".
+ * Formats INR using 'en-IN' locale (e.g. ₹25,000) and USD using 'en-US' locale (e.g. $25,000).
  */
-export function formatCurrency(amount: number, currency = "INR"): string {
-  if (currency === "INR") {
+export function formatCurrency(amount: number, currency?: string): string {
+  let selectedCurrency = currency
+  if (!selectedCurrency) {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("fairwork-display-currency") : null
+      if (stored === "INR" || stored === "USD") {
+        selectedCurrency = stored
+      }
+    } catch {
+      // Fallback on storage errors
+    }
+    selectedCurrency = selectedCurrency || "INR"
+  }
+
+  if (selectedCurrency === "INR") {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
@@ -16,9 +30,10 @@ export function formatCurrency(amount: number, currency = "INR"): string {
       maximumFractionDigits: 2,
     }).format(amount)
   }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency,
+    currency: "USD",
     minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(amount)
