@@ -16,6 +16,8 @@ import {
   FiSearch,
   FiShield,
   FiSlash,
+  FiTrendingUp,
+  FiCheckSquare,
   FiUserCheck,
   FiUsers,
   FiXCircle,
@@ -454,20 +456,102 @@ export function AdminDashboardPage() {
           <section>
             <h2 className="mb-3 text-base font-semibold text-foreground">Platform Metrics</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Total Users" value={overview.totalUsers.toLocaleString()} hint={`${overview.totalClients} Clients · ${overview.totalFreelancers} Freelancers`} icon={FiUsers} />
-              <MetricCard label="Active / Suspended" value={`${overview.activeUsers} / ${overview.suspendedUsers}`} hint="Account moderation status" icon={FiSlash} />
-              <MetricCard label="Projects" value={overview.totalProjects.toLocaleString()} hint={`${overview.activeProjects} In Progress · ${overview.completedProjects} Completed`} icon={FiFolder} />
-              <MetricCard label="Applications" value={overview.totalApplications.toLocaleString()} hint={`${overview.applicationConversionRate}% Hire Conversion Rate`} icon={FiFileText} />
+              <MetricCard
+                label="Total Users"
+                value={overview.totalUsers.toLocaleString()}
+                hint={`${overview.totalClients} Clients · ${overview.totalFreelancers} Freelancers`}
+                icon={FiUsers}
+                to="/admin/users"
+              />
+              <MetricCard
+                label="Active / Suspended"
+                value={`${overview.activeUsers} / ${overview.suspendedUsers}`}
+                hint="Account moderation status"
+                icon={FiSlash}
+                to="/admin/users"
+              />
+              <MetricCard
+                label="Projects"
+                value={overview.totalProjects.toLocaleString()}
+                hint={`${overview.activeProjects} In Progress · ${overview.completedProjects} Completed`}
+                icon={FiFolder}
+                to="/admin/projects"
+              />
+              <MetricCard
+                label="Applications"
+                value={overview.totalApplications.toLocaleString()}
+                hint={`${overview.applicationConversionRate}% Hire Conversion Rate`}
+                icon={FiFileText}
+                to="/admin/applications"
+              />
             </div>
           </section>
 
           <section>
             <h2 className="mb-3 text-base font-semibold text-foreground">Escrow &amp; Disputes Authority</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Funded Escrows" value={overview.fundedEscrows.toLocaleString()} hint="On-chain confirmed active escrows" icon={FiShield} />
-              <MetricCard label="Completed Escrows" value={overview.completedEscrows.toLocaleString()} hint="Released milestone payments" icon={FiCheckCircle} />
-              <MetricCard label="Open Disputes" value={overview.openDisputes.toLocaleString()} hint="Arbitrator review pending" icon={FiAlertTriangle} />
-              <MetricCard label="Resolved Disputes" value={overview.resolvedDisputes.toLocaleString()} hint="Smart contract dispute outcomes" icon={FiUserCheck} />
+              <MetricCard
+                label="Funded Escrows"
+                value={overview.fundedEscrows.toLocaleString()}
+                hint="On-chain confirmed active escrows"
+                icon={FiShield}
+                to="/admin/escrows"
+              />
+              <MetricCard
+                label="Completed Escrows"
+                value={overview.completedEscrows.toLocaleString()}
+                hint="Released milestone payments"
+                icon={FiCheckCircle}
+                to="/admin/escrows"
+              />
+              <MetricCard
+                label="Open Disputes"
+                value={overview.openDisputes.toLocaleString()}
+                hint="Arbitrator review pending"
+                icon={FiAlertTriangle}
+                to="/admin/disputes"
+              />
+              <MetricCard
+                label="Resolved Disputes"
+                value={overview.resolvedDisputes.toLocaleString()}
+                hint="Smart contract dispute outcomes"
+                icon={FiUserCheck}
+                to="/admin/disputes"
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-base font-semibold text-foreground">Governance &amp; Operations</h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                label="Contracts"
+                value={overview.totalContracts.toLocaleString()}
+                hint="Off-chain contract agreements"
+                icon={FiCheckSquare}
+                to="/admin/contracts"
+              />
+              <MetricCard
+                label="Trust &amp; Safety Reports"
+                value={overview.totalReports.toLocaleString()}
+                hint={`${overview.openReports} review pending`}
+                icon={FiFlag}
+                to="/admin/reports"
+              />
+              <MetricCard
+                label="Analytics &amp; Funnel"
+                value={`${overview.applicationConversionRate}%`}
+                hint="Hire conversion efficiency"
+                icon={FiBarChart2}
+                to="/admin/analytics"
+              />
+              <MetricCard
+                label="System Health"
+                value={integrity ? `${integrity.totalAnomalies} anomalies` : "Healthy"}
+                hint="Automated scanner status"
+                icon={FiActivity}
+                to="/admin/system"
+              />
             </div>
           </section>
 
@@ -917,6 +1001,164 @@ export function AdminDashboardPage() {
           emptyTitle="No audit logs"
           emptyDescription="No administrative actions logged yet."
         />
+      )}
+
+      {/* VIEW: ANALYTICS */}
+      {view === "analytics" && analytics && (
+        <div className="flex flex-col gap-8">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Growth Trend"
+              value={`${analytics.userGrowth.reduce((acc, curr) => acc + curr.users, 0)} users`}
+              hint="New user registrations in last 30 days"
+              icon={FiTrendingUp}
+              to="/admin/users"
+            />
+            <MetricCard
+              label="Projects Distribution"
+              value={`${analytics.projectDistribution.reduce((acc, curr) => acc + curr.count, 0)} total`}
+              hint="Marketplace projects breakdown"
+              icon={FiFolder}
+              to="/admin/projects"
+            />
+            <MetricCard
+              label="Applications Funnel"
+              value={`${analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)} apps`}
+              hint="Total freelancer applications submitted"
+              icon={FiFileText}
+              to="/admin/applications"
+            />
+            <MetricCard
+              label="Hire Conversion"
+              value={
+                analytics.applicationStats.find((a) => a.status === "accepted")?.count &&
+                analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)
+                  ? `${Math.round(
+                      ((analytics.applicationStats.find((a) => a.status === "accepted")?.count || 0) /
+                        analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)) *
+                        100
+                    )}%`
+                  : "0%"
+              }
+              hint="Application to hire conversion rate"
+              icon={FiBarChart2}
+              to="/admin/analytics"
+            />
+          </div>
+
+          {/* User Registration Growth Bar Chart */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>User Account Registrations (Last 30 Days)</CardTitle>
+                  <p className="text-xs text-muted mt-0.5">Daily account registration volume across clients and freelancers.</p>
+                </div>
+                <Badge tone="primary">{analytics.userGrowth.length} Active Days</Badge>
+              </div>
+            </CardHeader>
+            <CardBody className="flex flex-col gap-4">
+              {analytics.userGrowth.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border py-12 text-center text-xs text-muted">
+                  No account registration data recorded in the last 30 days.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <div className="flex h-44 items-end gap-2 border-b border-border pb-3 pt-6 px-2 overflow-x-auto">
+                    {analytics.userGrowth.map((g, i) => {
+                      const max = Math.max(...analytics.userGrowth.map((item) => item.users), 1)
+                      const heightPercent = Math.max(15, Math.round((g.users / max) * 100))
+                      return (
+                        <div key={i} className="group relative flex flex-1 flex-col items-center gap-1 min-w-[28px]">
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono text-primary font-bold">
+                            {g.users}
+                          </span>
+                          <div
+                            className="w-full rounded-t-md bg-gradient-to-t from-primary/60 to-primary transition-all duration-300 group-hover:from-primary group-hover:to-primary-hover"
+                            style={{ height: `${heightPercent}%` }}
+                          />
+                          <span className="text-[9px] text-subtle truncate max-w-full font-mono mt-1">
+                            {g.date.split("-").slice(1).join("/")}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Distribution Breakdown Grids */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Project Status Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Status Breakdown</CardTitle>
+              </CardHeader>
+              <CardBody className="flex flex-col gap-4">
+                {analytics.projectDistribution.length === 0 ? (
+                  <div className="text-center text-xs text-muted py-8">No project distribution data available.</div>
+                ) : (
+                  analytics.projectDistribution.map((item) => {
+                    const totalProjects = analytics.projectDistribution.reduce((acc, curr) => acc + curr.count, 0)
+                    const percent = totalProjects > 0 ? Math.round((item.count / totalProjects) * 100) : 0
+                    return (
+                      <div key={item.status} className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between text-xs font-medium">
+                          <span className="capitalize text-foreground">{item.status.replace("_", " ")}</span>
+                          <span className="text-muted">{item.count} projects ({percent}%)</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-elevated">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </CardBody>
+            </Card>
+
+            {/* Application & Hire Funnel */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Application Conversion Funnel</CardTitle>
+              </CardHeader>
+              <CardBody className="flex flex-col gap-4">
+                {analytics.applicationStats.length === 0 ? (
+                  <div className="text-center text-xs text-muted py-8">No application statistics available.</div>
+                ) : (
+                  analytics.applicationStats.map((item) => {
+                    const totalApps = analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)
+                    const percent = totalApps > 0 ? Math.round((item.count / totalApps) * 100) : 0
+                    return (
+                      <div key={item.status} className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between text-xs font-medium">
+                          <div className="flex items-center gap-2">
+                            <Badge tone={toneFor(item.status)}>{item.status}</Badge>
+                            <span className="capitalize text-foreground">{item.status} Applications</span>
+                          </div>
+                          <span className="text-muted">{item.count} ({percent}%)</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-elevated">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              item.status === "accepted" ? "bg-success" : item.status === "pending" ? "bg-warning" : "bg-neutral"
+                            }`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </CardBody>
+            </Card>
+          </div>
+        </div>
       )}
 
       {/* VIEW: SYSTEM & DATA INTEGRITY */}
