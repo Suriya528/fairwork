@@ -77,7 +77,7 @@ function SortControl({ sort, onChange }: { sort: SortKey; onChange: (sort: SortK
 
 export function ProjectsPage() {
   const navigate = useNavigate()
-  const { token } = useAuth()
+  const { user, token } = useAuth()
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
