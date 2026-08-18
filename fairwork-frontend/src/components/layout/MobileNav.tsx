@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { NavLink } from "react-router-dom"
 import { FiX } from "react-icons/fi"
 import { Logo } from "@/components/common/Logo"
-import { navSections } from "@/config/navigation"
+import { getNavSectionsForRole } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { useDisputeSummary } from "@/context/DisputeSummaryContext"
 import { useAuth } from "@/context/AuthContext"
@@ -13,14 +13,12 @@ interface MobileNavProps {
   onClose: () => void
 }
 
-/** Slide-in navigation drawer for small screens. */
+/** Slide-in navigation drawer for small screens tailored to user role. */
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const { openDisputeCount, loading } = useDisputeSummary()
   const { user } = useAuth()
-  const sections = user?.role === "admin"
-    ? navSections.filter((section) => section.title === "Administration")
-    : navSections.filter((section) => section.title !== "Administration").map((section) => user?.role === "freelancer" ? { ...section, items: section.items.filter((item) => item.path !== "/projects/new") } : section).filter((section) => section.items.length > 0)
-  
+  const sections = getNavSectionsForRole(user?.role)
+
   // Lock body scroll while the drawer is open.
   useEffect(() => {
     if (!open) return
@@ -40,7 +38,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose])
-  
+
   if (!open) return null
 
   return (

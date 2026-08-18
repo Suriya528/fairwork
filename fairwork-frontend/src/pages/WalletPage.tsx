@@ -19,6 +19,8 @@ export function WalletPage() {
   const [withdrawLoading, setWithdrawLoading] = useState(false)
   const [locallyWithdrawn, setLocallyWithdrawn] = useState(0)
 
+  const isFreelancer = user?.role === "freelancer"
+
   useEffect(() => {
     if (!token) return
     let cancelled = false
@@ -94,15 +96,31 @@ export function WalletPage() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <PageHeader
           title="Wallet"
-          description="Your balance, locked escrow, and milestone releases across your projects."
+          description={
+            isFreelancer
+              ? "Your available earnings, locked milestone escrow, and Web3 payout balance."
+              : "Project escrow deposits, funded project balances, and Web3 wallet connection."
+          }
         />
 
         {error && <p className="text-sm text-danger">{error}</p>}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="Available" value={formatCurrency(available)} icon={FiCreditCard} />
-          <MetricCard label="In escrow" value={formatCurrency(inEscrowUsd)} icon={FiLock} />
-          <MetricCard label="Pending release" value={formatCurrency(pendingUsd)} icon={FiRepeat} />
+          <MetricCard
+            label={isFreelancer ? "Available earnings" : "Released to date"}
+            value={formatCurrency(available)}
+            icon={FiCreditCard}
+          />
+          <MetricCard
+            label={isFreelancer ? "Escrow protection" : "In project escrows"}
+            value={formatCurrency(inEscrowUsd)}
+            icon={FiLock}
+          />
+          <MetricCard
+            label={isFreelancer ? "Pending payouts" : "Unreleased milestones"}
+            value={formatCurrency(pendingUsd)}
+            icon={FiRepeat}
+          />
         </div>
 
         <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
@@ -115,19 +133,26 @@ export function WalletPage() {
                 <span className="text-xs text-muted">No wallet address connected yet</span>
               )}
             </div>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={available <= 0 || !user.walletAddress}
-              leftIcon={<FiArrowUpRight className="h-4 w-4" />}
-              onClick={() => setWithdrawOpen(true)}
-            >
-              Withdraw
-            </Button>
+            {isFreelancer && (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={available <= 0 || !user.walletAddress}
+                leftIcon={<FiArrowUpRight className="h-4 w-4" />}
+                onClick={() => setWithdrawOpen(true)}
+              >
+                Withdraw earnings
+              </Button>
+            )}
           </div>
-          {available <= 0 && (
+          {isFreelancer && available <= 0 && (
             <p className="text-xs text-subtle">
-              Nothing available to withdraw right now — funds appear here once milestone payments are released.
+              Nothing available to withdraw right now — funds appear here once milestone payments are released by your clients.
+            </p>
+          )}
+          {!isFreelancer && (
+            <p className="text-xs text-subtle">
+              Client project deposits are locked securely inside Smart Contract Escrows until milestone release.
             </p>
           )}
         </div>
@@ -174,9 +199,9 @@ export function WalletPage() {
         onClose={() => setWithdrawOpen(false)}
         onConfirm={handleWithdraw}
         loading={withdrawLoading}
-        title="Withdraw funds?"
+        title="Withdraw earnings?"
         confirmLabel="Withdraw"
-        description={`This transfers ${formatCurrency(available)} from your FairWork balance directly to your connected wallet (${user.walletAddress ? user.walletAddress.slice(0, 6) + "..." : ""}).`}
+        description={`This transfers ${formatCurrency(available)} from your FairWork earnings balance directly to your connected wallet (${user.walletAddress ? user.walletAddress.slice(0, 6) + "..." : ""}).`}
       />
     </div>
   )

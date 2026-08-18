@@ -10,6 +10,7 @@ test("registration validates required fields", async ({ page }) => {
 async function completeRegistration(page: import("@playwright/test").Page) {
   await page.getByLabel("First name").fill("Jane"); await page.getByLabel("Last name").fill("Doe")
   await page.getByLabel("Email").fill("jane@example.test")
+  await expect(page.getByLabel("Email")).toHaveValue("jane@example.test")
   await page.getByRole("radio", { name: /Hire Talent/i }).click()
   await page.locator("#password").fill("StrongPass1"); await page.locator("#confirm").fill("StrongPass1")
   await page.getByLabel(/I agree to the/).check()

@@ -1,20 +1,18 @@
 import { NavLink } from "react-router-dom"
 import { Logo } from "@/components/common/Logo"
-import { navSections } from "@/config/navigation"
+import { getNavSectionsForRole } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { useDisputeSummary } from "@/context/DisputeSummaryContext"
 import { useAuth } from "@/context/AuthContext"
 
 /**
- * Desktop sidebar. Fixed to the left on lg+ screens; hidden on mobile
- * (mobile uses the bottom nav / drawer instead).
+ * Desktop sidebar fixed to the left on lg+ screens.
+ * Dynamically tailored to the authenticated user's role (Client vs Freelancer vs Admin).
  */
 export function Sidebar() {
   const { openDisputeCount, loading } = useDisputeSummary()
   const { user } = useAuth()
-  const sections = user?.role === "admin"
-    ? navSections.filter((section) => section.title === "Administration")
-    : navSections.filter((section) => section.title !== "Administration").map((section) => user?.role === "freelancer" ? { ...section, items: section.items.filter((item) => item.path !== "/projects/new") } : section).filter((section) => section.items.length > 0)
+  const sections = getNavSectionsForRole(user?.role)
 
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-30 border-r border-border bg-surface">

@@ -309,7 +309,30 @@ export function ProjectDetailPage() {
               <MetricCard label="Completed" value={formatCurrency(completedAmount)} icon={FiUnlock} hint={`${completedCount} of ${project.milestones.length} milestones`} />
               <MetricCard label="Remaining" value={formatCurrency(remainingAmount)} icon={FiLock} />
             </div>
-            <Card><CardContent className="flex flex-col gap-3 p-5"><h3 className="mb-1 text-sm font-semibold text-foreground">Escrow actions</h3>{!project.freelancerId && isClient && <div className="flex gap-2"><Input value={freelancerId} onChange={(e) => setFreelancerId(e.target.value)} placeholder="Freelancer user ID"/><Button size="sm" onClick={assign}>Assign</Button></div>}<Button disabled={!isClient || !project.freelancerWalletAddress || project.escrowFunded || Boolean(actionState)} loading={Boolean(actionState)} onClick={fund} leftIcon={<FiLock className="h-4 w-4" />}>Fund escrow</Button><Button variant="danger" disabled={!isParty || !escrowActive || Boolean(actionState)} onClick={dispute} leftIcon={<FiAlertTriangle className="h-4 w-4" />}>Raise a dispute</Button>{escrowActive && <Badge tone="success">Payment protected by escrow</Badge>}{actionState && <p className="text-xs text-muted">{actionState}</p>}{actionError && <p className="text-xs text-danger">{actionError}</p>}</CardContent></Card>
+            <Card>
+              <CardContent className="flex flex-col gap-3 p-5">
+                <h3 className="mb-1 text-sm font-semibold text-foreground">
+                  {isClient ? "Client Escrow Actions" : "Project Escrow Protection"}
+                </h3>
+                {!project.freelancerId && isClient && (
+                  <div className="flex gap-2">
+                    <Input value={freelancerId} onChange={(e) => setFreelancerId(e.target.value)} placeholder="Freelancer user ID"/>
+                    <Button size="sm" onClick={assign}>Assign</Button>
+                  </div>
+                )}
+                {isClient && (
+                  <Button disabled={!project.freelancerWalletAddress || project.escrowFunded || Boolean(actionState)} loading={Boolean(actionState)} onClick={fund} leftIcon={<FiLock className="h-4 w-4" />}>
+                    Fund escrow
+                  </Button>
+                )}
+                <Button variant="danger" disabled={!isParty || !escrowActive || Boolean(actionState)} onClick={dispute} leftIcon={<FiAlertTriangle className="h-4 w-4" />}>
+                  Raise a dispute
+                </Button>
+                {escrowActive && <Badge tone="success">Payment protected by escrow</Badge>}
+                {actionState && <p className="text-xs text-muted">{actionState}</p>}
+                {actionError && <p className="text-xs text-danger">{actionError}</p>}
+              </CardContent>
+            </Card>
           </aside>
         </div>
       </div>

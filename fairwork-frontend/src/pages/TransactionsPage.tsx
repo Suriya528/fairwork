@@ -132,7 +132,11 @@ export function TransactionsPage() {
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <PageHeader
           title="Transactions"
-          description="Every deposit, release, and withdrawal recorded across your projects."
+          description={
+            user?.role === "freelancer"
+              ? "Complete history of milestone payment releases, wallet withdrawals, and protocol fees."
+              : "Complete history of project escrow deposits, milestone releases, and protocol fees."
+          }
         />
 
         {error && <p className="text-sm text-danger">{error}</p>}
