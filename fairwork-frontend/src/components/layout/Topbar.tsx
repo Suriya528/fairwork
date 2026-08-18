@@ -1,5 +1,6 @@
 import { FiSearch, FiMenu } from "react-icons/fi"
 import { WalletAddress } from "@/components/common/WalletAddress"
+import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { AccountMenu } from "./AccountMenu"
 import { useAuth } from "@/context/AuthContext"
 
@@ -7,7 +8,7 @@ interface TopbarProps {
   onOpenMobileNav: () => void
 }
 
-/** Sticky top bar with search, wallet, notifications, and the current user. */
+/** Sticky top bar with search, wallet, theme toggle, notifications, and user account. */
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const { user } = useAuth()
 
@@ -36,11 +37,10 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
       </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        {/* A real user may not have connected a wallet yet — unlike the
-            dummy data, walletAddress can legitimately be empty now. */}
         {user?.walletAddress && (
           <WalletAddress address={user.walletAddress} className="hidden md:inline-flex" />
         )}
+        <ThemeToggle />
         <AccountMenu />
       </div>
     </header>

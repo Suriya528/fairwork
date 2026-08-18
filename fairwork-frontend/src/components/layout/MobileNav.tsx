@@ -5,6 +5,7 @@ import { navSections } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { useDisputeSummary } from "@/context/DisputeSummaryContext"
 import { useAuth } from "@/context/AuthContext"
+import { ThemeToggle } from "@/components/common/ThemeToggle"
 
 interface MobileNavProps {
   open: boolean
@@ -18,6 +19,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
   const sections = user?.role === "admin"
     ? navSections.filter((section) => section.title === "Administration")
     : navSections.filter((section) => section.title !== "Administration").map((section) => user?.role === "freelancer" ? { ...section, items: section.items.filter((item) => item.path !== "/projects/new") } : section).filter((section) => section.items.length > 0)
+  
   // Lock body scroll while the drawer is open.
   useEffect(() => {
     if (!open) return
@@ -37,6 +39,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose])
+  
   if (!open) return null
 
   return (
@@ -71,14 +74,17 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
             </span>
             <span className="text-base font-semibold tracking-tight text-foreground">FairWork</span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-foreground"
-            aria-label="Close navigation menu"
-          >
-            <FiX className="h-5 w-5" aria-hidden />
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-foreground"
+              aria-label="Close navigation menu"
+            >
+              <FiX className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Mobile">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { FiMenu, FiShield, FiX, FiArrowRight } from "react-icons/fi"
+import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 
@@ -88,8 +89,9 @@ export function LandingHeader() {
           ))}
         </div>
 
-        {/* Desktop auth CTA */}
+        {/* Desktop auth CTA & Theme Toggle */}
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           {isAuthed ? (
             <Link
               to="/dashboard"
@@ -117,14 +119,17 @@ export function LandingHeader() {
         </div>
 
         {/* Mobile hamburger */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-muted hover:bg-elevated hover:text-foreground md:hidden"
-          aria-label="Open menu"
-        >
-          <FiMenu className="h-5 w-5" aria-hidden />
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-muted hover:bg-elevated hover:text-foreground"
+            aria-label="Open menu"
+          >
+            <FiMenu className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
       </nav>
 
       {/* Mobile drawer */}
@@ -174,6 +179,7 @@ export function LandingHeader() {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-border p-4">
+              <ThemeToggle showLabel className="w-full justify-center py-2 mb-1" />
               {isAuthed ? (
                 <Link
                   to="/dashboard"

@@ -9,6 +9,22 @@
     />
     <meta name="theme-color" content="#030712" />
     <title>FairWork — Escrow-Backed Freelance Payments</title>
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('fairwork-theme');
+          if (theme === 'light') {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+            document.documentElement.setAttribute('data-theme', 'light');
+          } else {
+            document.documentElement.classList.remove('light');
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
