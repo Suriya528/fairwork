@@ -204,7 +204,7 @@ export function AuthLayout({
           {/* Left panel marketing content with natural vertical rhythm */}
           <div className="relative z-10 max-w-lg py-2 sm:py-4 flex-1 flex flex-col justify-start gap-6">
             {isRegister ? (
-              /* Register Left Panel — Connected vertical timeline */
+              /* Register Left Panel — Concise onboarding narrative with lightweight vertical list */
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary font-mono mb-4">
                   <FiUserPlus className="h-3.5 w-3.5" />
@@ -215,25 +215,25 @@ export function AuthLayout({
                   Start building with guaranteed payment protection.
                 </h1>
                 <p className="mt-3 text-xs leading-relaxed text-muted">
-                  Create your account to post project briefs or deliver work with escrow-backed milestone security.
+                  Join FairWork to post technical project briefs or deliver work backed by non-custodial smart contract escrow.
                 </p>
 
-                <div className="relative mt-6 ml-2 pl-6 border-l border-border/80 flex flex-col gap-5">
+                <ul className="mt-6 flex flex-col gap-4 text-xs" role="list">
                   {registerHighlights.map((item) => {
                     const Icon = item.icon
                     return (
-                      <div key={item.title} className="relative flex items-start gap-3">
-                        <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-surface border border-border text-primary shadow-sm">
+                      <li key={item.title} className="flex items-start gap-3 text-muted">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary">
                           <Icon className="h-3 w-3 text-emerald-400" aria-hidden />
                         </span>
                         <div>
-                          <h3 className="text-xs font-bold text-foreground tracking-tight">{item.title}</h3>
-                          <p className="mt-1 text-xs leading-relaxed text-muted">{item.description}</p>
+                          <strong className="font-bold text-foreground block">{item.title}</strong>
+                          <span className="text-[11px] leading-relaxed text-muted mt-0.5 block">{item.description}</span>
                         </div>
-                      </div>
+                      </li>
                     )
                   })}
-                </div>
+                </ul>
               </div>
             ) : (
               /* Login Left Panel — Concise 3 protocol pillars */
