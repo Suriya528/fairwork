@@ -69,3 +69,9 @@ test("help center is publicly accessible without login redirect", async ({ page 
   await expect(page).toHaveURL(/\/help$/)
   await expect(page.getByRole("heading", { name: "How can we help?" })).toBeVisible()
 })
+
+test("help center breadcrumb returns user to homepage", async ({ page }) => {
+  await page.goto("/help")
+  await page.getByRole("link", { name: "Return to FairWork Homepage" }).click()
+  await expect(page).toHaveURL(/\/$/)
+})

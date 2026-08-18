@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { FiChevronDown, FiHelpCircle, FiMail, FiShield, FiFileText, FiDollarSign, FiUser, FiArrowRight } from "react-icons/fi"
+import { FiChevronDown, FiHelpCircle, FiMail, FiShield, FiFileText, FiDollarSign, FiUser, FiArrowRight, FiArrowLeft } from "react-icons/fi"
 import { Link } from "react-router-dom"
 import { PageHeader } from "@/components/common/PageHeader"
 import { SearchBar } from "@/components/common/SearchBar"
@@ -41,6 +41,20 @@ export function HelpCenterPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      {/* Breadcrumb / Return Home Navigation */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-mono text-muted">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md py-0.5"
+          aria-label="Return to FairWork Homepage"
+        >
+          <FiArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          <span>Home</span>
+        </Link>
+        <span className="text-subtle" aria-hidden>/</span>
+        <span className="text-foreground font-bold" aria-current="page">Help Center</span>
+      </nav>
+
       {/* Hero / Page Header */}
       <div className="flex flex-col gap-4 text-center sm:text-left">
         <PageHeader
