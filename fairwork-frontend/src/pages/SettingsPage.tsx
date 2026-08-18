@@ -13,6 +13,7 @@ import { WalletAddress } from "@/components/common/WalletAddress"
 import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { useTheme } from "@/context/ThemeContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { connectWallet } from "@/services/web3"
 import { getWalletNonce, verifyWallet } from "@/services/authApi"
 import { cn } from "@/lib/utils"
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils"
 export function SettingsPage() {
   const { user, token, updateWallet } = useAuth()
   const { theme, setTheme } = useTheme()
+  const { currency, setCurrency } = useCurrency()
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
@@ -51,6 +53,57 @@ export function SettingsPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <PageHeader title="Settings" description="Manage your account preferences and connected wallet." />
+
+        {/* Currency Display Preference Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Display Currency</CardTitle>
+            <CardDescription>
+              Select your preferred display currency for project budgets and application financial summaries.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setCurrency("INR")}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  currency === "INR"
+                    ? "border-primary bg-primary/10 shadow-sm"
+                    : "border-border bg-surface hover:bg-elevated",
+                )}
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/30 font-bold text-lg font-mono">
+                  ₹
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-foreground">INR (₹)</p>
+                  <p className="mt-0.5 text-[11px] text-muted">Indian Rupee</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrency("USD")}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  currency === "USD"
+                    ? "border-primary bg-primary/10 shadow-sm"
+                    : "border-border bg-surface hover:bg-elevated",
+                )}
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold text-lg font-mono">
+                  $
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-foreground">USD ($)</p>
+                  <p className="mt-0.5 text-[11px] text-muted">US Dollar</p>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Theme Appearance Card */}
         <Card>

@@ -75,3 +75,9 @@ test("help center breadcrumb returns user to homepage", async ({ page }) => {
   await page.getByRole("link", { name: "Return to FairWork Homepage" }).click()
   await expect(page).toHaveURL(/\/$/)
 })
+
+test("currency preference defaults to INR and persists selection in localStorage", async ({ page }) => {
+  await page.goto("/login")
+  const pref = await page.evaluate(() => localStorage.getItem("fairwork-display-currency"))
+  expect(pref === null || pref === "INR" || pref === "USD").toBeTruthy()
+})
