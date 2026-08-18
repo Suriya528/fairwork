@@ -39,10 +39,7 @@ import {
   getDisplayCategory,
   getProjectDeliverables,
   uploadProjectDeliverable,
-  getProjectReferenceFiles,
-  uploadProjectReferenceFile,
   type ApiDeliverable,
-  type ApiReferenceFile,
   type ApiMilestone,
   type ApiProject,
 } from "@/services/projectsApi"
@@ -169,16 +166,11 @@ export function ProjectDetailPage() {
   const [actionError, setActionError] = useState("")
 
   const [deliverables, setDeliverables] = useState<ApiDeliverable[]>([])
-  const [referenceFiles, setReferenceFiles] = useState<ApiReferenceFile[]>([])
   const [filesLoading, setFilesLoading] = useState(false)
   const [filesError, setFilesError] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedMilestoneId, setSelectedMilestoneId] = useState("")
   const [uploadingFile, setUploadingFile] = useState(false)
-
-  const [selectedRefFile, setSelectedRefFile] = useState<File | null>(null)
-  const [uploadingRefFile, setUploadingRefFile] = useState(false)
-  const [refFileError, setRefFileError] = useState("")
 
   // Application system states
   const [applyModalOpen, setApplyModalOpen] = useState(false)
@@ -268,21 +260,11 @@ export function ProjectDetailPage() {
     }
   }, [id, token])
 
-  const loadReferenceFiles = useCallback(async () => {
-    if (!id || !token) return
-    try {
-      setReferenceFiles(await getProjectReferenceFiles(id, token))
-    } catch {
-      // Graceful fallback
-    }
-  }, [id, token])
-
   useEffect(() => {
     if (tab === "files") {
       void loadDeliverables()
-      void loadReferenceFiles()
     }
-  }, [tab, loadDeliverables, loadReferenceFiles])
+  }, [tab, loadDeliverables])
 
   if (loading) return <div className="p-4 text-sm text-muted sm:p-6 lg:p-8">Loading project...</div>
   if (notFound) return <ProjectNotFound />
@@ -392,23 +374,6 @@ export function ProjectDetailPage() {
       setFilesError(err instanceof Error ? err.message : "Couldn't upload the deliverable.")
     } finally {
       setUploadingFile(false)
-    }
-  }
-
-  const uploadRefFile = async () => {
-    if (!token || !selectedRefFile || !project) return
-    setUploadingRefFile(true)
-    setRefFileError("")
-    try {
-      await uploadProjectReferenceFile(project.id, selectedRefFile, token)
-      setSelectedRefFile(null)
-      const input = document.getElementById("reference-file") as HTMLInputElement | null
-      if (input) input.value = ""
-      await loadReferenceFiles()
-    } catch (err) {
-      setRefFileError(err instanceof Error ? err.message : "Couldn't upload the reference file.")
-    } finally {
-      setUploadingRefFile(false)
     }
   }
 
@@ -603,70 +568,93 @@ export function ProjectDetailPage() {
 
             {tab === "files" && (
               <div className="flex flex-col gap-6">
-                {/* SECTION 1: CLIENT REFERENCE FILES */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">Project Reference Files</h3>
-                      <p className="text-xs text-muted">Requirements, project briefs, specifications, or brand assets provided by the client.</p>
-                    </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Work Deliverables &amp; Submissions</h3>
+                  <p className="text-xs text-muted">Completed milestone deliverables, source files, and final assets submitted by the freelancer.</p>
+                </div>
+
+                {isClient && deliverables.length > 0 && (
+                  <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-foreground">
+                    💡 Review the freelancer's submitted work deliverables below before approving milestones and releasing payment.
                   </div>
+                )}
 
-                  {isClient && (
-                    <Card>
-                      <CardContent className="flex flex-col gap-4 p-5">
-                        <div>
-                          <h4 className="text-xs font-semibold text-foreground">Upload Reference File</h4>
-                          <p className="mt-0.5 text-[11px] text-muted">Provide reference documents, briefs, wireframes, or assets for the freelancer.</p>
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                          <input
-                            id="reference-file"
-                            type="file"
-                            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
-                            accept="image/jpeg,image/png,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            onChange={(event) => setSelectedRefFile(event.target.files?.[0] ?? null)}
-                            aria-label="Choose a project reference file"
-                          />
-                          <Button
-                            size="sm"
-                            loading={uploadingRefFile}
-                            disabled={!selectedRefFile}
-                            leftIcon={<FiUploadCloud className="h-4 w-4" />}
-                            onClick={uploadRefFile}
-                          >
-                            Upload reference
-                          </Button>
-                        </div>
-                        {refFileError && (
-                          <p role="alert" className="text-xs text-danger">{refFileError}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
+                {/* Freelancer Work Upload Card: Rendered ONLY for assigned Freelancer */}
+                {isFreelancer && project.freelancerId === user?.id && (
+                  <Card>
+                    <CardContent className="flex flex-col gap-4 p-5">
+                      <div>
+                        <h4 className="text-xs font-semibold text-foreground">Submit Work Deliverable</h4>
+                        <p className="mt-0.5 text-[11px] text-muted">Upload source code, final assets, or milestone deliverables for client review.</p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <input
+                          id="deliverable-file"
+                          type="file"
+                          className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
+                          accept="image/jpeg,image/png,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                          aria-label="Choose a deliverable file"
+                        />
+                        <select
+                          value={selectedMilestoneId}
+                          onChange={(event) => setSelectedMilestoneId(event.target.value)}
+                          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="">Project-level deliverable</option>
+                          {project.milestones.map((milestone) => (
+                            <option key={milestone.id} value={milestone.id}>
+                              {milestone.order}. {milestone.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="min-w-0 truncate text-xs text-muted">
+                          {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : "No file selected"}
+                        </span>
+                        <Button
+                          size="sm"
+                          loading={uploadingFile}
+                          disabled={!selectedFile}
+                          leftIcon={<FiUploadCloud className="h-4 w-4" />}
+                          onClick={uploadFile}
+                        >
+                          Submit deliverable
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                  {referenceFiles.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-8 text-center">
-                      <FiPaperclip className="mb-2 h-5 w-5 text-subtle" />
-                      <p className="text-xs font-medium text-foreground">No reference files uploaded yet</p>
-                      <p className="mt-0.5 text-[11px] text-muted">Client reference files will appear here.</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {referenceFiles.map((file) => (
+                {filesError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{filesError}</div>}
+                {filesLoading ? (
+                  <div className="rounded-xl border border-border bg-surface px-4 py-10 text-center text-sm text-muted">Loading deliverables...</div>
+                ) : deliverables.length === 0 && !filesError ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-14 text-center">
+                    <FiPaperclip className="mb-3 h-6 w-6 text-subtle" />
+                    <p className="text-sm font-medium text-foreground">No work deliverables submitted yet</p>
+                    <p className="mt-1 max-w-xs text-xs text-muted">Completed deliverables submitted by the freelancer will appear here for client review.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {deliverables.map((file) => {
+                      const milestone = project.milestones.find((item) => item.id === file.milestoneId)
+                      return (
                         <Card key={file.id}>
                           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex min-w-0 items-start gap-3">
-                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-subtle">
                                 <FiFileText className="h-4 w-4" />
                               </span>
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-medium text-foreground">{file.filename}</p>
                                 <p className="mt-1 text-xs text-muted">
                                   {formatFileSize(file.size)}
-                                  {file.mimeType ? ` · ${file.mimeType}` : ""} · Uploaded {formatDate(file.uploadedAt)}
-                                  {file.uploadedByName ? ` by ${file.uploadedByName} (Client)` : ""}
+                                  {file.mimeType ? ` · ${file.mimeType}` : ""} · Submitted {formatDate(file.uploadedAt)}
+                                  {file.uploadedByName ? ` by ${file.uploadedByName} (Freelancer)` : ""}
                                 </p>
+                                {milestone && <Badge className="mt-2" tone="neutral">Milestone {milestone.order}: {milestone.title}</Badge>}
                               </div>
                             </div>
                             <a
@@ -679,116 +667,10 @@ export function ProjectDetailPage() {
                             </a>
                           </CardContent>
                         </Card>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* SECTION 2: FREELANCER WORK DELIVERABLES */}
-                <div className="flex flex-col gap-3 border-t border-border pt-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">Work Deliverables &amp; Submissions</h3>
-                    <p className="text-xs text-muted">Completed milestone deliverables, source files, and final assets submitted by the freelancer.</p>
+                      )
+                    })}
                   </div>
-
-                  {isClient && deliverables.length > 0 && (
-                    <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-foreground">
-                      💡 Review the freelancer's submitted deliverables below before releasing milestone funds.
-                    </div>
-                  )}
-
-                  {isFreelancer && project.freelancerId === user?.id && (
-                    <Card>
-                      <CardContent className="flex flex-col gap-4 p-5">
-                        <div>
-                          <h4 className="text-xs font-semibold text-foreground">Submit Work Deliverable</h4>
-                          <p className="mt-0.5 text-[11px] text-muted">Upload source code, final assets, or milestone deliverables for client review.</p>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <input
-                            id="deliverable-file"
-                            type="file"
-                            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
-                            accept="image/jpeg,image/png,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                            aria-label="Choose a deliverable file"
-                          />
-                          <select
-                            value={selectedMilestoneId}
-                            onChange={(event) => setSelectedMilestoneId(event.target.value)}
-                            className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                          >
-                            <option value="">Project-level deliverable</option>
-                            {project.milestones.map((milestone) => (
-                              <option key={milestone.id} value={milestone.id}>
-                                {milestone.order}. {milestone.title}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <span className="min-w-0 truncate text-xs text-muted">
-                            {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : "No file selected"}
-                          </span>
-                          <Button
-                            size="sm"
-                            loading={uploadingFile}
-                            disabled={!selectedFile}
-                            leftIcon={<FiUploadCloud className="h-4 w-4" />}
-                            onClick={uploadFile}
-                          >
-                            Submit deliverable
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {filesError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{filesError}</div>}
-                  {filesLoading ? (
-                    <div className="rounded-xl border border-border bg-surface px-4 py-10 text-center text-sm text-muted">Loading deliverables...</div>
-                  ) : deliverables.length === 0 && !filesError ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
-                      <FiPaperclip className="mb-3 h-6 w-6 text-subtle" />
-                      <p className="text-sm font-medium text-foreground">No work deliverables submitted yet</p>
-                      <p className="mt-1 max-w-xs text-xs text-muted">Completed deliverables submitted by the freelancer will appear here for client review.</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {deliverables.map((file) => {
-                        const milestone = project.milestones.find((item) => item.id === file.milestoneId)
-                        return (
-                          <Card key={file.id}>
-                            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="flex min-w-0 items-start gap-3">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-subtle">
-                                  <FiFileText className="h-4 w-4" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-medium text-foreground">{file.filename}</p>
-                                  <p className="mt-1 text-xs text-muted">
-                                    {formatFileSize(file.size)}
-                                    {file.mimeType ? ` · ${file.mimeType}` : ""} · Submitted {formatDate(file.uploadedAt)}
-                                    {file.uploadedByName ? ` by ${file.uploadedByName} (Freelancer)` : ""}
-                                  </p>
-                                  {milestone && <Badge className="mt-2" tone="neutral">Milestone {milestone.order}: {milestone.title}</Badge>}
-                                </div>
-                              </div>
-                              <a
-                                href={file.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-border-strong px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-hover"
-                              >
-                                View / download
-                              </a>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             )}
 
