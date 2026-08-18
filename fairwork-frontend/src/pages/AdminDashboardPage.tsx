@@ -208,8 +208,9 @@ export function AdminDashboardPage() {
         const res = await getAdminAuditLogs(token)
         setAuditLogs(res.items)
       } else if (view === "analytics") {
-        const res = await getAdminAnalytics(token)
-        setAnalytics(res)
+        const [an, ov] = await Promise.all([getAdminAnalytics(token), getAdminOverview(token)])
+        setAnalytics(an)
+        setOverview(ov)
       } else if (view === "system") {
         const [sys, integ] = await Promise.all([getAdminSystem(token), getAdminIntegrity(token)])
         setSystem(sys)
@@ -1028,22 +1029,23 @@ export function AdminDashboardPage() {
               icon={FiFileText}
               to="/admin/applications"
             />
-            <MetricCard
-              label="Hire Conversion"
-              value={
-                analytics.applicationStats.find((a) => a.status === "accepted")?.count &&
-                analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)
-                  ? `${Math.round(
-                      ((analytics.applicationStats.find((a) => a.status === "accepted")?.count || 0) /
-                        analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)) *
-                        100
-                    )}%`
-                  : "0%"
-              }
-              hint="Application to hire conversion rate"
-              icon={FiBarChart2}
-              to="/admin/analytics"
-            />
+            {(() => {
+              const acceptedApps = analytics.applicationStats.find((a) => a.status === "accepted")?.count || 0
+              const totalApps = analytics.applicationStats.reduce((acc, curr) => acc + curr.count, 0)
+              const rate = totalApps > 0
+                ? Math.round((acceptedApps / totalApps) * 100)
+                : (overview?.applicationConversionRate ?? 0)
+
+              return (
+                <MetricCard
+                  label="Hire Conversion"
+                  value={`${rate}%`}
+                  hint="Application to hire conversion rate"
+                  icon={FiBarChart2}
+                  to="/admin/applications"
+                />
+              )
+            })()}
           </div>
 
           {/* User Registration Growth Bar Chart */}
