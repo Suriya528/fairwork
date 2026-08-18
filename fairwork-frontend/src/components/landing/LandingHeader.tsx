@@ -14,8 +14,8 @@ const btnOutline =
 const btnGhost = "text-muted hover:text-foreground hover:bg-surface-hover"
 
 const navLinks = [
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Categories", href: "#categories" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Categories", href: "/#categories" },
 ] as const
 
 export function LandingHeader() {

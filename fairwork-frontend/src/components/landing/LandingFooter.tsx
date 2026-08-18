@@ -5,7 +5,7 @@ import { Logo } from "@/components/common/Logo"
 /**
  * Validated footer link categories.
  * All destinations point to verified public routes (/login, /register, /help)
- * or active homepage anchor sections (#how-it-works, #categories).
+ * or active homepage anchor sections (/#how-it-works, /#categories).
  * No fake routes, no dead links, and no exposed private routes.
  */
 const footerSections = [
@@ -14,15 +14,15 @@ const footerSections = [
     links: [
       { label: "Post a Project", href: "/register" },
       { label: "Find Freelancers", href: "/register" },
-      { label: "How It Works", href: "#how-it-works" },
+      { label: "How It Works", href: "/#how-it-works" },
     ],
   },
   {
     title: "For Freelancers",
     links: [
       { label: "Find Work", href: "/register" },
-      { label: "Explore Categories", href: "#categories" },
-      { label: "Payment Escrow", href: "#how-it-works" },
+      { label: "Explore Categories", href: "/#categories" },
+      { label: "Payment Escrow", href: "/#how-it-works" },
     ],
   },
   {
