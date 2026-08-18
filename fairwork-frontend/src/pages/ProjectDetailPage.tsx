@@ -30,6 +30,7 @@ import { useAuth } from "@/context/AuthContext"
 import { ApiError } from "@/services/apiClient"
 import {
   getProjectById,
+  getDisplayCategory,
   assignFreelancer,
   getProjectDeliverables,
   uploadProjectDeliverable,
