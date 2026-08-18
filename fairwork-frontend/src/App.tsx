@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 import { ToastProvider } from "@/components/ui/Toast"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { ThemeProvider } from "@/context/ThemeContext"
+import { ScrollToTop } from "@/components/common/ScrollToTop"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { DashboardPage } from "@/pages/DashboardPage"
@@ -72,6 +73,7 @@ export function App() {
     <ThemeProvider>
       <ToastProvider>
         <AuthProvider>
+          <ScrollToTop />
           <Routes>
             {/* Public landing page — visible to unauthenticated visitors */}
             <Route index element={<PublicHome />} />
