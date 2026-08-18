@@ -6,10 +6,19 @@ const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 exports.generateContract = async (req, res) => {
   try {
-    const { projectId, freelancerId } = req.body;
+    const { projectId } = req.body;
     const project = await Project.findById(projectId).populate("clientId", "firstName lastName");
 
     if (!project) return res.status(404).json({ message: "Project not found" });
+
+    if (String(project.clientId._id || project.clientId) !== String(req.user.id)) {
+      return res.status(403).json({ message: "Only the project client can generate a contract" });
+    }
+
+    const freelancerId = project.freelancerId || req.body.freelancerId;
+    if (!freelancerId) {
+      return res.status(400).json({ message: "No freelancer has been hired for this project yet. Please hire a freelancer from applications first." });
+    }
 
     const prompt = `Generate a professional freelance contract for the following project:
 
@@ -47,9 +56,6 @@ Make it professional and legally structured.`;
       aiGeneratedText,
     });
 
-    // Contract generation is the established freelancer-assignment path for
-    // these projects. Keep the Project relationship in sync so every project
-    // access check reads the same assignment state.
     await Project.findByIdAndUpdate(projectId, { contractId: contract._id, freelancerId });
 
     res.status(201).json(contract);

@@ -20,6 +20,7 @@ app.use(express.json());
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/projects", require("./routes/project"));
 app.use("/api/contracts", require("./routes/contract"));
+app.use("/api/applications", require("./routes/application"));
 app.use("/api/escrow", require("./routes/escrow"));
 app.use("/api/disputes", require("./routes/dispute"));
 app.use("/api/reviews", require("./routes/review"));

@@ -112,6 +112,7 @@ export function getNavSectionsForRole(role?: string): NavSection[] {
         ? [
             { label: "Browse Projects", path: "/projects", icon: FiFolder },
             { label: "Assigned Projects", path: "/projects/mine", icon: FiList },
+            { label: "My Applications", path: "/applications", icon: FiFileText },
           ]
         : [
             { label: "Posted Projects", path: "/projects/mine", icon: FiList },

@@ -15,6 +15,7 @@ import { ProjectsPage } from "@/pages/ProjectsPage"
 import { CreateProjectPage } from "@/pages/CreateProjectPage"
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
 import { MyProjectsPage } from "@/pages/MyProjectsPage"
+import { MyApplicationsPage } from "@/pages/MyApplicationsPage"
 import { ContractsPage } from "@/pages/ContractsPage"
 import { MilestonesPage } from "@/pages/MilestonesPage"
 import { EscrowPage } from "@/pages/EscrowPage"
@@ -100,6 +101,7 @@ export function App() {
                 <Route path="projects" element={<ProjectsPage />} />
                 <Route path="projects/new" element={<ProtectedRoute requiredRole="client"><CreateProjectPage /></ProtectedRoute>} />
                 <Route path="projects/mine" element={<MyProjectsPage />} />
+                <Route path="applications" element={<ProtectedRoute requiredRole="freelancer"><MyApplicationsPage /></ProtectedRoute>} />
                 <Route path="projects/:id" element={<ProjectDetailPage />} />
                 <Route path="contracts" element={<ContractsPage />} />
                 <Route path="milestones" element={<MilestonesPage />} />
