@@ -115,6 +115,13 @@ exports.uploadProjectDeliverable = async (req, res) => {
     const { project, error } = await projectForParty(req.params.id, req.user.id);
     if (error) return res.status(error.status).json({ message: error.message });
 
+    // Strict Authorization: Only assigned freelancer can upload work deliverables
+    if (!project.freelancerId || String(project.freelancerId) !== String(req.user.id)) {
+      return res.status(403).json({
+        message: "Only the assigned freelancer can upload work deliverables for this project."
+      });
+    }
+
     const milestoneId = req.body.milestoneId || null;
     if (milestoneId && !project.milestones.id(milestoneId)) {
       return res.status(400).json({ message: "Milestone does not belong to this project" });
@@ -133,6 +140,49 @@ exports.uploadProjectDeliverable = async (req, res) => {
     await project.save();
     await project.populate("deliverables.uploadedBy", "firstName lastName");
     res.status(201).json(project.deliverables[project.deliverables.length - 1]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getProjectReferenceFiles = async (req, res) => {
+  try {
+    const { project, error } = await projectForParty(req.params.id, req.user.id);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    await project.populate("referenceFiles.uploadedBy", "firstName lastName");
+    res.json(project.referenceFiles || []);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.uploadProjectReferenceFile = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const { project, error } = await projectForParty(req.params.id, req.user.id);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    // Strict Authorization: Only the project client owner can upload project reference files
+    if (String(project.clientId) !== String(req.user.id)) {
+      return res.status(403).json({
+        message: "Only the project client can upload reference files and requirements."
+      });
+    }
+
+    const result = await uploadToCloudinary(req.file);
+    project.referenceFiles = project.referenceFiles || [];
+    project.referenceFiles.push({
+      filename: req.file.originalname,
+      url: result.secure_url,
+      publicId: result.public_id,
+      mimeType: req.file.mimetype,
+      size: result.bytes || req.file.size,
+      uploadedBy: req.user.id,
+    });
+    await project.save();
+    await project.populate("referenceFiles.uploadedBy", "firstName lastName");
+    res.status(201).json(project.referenceFiles[project.referenceFiles.length - 1]);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

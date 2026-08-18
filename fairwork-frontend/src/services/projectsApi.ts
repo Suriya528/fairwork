@@ -237,6 +237,44 @@ export async function assignFreelancer(projectId: string, freelancerId: string, 
   return toProject(data)
 }
 
+export interface ApiReferenceFile {
+  id: string
+  filename: string
+  url: string
+  publicId: string
+  mimeType: string
+  size: number
+  uploadedById: string
+  uploadedByName: string | null
+  uploadedAt: string
+}
+
+interface BackendReferenceFile {
+  _id: string
+  filename: string
+  url: string
+  publicId: string
+  mimeType: string
+  size: number
+  uploadedBy: BackendPopulatedUser | string
+  uploadedAt: string
+}
+
+function toReferenceFile(raw: BackendReferenceFile): ApiReferenceFile {
+  const isPop = typeof raw.uploadedBy === "object" && raw.uploadedBy !== null
+  return {
+    id: raw._id,
+    filename: raw.filename,
+    url: raw.url,
+    publicId: raw.publicId,
+    mimeType: raw.mimeType,
+    size: raw.size,
+    uploadedById: isPop ? (raw.uploadedBy as BackendPopulatedUser)._id : (raw.uploadedBy as string),
+    uploadedByName: isPop ? getUserName(raw.uploadedBy as BackendPopulatedUser) : null,
+    uploadedAt: raw.uploadedAt,
+  }
+}
+
 export async function getProjectDeliverables(projectId: string, token: string): Promise<ApiDeliverable[]> {
   const data = await apiFetch<BackendDeliverable[]>(`/projects/${projectId}/files`, { token })
   return data.map(toDeliverable)
@@ -249,7 +287,7 @@ export async function uploadProjectDeliverable(projectId: string, file: File, mi
 
   let response: Response
   try {
-    response = await fetch(`${API_URL}/projects/${projectId}/files`, {
+    response = await fetch(`${API_URL}/projects/${projectId}/deliverables`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
@@ -266,4 +304,34 @@ export async function uploadProjectDeliverable(projectId: string, file: File, mi
     throw new ApiError(message, response.status)
   }
   return toDeliverable(data as BackendDeliverable)
+}
+
+export async function getProjectReferenceFiles(projectId: string, token: string): Promise<ApiReferenceFile[]> {
+  const data = await apiFetch<BackendReferenceFile[]>(`/projects/${projectId}/reference-files`, { token })
+  return data.map(toReferenceFile)
+}
+
+export async function uploadProjectReferenceFile(projectId: string, file: File, token: string): Promise<ApiReferenceFile> {
+  const formData = new FormData()
+  formData.append("file", file)
+
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}/projects/${projectId}/reference-files`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
+  } catch {
+    throw new ApiError("Can't reach the server. Check your connection and try again.")
+  }
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message = data && typeof data === "object" && "message" in data && typeof data.message === "string"
+      ? data.message
+      : "Couldn't upload the reference file."
+    throw new ApiError(message, response.status)
+  }
+  return toReferenceFile(data as BackendReferenceFile)
 }

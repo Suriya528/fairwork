@@ -10,6 +10,8 @@ const {
   getMyProjects,
   getProjectDeliverables,
   uploadProjectDeliverable,
+  getProjectReferenceFiles,
+  uploadProjectReferenceFile,
 } = require("../controllers/projectController");
 
 router.post("/", auth, createProject);
@@ -17,6 +19,10 @@ router.get("/", auth, getAllProjects);
 router.get("/mine", auth, getMyProjects);
 router.get("/:id/files", auth, getProjectDeliverables);
 router.post("/:id/files", auth, upload.single("file"), uploadProjectDeliverable);
+router.get("/:id/deliverables", auth, getProjectDeliverables);
+router.post("/:id/deliverables", auth, upload.single("file"), uploadProjectDeliverable);
+router.get("/:id/reference-files", auth, getProjectReferenceFiles);
+router.post("/:id/reference-files", auth, upload.single("file"), uploadProjectReferenceFile);
 router.get("/:id", auth, getProject);
 router.put("/:id/assign", auth, assignFreelancer);
 router.put("/:id/complete", auth, completeProject);
