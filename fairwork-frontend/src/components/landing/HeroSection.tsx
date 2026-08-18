@@ -98,7 +98,7 @@ export function HeroSection() {
                         Active
                       </span>
                     </div>
-                    <p className="text-xs text-subtle font-mono">ID: prj_01 • 9,000 USDC Total</p>
+                    <p className="text-xs text-subtle font-mono">ID: prj_01 • ₹90,000 (900 USDC Escrow)</p>
                   </div>
                 </div>
 
@@ -118,7 +118,8 @@ export function HeroSection() {
                     {
                       step: 1,
                       title: "1. Audit & Kickoff",
-                      amount: "$2,500 USDC",
+                      amount: "₹25,000",
+                      token: "250 USDC",
                       status: "Released",
                       badgeTone: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
                       icon: FiCheckCircle,
@@ -126,7 +127,8 @@ export function HeroSection() {
                     {
                       step: 2,
                       title: "2. Component Library",
-                      amount: "$4,000 USDC",
+                      amount: "₹40,000",
+                      token: "400 USDC",
                       status: "Submitted / Review",
                       badgeTone: "bg-blue-500/10 text-blue-400 border-blue-500/30",
                       icon: FiZap,
@@ -134,7 +136,8 @@ export function HeroSection() {
                     {
                       step: 3,
                       title: "3. Token Handoff",
-                      amount: "$2,500 USDC",
+                      amount: "₹25,000",
+                      token: "250 USDC",
                       status: "In Escrow",
                       badgeTone: "bg-slate-800 text-slate-400 border-slate-700",
                       icon: FiLayers,
@@ -158,8 +161,11 @@ export function HeroSection() {
                           <Icon className={cn("h-4 w-4", isSelected ? "text-primary" : "text-subtle")} />
                           <span className="text-xs font-semibold text-foreground">{ms.title}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs font-bold text-foreground">{ms.amount}</span>
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex flex-col items-end">
+                            <span className="font-mono text-xs font-bold text-foreground">{ms.amount}</span>
+                            <span className="font-mono text-[10px] text-subtle">{ms.token}</span>
+                          </div>
                           <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-medium", ms.badgeTone)}>
                             {ms.status}
                           </span>

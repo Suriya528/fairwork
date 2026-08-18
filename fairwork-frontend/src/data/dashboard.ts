@@ -92,7 +92,7 @@ export const kpiStats: KpiStat[] = [
   {
     id: "escrow-balance",
     label: "Escrow balance",
-    value: "$16,500",
+    value: "₹1,65,000",
     change: 12.4,
     hint: "Locked across 3 active contracts",
     icon: FiShield,
@@ -100,7 +100,7 @@ export const kpiStats: KpiStat[] = [
   {
     id: "total-earnings",
     label: "Total earnings",
-    value: "$47,250",
+    value: "₹4,72,500",
     change: 18.2,
     hint: "Released to date",
     icon: FiTrendingUp,
@@ -145,12 +145,12 @@ export const kpiStats: KpiStat[] = [
 
 /** Monthly earnings vs. amount held in escrow (area chart). */
 export const monthlyEarningsSeries = [
-  { month: "Feb", earnings: 2100, escrow: 4200 },
-  { month: "Mar", earnings: 5400, escrow: 6800 },
-  { month: "Apr", earnings: 5000, escrow: 9000 },
-  { month: "May", earnings: 7400, escrow: 7400 },
-  { month: "Jun", earnings: 4500, escrow: 12500 },
-  { month: "Jul", earnings: 8600, escrow: 16500 },
+  { month: "Feb", earnings: 21000, escrow: 42000 },
+  { month: "Mar", earnings: 54000, escrow: 68000 },
+  { month: "Apr", earnings: 50000, escrow: 90000 },
+  { month: "May", earnings: 74000, escrow: 74000 },
+  { month: "Jun", earnings: 45000, escrow: 125000 },
+  { month: "Jul", earnings: 86000, escrow: 165000 },
 ]
 
 /** Contract status distribution (pie/donut). */

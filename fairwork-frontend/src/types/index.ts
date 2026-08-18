@@ -52,7 +52,7 @@ export interface Project {
   freelancerId: string | null
   /** Total contract value across all milestones. */
   budget: number
-  currency: "USD"
+  currency: "INR" | "USD"
   /** Crypto denomination held in escrow. */
   escrowSymbol: "ETH" | "USDC"
   escrowAmount: number

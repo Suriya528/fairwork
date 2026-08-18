@@ -15,7 +15,7 @@ export const activityFeed: ActivityItem[] = [
     type: "escrow_funded",
     actorId: "usr_client_01",
     projectId: "prj_02",
-    message: "Escrow deposit of 3.1 ETH is pending confirmation.",
+    message: "Escrow deposit of 0.35 ETH is pending confirmation.",
     createdAt: "2026-07-20T15:00:00Z",
     read: false,
   },
@@ -33,7 +33,7 @@ export const activityFeed: ActivityItem[] = [
     type: "funds_released",
     actorId: "usr_client_01",
     projectId: "prj_01",
-    message: "2,500 USDC released to Marcus Reyes for \u201cDiscovery & audit\u201d.",
+    message: "250 USDC released to Marcus Reyes for \u201cDiscovery & audit\u201d.",
     createdAt: "2026-06-19T09:05:00Z",
     read: true,
   },
@@ -44,12 +44,12 @@ export const activityFeed: ActivityItem[] = [
  * Kept here so charts have realistic shapes to render against.
  */
 export const escrowVolumeSeries = [
-  { month: "Feb", deposited: 4200, released: 2100 },
-  { month: "Mar", deposited: 6800, released: 5400 },
-  { month: "Apr", deposited: 9000, released: 5000 },
-  { month: "May", deposited: 7400, released: 7400 },
-  { month: "Jun", deposited: 12500, released: 4500 },
-  { month: "Jul", deposited: 12500, released: 2500 },
+  { month: "Feb", deposited: 42000, released: 21000 },
+  { month: "Mar", deposited: 68000, released: 54000 },
+  { month: "Apr", deposited: 90000, released: 50000 },
+  { month: "May", deposited: 74000, released: 74000 },
+  { month: "Jun", deposited: 125000, released: 45000 },
+  { month: "Jul", deposited: 125000, released: 25000 },
 ]
 
 export const milestoneStatusBreakdown = [
@@ -71,14 +71,14 @@ export const dashboardMetrics: DashboardMetric[] = [
   {
     id: "locked",
     label: "In escrow",
-    value: "$16,500",
+    value: "₹1,65,000",
     change: 12.4,
     hint: "Locked across 3 active projects",
   },
   {
     id: "released",
     label: "Released this month",
-    value: "$2,500",
+    value: "₹25,000",
     change: -8.1,
     hint: "1 milestone released",
   },

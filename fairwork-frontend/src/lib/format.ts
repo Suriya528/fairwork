@@ -3,8 +3,19 @@
  * Kept framework-agnostic so they compose easily with future API data.
  */
 
-/** Format a USD amount, e.g. 1250 -> "$1,250.00". */
-export function formatCurrency(amount: number, currency = "USD"): string {
+/**
+ * Format an application/project monetary amount in INR by default using Indian locale (en-IN).
+ * Produces standard Indian formatting, e.g. 25000 -> "₹25,000", 125000 -> "₹1,25,000".
+ */
+export function formatCurrency(amount: number, currency = "INR"): string {
+  if (currency === "INR") {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
@@ -13,18 +24,21 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   }).format(amount)
 }
 
-/** Format a crypto amount with its symbol, e.g. "0.85 ETH". */
-export function formatCrypto(amount: number, symbol = "ETH"): string {
+/** Explicit helper for formatting application budgets in INR. */
+export function formatINR(amount: number): string {
+  return formatCurrency(amount, "INR")
+}
+
+/** Format a crypto/token amount with its symbol, e.g. "250.00 USDC" or "0.85 ETH". */
+export function formatCrypto(amount: number, symbol = "USDC"): string {
   return `${amount.toLocaleString("en-US", {
     maximumFractionDigits: 4,
   })} ${symbol}`
 }
 
 /**
- * Rough display-only USD conversion for mixed-symbol totals (ETH/USDC).
- * Swap for a live price feed once one exists — every page that mixes
- * symbols in a single sum (Escrow, Wallet, Admin) should use this rather
- * than defining its own local rate.
+ * Display-only reference conversion helper.
+ * Keeps blockchain token values (USDC/ETH) distinct from application-level INR budgets.
  */
 const ETH_TO_USD = 2800
 
