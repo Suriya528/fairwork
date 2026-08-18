@@ -1,4 +1,4 @@
-import { useNavigate } from "react"
+import { useNavigate } from "react-router-dom"
 import { FiClock, FiLock, FiUser } from "react-icons/fi"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"

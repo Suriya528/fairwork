@@ -1,4 +1,4 @@
-import { useNavigate } from "react"
+import { useNavigate } from "react-router-dom"
 import { DataTable, type Column } from "@/components/tables/DataTable"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge, type BadgeTone } from "@/components/ui/Badge"
