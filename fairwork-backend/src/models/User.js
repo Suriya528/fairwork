@@ -12,6 +12,9 @@ const userSchema = new mongoose.Schema({
   avatarUrl: { type: String, default: "" },
   reputationScore: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
+  isSuspended: { type: Boolean, default: false },
+  suspendedAt: { type: Date },
+  suspendedReason: { type: String, default: "" },
 }, { timestamps: true });
 
 userSchema.index({ walletAddress: 1 }, { unique: true, sparse: true });

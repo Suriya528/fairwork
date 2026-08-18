@@ -112,10 +112,7 @@ export function App() {
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="chat" element={<ChatPage />} />
                 <Route path="admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="admin/users" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="admin/projects" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="admin/disputes" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="admin/system" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
+                <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Routes>

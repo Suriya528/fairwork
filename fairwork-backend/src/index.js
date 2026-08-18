@@ -28,6 +28,7 @@ app.use("/api/upload", require("./routes/upload"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/activity", require("./routes/activity"));
 app.use("/api/messages", require("./routes/message"));
+app.use("/api/reports", require("./routes/report"));
 app.use("/api/admin", require("./routes/admin"));
 
 app.get("/", (req, res) => res.json({ message: "FairWork API running" }));
