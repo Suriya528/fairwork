@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react"
 import { FiClock, FiLock, FiUser } from "react-icons/fi"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"
@@ -35,6 +35,8 @@ export function ApiProjectRow({ project }: { project: ApiProject }) {
         <span className="flex items-center gap-1 text-xs text-subtle">
           <FiUser className="h-3 w-3 shrink-0" />
           {project.clientName ?? "Unknown"}
+          <span aria-hidden>·</span>
+          {project.category || "Web Development"}
           <span aria-hidden>·</span>
           {project.milestones.length} milestone{project.milestones.length !== 1 ? "s" : ""}
         </span>

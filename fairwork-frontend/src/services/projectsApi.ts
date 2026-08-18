@@ -32,6 +32,7 @@ interface BackendProject {
   _id: string
   title: string
   description: string
+  category?: string
   budget: number
   milestones: BackendMilestone[]
   status: "open" | "in_progress" | "completed" | "disputed"
@@ -79,6 +80,7 @@ export interface ApiProject {
   id: string
   title: string
   description: string
+  category: string
   budget: number
   status: ApiProjectStatus
   clientId: string
@@ -143,6 +145,7 @@ function toProject(p: BackendProject): ApiProject {
     id: p._id,
     title: p.title,
     description: p.description,
+    category: p.category || "Web Development",
     budget: p.budget,
     status: p.status,
     clientId: personId(p.clientId) ?? "",
@@ -200,6 +203,7 @@ export async function getProjectById(id: string, token: string): Promise<ApiProj
 export interface CreateProjectPayload {
   title: string
   description: string
+  category: string
   budget: number
   milestones: { title: string; amount: number }[]
 }

@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { createProject } from "@/services/projectsApi"
+import { PROJECT_CATEGORIES } from "@/data/categories"
 
 interface Draft {
   id: string
@@ -28,6 +29,7 @@ export function CreateProjectPage() {
   const { currency, formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [title, setTitle] = useState("")
+  const [category, setCategory] = useState<string>("")
   const [description, setDescription] = useState("")
   const [budget, setBudget] = useState("")
   const [milestones, setMilestones] = useState<Draft[]>([draft()])
@@ -47,13 +49,14 @@ export function CreateProjectPage() {
     if (
       !token ||
       !title.trim() ||
+      !category ||
       !description.trim() ||
       value <= 0 ||
       milestones.some((m) => !m.title.trim() || Number(m.amount) <= 0) ||
       allocation !== value
     ) {
       setError(
-        "Provide a title, description, positive budget, and milestones that total the budget.",
+        "Provide a title, category, description, positive budget, and milestones that total the budget.",
       )
       return
     }
@@ -63,6 +66,7 @@ export function CreateProjectPage() {
       const project = await createProject(
         {
           title: title.trim(),
+          category,
           description: description.trim(),
           budget: value,
           milestones: milestones.map((m) => ({
@@ -85,7 +89,7 @@ export function CreateProjectPage() {
       <div className="mx-auto max-w-3xl">
         <PageHeader
           title="Post a new project"
-          description={`Describe the work and divide its budget into milestone amounts (${currencyTag}).`}
+          description={`Describe the work, select a category, and divide its budget into milestone amounts (${currencyTag}).`}
         />
         <Card className="mt-6">
           <CardHeader>
@@ -102,6 +106,26 @@ export function CreateProjectPage() {
                 placeholder="e.g. Mobile App Onboarding Flow"
                 onChange={(e) => setTitle(e.target.value)}
               />
+            </div>
+            <div>
+              <Label htmlFor="category" required>
+                Category
+              </Label>
+              <select
+                id="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-xl border border-border bg-base px-3 text-sm text-foreground outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-ring/40"
+              >
+                <option value="" disabled>
+                  Select a category
+                </option>
+                {PROJECT_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label htmlFor="description" required>

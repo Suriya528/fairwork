@@ -17,6 +17,7 @@ import { ApiProjectRow } from "@/components/projects/ApiProjectRow"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 import { getProjects, type ApiProject } from "@/services/projectsApi"
+import { PROJECT_CATEGORIES } from "@/data/categories"
 
 type ViewMode = "grid" | "list"
 type SortKey = "newest" | "oldest" | "budget_high" | "budget_low"
@@ -81,6 +82,7 @@ export function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
   const [sort, setSort] = useState<SortKey>("newest")
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
@@ -123,13 +125,18 @@ export function ProjectsPage() {
 
   const filteredProjects = useMemo(() => {
     const query = search.trim().toLowerCase()
-    const result = query
+    let result = query
       ? projects.filter(
           (project) =>
             project.title.toLowerCase().includes(query) ||
-            project.description.toLowerCase().includes(query),
+            project.description.toLowerCase().includes(query) ||
+            (project.category && project.category.toLowerCase().includes(query)),
         )
       : [...projects]
+
+    if (selectedCategory) {
+      result = result.filter((project) => project.category === selectedCategory)
+    }
 
     result.sort((a, b) => {
       switch (sort) {
@@ -145,15 +152,20 @@ export function ProjectsPage() {
     })
 
     return result
-  }, [projects, search, sort])
+  }, [projects, search, selectedCategory, sort])
 
-  const hasSearch = search.trim() !== ""
+  const hasFilter = search.trim() !== "" || selectedCategory !== ""
+
+  const clearFilters = () => {
+    setSearch("")
+    setSelectedCategory("")
+  }
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Projects"
-        description="Browse open projects secured by blockchain escrow."
+        description="Browse open projects classified by discipline and secured by blockchain escrow."
         actions={
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-border bg-surface p-0.5">
@@ -194,10 +206,25 @@ export function ProjectsPage() {
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search by title or description…"
+          placeholder="Search by title, category, or description…"
           containerClassName="max-w-md flex-1"
         />
-        <SortControl sort={sort} onChange={setSort} />
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            aria-label="Filter by category"
+            className="h-9 rounded-lg border border-border bg-surface px-3 text-xs text-muted outline-none transition hover:border-border-strong focus:border-border-strong focus:ring-2 focus:ring-ring"
+          >
+            <option value="">All Categories</option>
+            {PROJECT_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+          <SortControl sort={sort} onChange={setSort} />
+        </div>
       </div>
 
       {!loading && !error && (
@@ -207,9 +234,9 @@ export function ProjectsPage() {
               ? "No projects"
               : `${filteredProjects.length} project${filteredProjects.length !== 1 ? "s" : ""}`}
           </span>
-          {hasSearch && (
-            <button onClick={() => setSearch("")} className="text-info transition-colors hover:text-primary">
-              Clear search
+          {hasFilter && (
+            <button onClick={clearFilters} className="text-info transition-colors hover:text-primary">
+              Clear filters
             </button>
           )}
         </div>
@@ -223,16 +250,16 @@ export function ProjectsPage() {
         </div>
       ) : filteredProjects.length === 0 ? (
         <EmptyState
-          title={hasSearch ? "No projects match your search" : "No open projects yet"}
+          title={hasFilter ? "No projects match your filter" : "No open projects yet"}
           description={
-            hasSearch
-              ? "Try adjusting your search to find more projects."
+            hasFilter
+              ? "Try adjusting your search or category filter to find more projects."
               : "New projects will appear here when they are posted."
           }
           action={
-            hasSearch ? (
-              <Button variant="outline" size="sm" onClick={() => setSearch("")}>
-                Clear search
+            hasFilter ? (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                Clear filters
               </Button>
             ) : (
               <Button variant="primary" size="sm" onClick={() => navigate("/projects/new")}>

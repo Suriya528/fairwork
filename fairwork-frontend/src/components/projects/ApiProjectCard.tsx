@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom"
-import { FiCalendar, FiDollarSign, FiLock, FiUser } from "react-icons/fi"
+import { useNavigate } from "react"
+import { FiCalendar, FiLock, FiUser } from "react-icons/fi"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"
 import { formatCurrency, formatDate } from "@/lib/format"
@@ -44,6 +44,9 @@ export function ApiProjectCard({ project }: { project: ApiProject }) {
       <p className="mt-4 line-clamp-3 text-xs leading-relaxed text-muted">{project.description}</p>
 
       <div className="mt-4 flex flex-wrap gap-2">
+        <Badge tone="neutral">
+          {project.category || "Web Development"}
+        </Badge>
         <Badge tone={project.escrowTxnHash ? "success" : "neutral"}>
           <FiLock className="h-3 w-3" />
           {project.escrowTxnHash ? "Escrow funded" : "Not yet funded"}

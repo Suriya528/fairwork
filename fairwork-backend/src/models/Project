@@ -21,6 +21,7 @@ const deliverableSchema = new mongoose.Schema({
 const projectSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
+  category: { type: String, default: "Web Development" },
   budget: { type: Number, required: true },
   milestones: [milestoneSchema],
   deliverables: { type: [deliverableSchema], default: [] },
