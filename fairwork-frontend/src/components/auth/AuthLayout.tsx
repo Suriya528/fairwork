@@ -6,11 +6,10 @@ import {
   FiZap,
   FiCpu,
   FiLayers,
-  FiCheck,
-  FiUserPlus,
+  FiUserCheck,
   FiFileText,
   FiArrowLeft,
-  FiShield,
+  FiCode,
 } from "react-icons/fi"
 import { Logo } from "@/components/common/Logo"
 import { cn } from "@/lib/utils"
@@ -52,38 +51,45 @@ const loginPillars = [
   },
 ]
 
-/** Register Left-Panel Content: 5 clear onboarding protocol steps balancing the register form height */
-const registerHighlights = [
+/** Register Left-Panel Content: Actual FairWork Project Lifecycle Workflow */
+const projectWorkflow = [
   {
     step: "01",
-    icon: FiUserPlus,
-    title: "Select Account Role",
-    description: "Choose Client to post project briefs or Freelancer to deliver technical work.",
+    icon: FiFileText,
+    title: "Post Project & Milestones",
+    description: "Client creates the project brief and breaks down deliverables into explicit milestone amounts.",
+    badge: "Draft / Funding",
   },
   {
     step: "02",
-    icon: FiShield,
-    title: "Zero Upfront Payment Risk",
-    description: "Clients lock milestone funds in smart contract escrow prior to project kickoff.",
+    icon: FiUserCheck,
+    title: "Assign Talent",
+    description: "Select a qualified freelancer. Both parties agree on milestone scope and delivery terms.",
+    badge: "Freelancer Assigned",
   },
   {
     step: "03",
-    icon: FiCheck,
-    title: "Transparent Smart Contracts",
-    description: "Milestone status, deliverables, and payment releases are tracked immutably on-chain.",
+    icon: FiLock,
+    title: "Fund On-Chain Escrow",
+    description: "Client deposits milestone funds into smart contract escrow. Neither party can withdraw unilaterally.",
+    badge: "Escrow Funded",
   },
   {
     step: "04",
-    icon: FiFileText,
-    title: "Neutral Dispute Arbitration",
-    description: "Fair, evidence-based dispute resolution protects both clients and freelancers if work is contested.",
+    icon: FiCheckCircle,
+    title: "Approve & Release Payment",
+    description: "Freelancer submits deliverables. Client inspects work, approves, and authorizes instant on-chain release.",
+    badge: "Milestone Released",
   },
-  {
-    step: "05",
-    icon: FiZap,
-    title: "Direct Wallet Settlement",
-    description: "Approved funds transfer directly to your Web3 wallet without platform hold periods or extra fees.",
-  },
+]
+
+/** Top technical categories active on FairWork marketplace */
+const projectCategories = [
+  "Smart Contracts",
+  "Full-Stack",
+  "DeFi & Audits",
+  "Mobile Apps",
+  "UI/UX Design",
 ]
 
 /**
@@ -204,7 +210,7 @@ export function AuthLayout({
           </div>
 
           {/* Contextual "Back to Home" Link */}
-          <div className="relative z-10 mb-6">
+          <div className="relative z-10 mb-4">
             <Link
               to="/"
               className="inline-flex items-center gap-2 text-xs font-semibold text-muted transition-colors hover:text-foreground font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1.5 py-1"
@@ -214,28 +220,28 @@ export function AuthLayout({
             </Link>
           </div>
 
-          {/* Left panel marketing content with natural vertical rhythm balancing the form height */}
+          {/* Left panel marketing content — Real FairWork Project Architecture Workflow */}
           <div className="relative z-10 w-full max-w-lg my-auto py-2 flex flex-col gap-6">
             {isRegister ? (
-              /* Register Left Panel — 5-step Onboarding Workflow Motif */
-              <div className="flex flex-col gap-6">
+              /* Register Left Panel — Actual 4-Step FairWork Project Lifecycle */
+              <div className="flex flex-col gap-5">
                 <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary font-mono mb-4">
-                    <FiUserPlus className="h-3.5 w-3.5" />
-                    <span>Onboarding Protocol</span>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary font-mono mb-3">
+                    <FiCode className="h-3.5 w-3.5" />
+                    <span>Project Execution Architecture</span>
                   </div>
 
                   <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl text-balance">
-                    Start building with guaranteed payment protection.
+                    Build projects with escrow-backed milestone security.
                   </h1>
-                  <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted">
-                    Join FairWork to post technical project briefs or deliver work backed by non-custodial smart contract escrow.
+                  <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted">
+                    How FairWork protects client funds and freelancer deliverables through transparent smart contract execution.
                   </p>
                 </div>
 
-                {/* Connected Vertical Timeline Workflow */}
-                <div className="relative ml-2 pl-6 border-l-2 border-primary/20 space-y-5">
-                  {registerHighlights.map((item) => {
+                {/* Real Project Execution Timeline */}
+                <div className="relative ml-2 pl-6 border-l-2 border-primary/20 space-y-4">
+                  {projectWorkflow.map((item) => {
                     const Icon = item.icon
                     return (
                       <div key={item.title} className="relative group">
@@ -244,15 +250,37 @@ export function AuthLayout({
                           <Icon className="h-3 w-3 text-emerald-400" aria-hidden />
                         </span>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-[10px] font-bold text-subtle uppercase tracking-wider">{item.step}</span>
-                            <h3 className="text-xs font-bold text-foreground tracking-tight sm:text-sm">{item.title}</h3>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] font-bold text-subtle uppercase">{item.step}</span>
+                              <h3 className="text-xs font-bold text-foreground tracking-tight sm:text-sm">{item.title}</h3>
+                            </div>
+                            <span className="rounded bg-elevated px-1.5 py-0.5 font-mono text-[9px] font-semibold text-emerald-400 border border-border">
+                              {item.badge}
+                            </span>
                           </div>
                           <p className="mt-0.5 text-xs leading-relaxed text-muted">{item.description}</p>
                         </div>
                       </div>
                     )
                   })}
+                </div>
+
+                {/* Real Technical Project Categories Badges */}
+                <div className="pt-2 border-t border-border/60">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-subtle mb-2">
+                    Marketplace Technical Categories
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {projectCategories.map((cat) => (
+                      <span
+                        key={cat}
+                        className="rounded-md border border-border bg-base/80 px-2 py-0.5 text-[10px] font-semibold font-mono text-muted"
+                      >
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -303,7 +331,7 @@ export function AuthLayout({
           </div>
 
           {/* Inline Protocol Status Footer */}
-          <div className="relative z-10 flex items-center justify-between border-t border-border/80 pt-4 text-xs text-subtle font-mono mt-6">
+          <div className="relative z-10 flex items-center justify-between border-t border-border/80 pt-4 text-xs text-subtle font-mono mt-4">
             <div className="flex items-center gap-2">
               <FiCpu className="h-3.5 w-3.5 text-primary" />
               <span>Arbitrum &amp; ETH Testnet</span>
