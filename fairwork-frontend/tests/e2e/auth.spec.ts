@@ -63,3 +63,9 @@ test("protected project routes redirect unauthenticated visitors", async ({ page
   await page.goto("/projects/project-1")
   await expect(page).toHaveURL(/\/login$/)
 })
+
+test("help center is publicly accessible without login redirect", async ({ page }) => {
+  await page.goto("/help")
+  await expect(page).toHaveURL(/\/help$/)
+  await expect(page.getByRole("heading", { name: "How can we help?" })).toBeVisible()
+})

@@ -2,9 +2,10 @@ import { Navigate, Routes, Route } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 import { ToastProvider } from "@/components/ui/Toast"
-import { AuthProvider } from "@/context/AuthContext"
-import { useAuth } from "@/context/AuthContext"
+import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { ThemeProvider } from "@/context/ThemeContext"
+import { LandingHeader } from "@/components/landing/LandingHeader"
+import { LandingFooter } from "@/components/landing/LandingFooter"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { AnalyticsPage } from "@/pages/AnalyticsPage"
@@ -43,9 +44,28 @@ function PublicHome() {
 }
 
 /**
+ * Public & Authenticated Help Center Route Handler.
+ * Unauthenticated visitors see the Help Center inside the public marketplace shell.
+ * Authenticated users see the Help Center inside the AppLayout application shell.
+ */
+function HelpRouteHandler() {
+  const { status } = useAuth()
+  if (status === "authenticated") {
+    return <HelpCenterPage />
+  }
+  return (
+    <div className="min-h-screen bg-base text-foreground flex flex-col justify-between">
+      <LandingHeader />
+      <main className="flex-1 pt-20 pb-16">
+        <HelpCenterPage />
+      </main>
+      <LandingFooter />
+    </div>
+  )
+}
+
+/**
  * App root: global providers + the route table.
- * All primary routes render inside the AppLayout shell (sidebar + topbar),
- * gated behind ProtectedRoute so a valid session is required.
  */
 export function App() {
   return (
@@ -56,7 +76,10 @@ export function App() {
             {/* Public landing page — visible to unauthenticated visitors */}
             <Route index element={<PublicHome />} />
 
-            {/* Auth routes render standalone (no app shell) */}
+            {/* Public Help Center route — accessible to logged-out and logged-in visitors */}
+            <Route path="help" element={<HelpRouteHandler />} />
+
+            {/* Auth routes render standalone */}
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
@@ -81,7 +104,6 @@ export function App() {
               <Route path="activity" element={<ActivityPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
-              <Route path="help" element={<HelpCenterPage />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
               <Route path="admin/users" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
