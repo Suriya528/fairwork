@@ -191,14 +191,16 @@ export function ProjectsPage() {
                 <FiList className="h-4 w-4" />
               </button>
             </div>
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<FiPlus className="h-4 w-4" />}
-              onClick={() => navigate("/projects/new")}
-            >
-              Post project
-            </Button>
+            {user?.role === "client" && (
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<FiPlus className="h-4 w-4" />}
+                onClick={() => navigate("/projects/new")}
+              >
+                Post project
+              </Button>
+            )}
           </div>
         }
       />

@@ -4,15 +4,15 @@ import { Spinner } from "@/components/ui/Spinner"
 import { useAuth } from "@/context/AuthContext"
 
 /**
- * Gates its children behind a valid session. Three states:
- *  - loading: still verifying a stored token against GET /me — render
- *    a spinner, not a redirect, or a valid session would flash to
- *    /login for a moment on every refresh.
- *  - unauthenticated: no session, or the token was rejected — redirect
- *    to /login, remembering where we came from.
- *  - authenticated: render children as normal.
+ * Gates its children behind a valid session and optional role check.
  */
-export function ProtectedRoute({ children, requiredRole }: { children: ReactNode; requiredRole?: "admin" }) {
+export function ProtectedRoute({
+  children,
+  requiredRole,
+}: {
+  children: ReactNode
+  requiredRole?: "admin" | "client" | "freelancer"
+}) {
   const { status, user } = useAuth()
   const location = useLocation()
 
@@ -29,7 +29,7 @@ export function ProtectedRoute({ children, requiredRole }: { children: ReactNode
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>

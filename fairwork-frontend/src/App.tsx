@@ -98,7 +98,7 @@ export function App() {
                 <Route path="dashboard" element={<RoleHome />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="projects" element={<ProjectsPage />} />
-                <Route path="projects/new" element={<CreateProjectPage />} />
+                <Route path="projects/new" element={<ProtectedRoute requiredRole="client"><CreateProjectPage /></ProtectedRoute>} />
                 <Route path="projects/mine" element={<MyProjectsPage />} />
                 <Route path="projects/:id" element={<ProjectDetailPage />} />
                 <Route path="contracts" element={<ContractsPage />} />
