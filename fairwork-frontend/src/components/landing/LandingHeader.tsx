@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { FiMenu, FiX, FiArrowRight } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { Logo } from "@/components/common/Logo"
@@ -20,9 +20,13 @@ const navLinks = [
 
 export function LandingHeader() {
   const { status } = useAuth()
+  const location = useLocation()
   const isAuthed = status === "authenticated"
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+
+  const isLoginActive = location.pathname === "/login"
+  const isRegisterActive = location.pathname === "/register"
 
   // Track scroll position for background treatment
   useEffect(() => {
@@ -100,13 +104,23 @@ export function LandingHeader() {
             <>
               <Link
                 to="/login"
-                className={cn(btnBase, btnGhost, "h-9 px-3.5 text-xs ai-glow-cta")}
+                className={cn(
+                  btnBase,
+                  btnGhost,
+                  "h-9 px-3.5 text-xs ai-glow-cta",
+                  isLoginActive && "text-foreground font-bold border border-primary/40 bg-surface-hover",
+                )}
               >
                 Log In
               </Link>
               <Link
                 to="/register"
-                className={cn(btnBase, btnPrimary, "h-9 px-4 text-xs")}
+                className={cn(
+                  btnBase,
+                  btnPrimary,
+                  "h-9 px-4 text-xs",
+                  isRegisterActive && "ring-2 ring-ring ring-offset-2 ring-offset-background",
+                )}
               >
                 Sign Up
               </Link>
