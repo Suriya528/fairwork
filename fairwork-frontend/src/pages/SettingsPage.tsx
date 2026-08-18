@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/Card"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { PageHeader } from "@/components/common/PageHeader"
+import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useTheme } from "@/context/ThemeContext"
 import { useCurrency } from "@/context/CurrencyContext"
@@ -34,7 +35,7 @@ export function SettingsPage() {
       const nonce = await getWalletNonce(token)
       const signature = await wallet.signTypedData({
         account,
-        domain: nonce.domain,
+ domain: nonce.domain,
         types: nonce.types,
         primaryType: nonce.primaryType,
         message: { walletAddress: account, nonce: nonce.nonce, purpose: nonce.purpose },
@@ -68,17 +69,23 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => setCurrency("INR")}
                 className={cn(
-                  "flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "group relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden",
                   currency === "INR"
                     ? "border-primary bg-primary/10 shadow-sm"
-                    : "border-border bg-surface hover:bg-elevated",
+                    : "border-border bg-surface hover:bg-elevated hover:border-primary/50",
                 )}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/30 font-bold text-lg font-mono">
-                  ₹
-                </span>
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/30 font-bold text-lg font-mono transition-transform duration-200 group-hover:scale-105">
+                  <span className="transition-opacity duration-200 group-hover:opacity-20">₹</span>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 transition-all duration-200 group-hover:opacity-100 group-hover:scale-100">
+                    <FlagIndia className="h-5 w-7" />
+                  </div>
+                </div>
                 <div>
-                  <p className="text-xs font-bold text-foreground">INR (₹)</p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <p className="text-xs font-bold text-foreground">INR (₹)</p>
+                    <FlagIndia className="h-3 w-4 opacity-70 transition-all duration-200 group-hover:opacity-100 group-hover:scale-110" />
+                  </div>
                   <p className="mt-0.5 text-[11px] text-muted">Indian Rupee</p>
                 </div>
               </button>
@@ -87,17 +94,23 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => setCurrency("USD")}
                 className={cn(
-                  "flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "group relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden",
                   currency === "USD"
                     ? "border-primary bg-primary/10 shadow-sm"
-                    : "border-border bg-surface hover:bg-elevated",
+                    : "border-border bg-surface hover:bg-elevated hover:border-emerald-500/50",
                 )}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold text-lg font-mono">
-                  $
-                </span>
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold text-lg font-mono transition-transform duration-200 group-hover:scale-105">
+                  <span className="transition-opacity duration-200 group-hover:opacity-20">$</span>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 transition-all duration-200 group-hover:opacity-100 group-hover:scale-100">
+                    <FlagUSA className="h-5 w-7" />
+                  </div>
+                </div>
                 <div>
-                  <p className="text-xs font-bold text-foreground">USD ($)</p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <p className="text-xs font-bold text-foreground">USD ($)</p>
+                    <FlagUSA className="h-3 w-4 opacity-70 transition-all duration-200 group-hover:opacity-100 group-hover:scale-110" />
+                  </div>
                   <p className="mt-0.5 text-[11px] text-muted">US Dollar</p>
                 </div>
               </button>

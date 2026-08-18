@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom"
 import { FiMenu, FiX, FiArrowRight } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { Logo } from "@/components/common/Logo"
+import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
@@ -98,9 +99,19 @@ export function LandingHeader() {
             onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
             title={`Switch display currency (Current: ${currency})`}
             aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-            className="flex h-9 items-center gap-1 rounded-xl border border-border bg-surface px-2.5 text-xs font-mono font-bold text-muted transition hover:border-border-strong hover:bg-elevated hover:text-foreground"
+            className="group relative flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
           >
-            <span>{currency === "INR" ? "₹ INR" : "$ USD"}</span>
+            {currency === "INR" ? (
+              <>
+                <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+                <span>₹ INR</span>
+              </>
+            ) : (
+              <>
+                <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+                <span>$ USD</span>
+              </>
+            )}
           </button>
           <ThemeToggle />
           {isAuthed ? (
@@ -145,9 +156,19 @@ export function LandingHeader() {
             type="button"
             onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
             aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-            className="flex h-9 items-center gap-1 rounded-xl border border-border bg-surface px-2 text-xs font-mono font-bold text-muted transition hover:border-border-strong hover:bg-elevated hover:text-foreground"
+            className="group relative flex h-9 items-center gap-1 rounded-xl border border-border bg-surface px-2 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
           >
-            <span>{currency === "INR" ? "₹ INR" : "$ USD"}</span>
+            {currency === "INR" ? (
+              <>
+                <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+                <span>₹ INR</span>
+              </>
+            ) : (
+              <>
+                <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+                <span>$ USD</span>
+              </>
+            )}
           </button>
           <ThemeToggle />
           <button
@@ -214,9 +235,19 @@ export function LandingHeader() {
                   type="button"
                   onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
                   aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-                  className="flex h-9 items-center gap-1 rounded-xl border border-border bg-surface px-3 text-xs font-mono font-bold text-muted transition hover:border-border-strong hover:bg-elevated hover:text-foreground"
+                  className="group relative flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
                 >
-                  <span>{currency === "INR" ? "₹ INR" : "$ USD"}</span>
+                  {currency === "INR" ? (
+                    <>
+                      <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+                      <span>₹ INR</span>
+                    </>
+                  ) : (
+                    <>
+                      <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+                      <span>$ USD</span>
+                    </>
+                  )}
                 </button>
               </div>
               {isAuthed ? (

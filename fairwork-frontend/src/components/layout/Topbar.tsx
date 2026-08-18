@@ -1,6 +1,7 @@
 import { FiSearch, FiMenu } from "react-icons/fi"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
+import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
 import { AccountMenu } from "./AccountMenu"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
@@ -9,7 +10,7 @@ interface TopbarProps {
   onOpenMobileNav: () => void
 }
 
-/** Sticky top bar with search, wallet, theme toggle, currency selector, notifications, and user account. */
+/** Sticky top bar with search, wallet, theme toggle, currency selector with flag hover effect, notifications, and user account. */
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const { user } = useAuth()
   const { currency, setCurrency } = useCurrency()
@@ -47,9 +48,19 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
           onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
           title={`Switch currency preference (Current: ${currency})`}
           aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-          className="flex h-9 items-center gap-1 rounded-lg border border-border bg-base px-2.5 text-xs font-mono font-bold text-muted transition hover:border-border-strong hover:bg-elevated hover:text-foreground"
+          className="group relative flex h-9 items-center gap-1.5 rounded-lg border border-border bg-base px-2.5 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
         >
-          <span>{currency === "INR" ? "₹ INR" : "$ USD"}</span>
+          {currency === "INR" ? (
+            <>
+              <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+              <span>₹ INR</span>
+            </>
+          ) : (
+            <>
+              <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
+              <span>$ USD</span>
+            </>
+          )}
         </button>
         <ThemeToggle />
         <AccountMenu />
