@@ -4,7 +4,7 @@ import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import type { ApiProject } from "@/services/projectsApi"
+import { getDisplayCategory, type ApiProject } from "@/services/projectsApi"
 
 /** List summary for the real backend project shape used by Browse Projects. */
 export function ApiProjectRow({ project }: { project: ApiProject }) {
@@ -36,7 +36,7 @@ export function ApiProjectRow({ project }: { project: ApiProject }) {
           <FiUser className="h-3 w-3 shrink-0" />
           {project.clientName ?? "Unknown"}
           <span aria-hidden>·</span>
-          {project.category || "Web Development"}
+          {getDisplayCategory(project)}
           <span aria-hidden>·</span>
           {project.milestones.length} milestone{project.milestones.length !== 1 ? "s" : ""}
         </span>

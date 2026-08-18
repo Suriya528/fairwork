@@ -4,7 +4,7 @@ import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import type { ApiProject } from "@/services/projectsApi"
+import { getDisplayCategory, type ApiProject } from "@/services/projectsApi"
 
 /** Grid summary for the real backend project shape used by Browse Projects. */
 export function ApiProjectCard({ project }: { project: ApiProject }) {
@@ -45,7 +45,7 @@ export function ApiProjectCard({ project }: { project: ApiProject }) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge tone="neutral">
-          {project.category || "Web Development"}
+          {getDisplayCategory(project)}
         </Badge>
         <Badge tone={project.escrowTxnHash ? "success" : "neutral"}>
           <FiLock className="h-3 w-3" />

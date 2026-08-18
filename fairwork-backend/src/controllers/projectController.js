@@ -13,11 +13,12 @@ async function projectForParty(projectId, userId) {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, description, category, budget, milestones } = req.body;
+    const { title, description, category, customCategory, budget, milestones } = req.body;
     const project = await Project.create({
       title,
       description,
       category: category || "Web Development",
+      customCategory: category === "Other" ? (customCategory ? String(customCategory).trim() : "") : "",
       budget,
       milestones,
       clientId: req.user.id,

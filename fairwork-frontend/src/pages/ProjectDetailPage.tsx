@@ -226,7 +226,7 @@ export function ProjectDetailPage() {
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-bold tracking-tight text-foreground text-balance sm:text-3xl">{project.title}</h1>
-                <Badge tone="neutral">{project.category || "Web Development"}</Badge>
+                <Badge tone="neutral">{getDisplayCategory(project)}</Badge>
                 <ProjectStatusBadge status={project.status} />
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">

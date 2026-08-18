@@ -33,6 +33,7 @@ interface BackendProject {
   title: string
   description: string
   category?: string
+  customCategory?: string
   budget: number
   milestones: BackendMilestone[]
   status: "open" | "in_progress" | "completed" | "disputed"
@@ -81,6 +82,7 @@ export interface ApiProject {
   title: string
   description: string
   category: string
+  customCategory?: string
   budget: number
   status: ApiProjectStatus
   clientId: string
@@ -109,6 +111,14 @@ export interface ApiDeliverable {
   milestoneId: string | null
   uploadedByName: string | null
   uploadedAt: string
+}
+
+/** Helper to format category for display (e.g. "Other — AI Automation Consulting"). */
+export function getDisplayCategory(project: { category?: string; customCategory?: string }): string {
+  if (project.category === "Other" && project.customCategory?.trim()) {
+    return `Other — ${project.customCategory.trim()}`
+  }
+  return project.category || "Web Development"
 }
 
 // --- Adapters --------------------------------------------------------------
@@ -146,6 +156,7 @@ function toProject(p: BackendProject): ApiProject {
     title: p.title,
     description: p.description,
     category: p.category || "Web Development",
+    customCategory: p.customCategory || "",
     budget: p.budget,
     status: p.status,
     clientId: personId(p.clientId) ?? "",
@@ -204,6 +215,7 @@ export interface CreateProjectPayload {
   title: string
   description: string
   category: string
+  customCategory?: string
   budget: number
   milestones: { title: string; amount: number }[]
 }

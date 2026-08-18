@@ -30,6 +30,7 @@ export function CreateProjectPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState<string>("")
+  const [customCategory, setCustomCategory] = useState<string>("")
   const [description, setDescription] = useState("")
   const [budget, setBudget] = useState("")
   const [milestones, setMilestones] = useState<Draft[]>([draft()])
@@ -38,6 +39,13 @@ export function CreateProjectPage() {
 
   const currencyTag = currency === "INR" ? "₹ INR" : "$ USD"
   const allocation = milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0)
+
+  const handleCategoryChange = (val: string) => {
+    setCategory(val)
+    if (val !== "Other") {
+      setCustomCategory("")
+    }
+  }
 
   const update = (id: string, field: "title" | "amount", value: string) =>
     setMilestones((all) =>
@@ -60,6 +68,12 @@ export function CreateProjectPage() {
       )
       return
     }
+
+    if (category === "Other" && customCategory.trim().length < 2) {
+      setError("Please specify your custom category (at least 2 characters).")
+      return
+    }
+
     setSaving(true)
     setError("")
     try {
@@ -67,6 +81,7 @@ export function CreateProjectPage() {
         {
           title: title.trim(),
           category,
+          customCategory: category === "Other" ? customCategory.trim() : "",
           description: description.trim(),
           budget: value,
           milestones: milestones.map((m) => ({
@@ -114,7 +129,7 @@ export function CreateProjectPage() {
               <select
                 id="category"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => handleCategoryChange(e.target.value)}
                 className="mt-1 flex h-10 w-full rounded-xl border border-border bg-base px-3 text-sm text-foreground outline-none transition-colors focus:border-border-strong focus:ring-2 focus:ring-ring/40"
               >
                 <option value="" disabled>
@@ -127,6 +142,21 @@ export function CreateProjectPage() {
                 ))}
               </select>
             </div>
+
+            {category === "Other" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <Label htmlFor="customCategory" required>
+                  Specify category
+                </Label>
+                <Input
+                  id="customCategory"
+                  value={customCategory}
+                  placeholder="Enter your project category"
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                />
+              </div>
+            )}
+
             <div>
               <Label htmlFor="description" required>
                 Description

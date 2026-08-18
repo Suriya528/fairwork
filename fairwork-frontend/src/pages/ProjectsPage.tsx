@@ -130,7 +130,8 @@ export function ProjectsPage() {
           (project) =>
             project.title.toLowerCase().includes(query) ||
             project.description.toLowerCase().includes(query) ||
-            (project.category && project.category.toLowerCase().includes(query)),
+            (project.category && project.category.toLowerCase().includes(query)) ||
+            (project.customCategory && project.customCategory.toLowerCase().includes(query)),
         )
       : [...projects]
 

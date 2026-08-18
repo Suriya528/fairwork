@@ -1,11 +1,11 @@
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react"
 import { DataTable, type Column } from "@/components/tables/DataTable"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge, type BadgeTone } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { SectionHeading } from "./SectionHeading"
 import { formatDate } from "@/lib/format"
-import type { ApiProject } from "@/services/projectsApi"
+import { getDisplayCategory, type ApiProject } from "@/services/projectsApi"
 
 const escrowTone = (project: ApiProject): BadgeTone => {
   if (project.escrowDisputed) return "danger"
@@ -25,7 +25,7 @@ export function RecentProjects({ projects, loading, error, role }: { projects: A
   const navigate = useNavigate()
   const recent = [...projects].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5)
   const columns: Column<ApiProject>[] = [
-    { key: "title", header: "Project", width: "32%", cell: (project) => <div className="min-w-0"><p className="truncate font-medium text-foreground">{project.title}</p><p className="text-xs text-subtle">{project.milestones.length} milestone{project.milestones.length === 1 ? "" : "s"}</p></div> },
+    { key: "title", header: "Project", width: "32%", cell: (project) => <div className="min-w-0"><p className="truncate font-medium text-foreground">{project.title}</p><p className="text-xs text-subtle">{getDisplayCategory(project)} · {project.milestones.length} milestone{project.milestones.length === 1 ? "" : "s"}</p></div> },
     { key: "counterpart", header: role === "client" ? "Freelancer" : "Client", width: "18%", cell: (project) => <span className="block truncate text-muted">{role === "client" ? project.freelancerName ?? "Unassigned" : project.clientName ?? "Unavailable"}</span> },
     { key: "status", header: "Status", width: "14%", cell: (project) => <ProjectStatusBadge status={project.status} /> },
     { key: "escrow", header: "Escrow", width: "14%", cell: (project) => <Badge tone={escrowTone(project)}>{escrowLabel(project)}</Badge> },
