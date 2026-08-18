@@ -13,9 +13,9 @@ async function makeAdmin() {
     }
 
     const user = await User.findOneAndUpdate(
-      { email: email.toLowerCase().trim() },
+      { email: new RegExp("^" + email.trim() + "$", "i") },
       { $set: { role: "admin" } },
-      { new: true }
+      { returnDocument: "after" }
     ).select("firstName lastName email role");
 
     if (!user) {

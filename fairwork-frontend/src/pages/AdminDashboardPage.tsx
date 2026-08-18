@@ -1241,8 +1241,8 @@ export function AdminDashboardPage() {
 
       {/* USER DETAIL INSPECTOR MODAL */}
       {selectedUserDetail && (
-        <Modal isOpen title="User Account Inspector" onClose={() => setSelectedUserDetail(null)}>
-          <div className="flex flex-col gap-4 text-xs">
+        <Modal open={Boolean(selectedUserDetail)} onClose={() => setSelectedUserDetail(null)}>
+          <div className="flex flex-col gap-4 p-6 text-xs">
             <div className="rounded-xl border border-border p-4">
               <h4 className="font-semibold text-foreground text-sm">
                 {selectedUserDetail.user.firstName} {selectedUserDetail.user.lastName}
@@ -1281,12 +1281,11 @@ export function AdminDashboardPage() {
 
       {/* USER SUSPENSION MODAL */}
       {suspendModalUser && (
-        <Modal
-          isOpen
-          title={suspendModalUser.isSuspended ? "Reinstate User Account" : "Suspend User Account"}
-          onClose={() => setSuspendModalUser(null)}
-        >
-          <div className="flex flex-col gap-4 text-xs">
+        <Modal open={Boolean(suspendModalUser)} onClose={() => setSuspendModalUser(null)}>
+          <div className="flex flex-col gap-4 p-6 text-xs">
+            <h3 className="text-base font-bold text-foreground">
+              {suspendModalUser.isSuspended ? "Reinstate User Account" : "Suspend User Account"}
+            </h3>
             <p className="text-muted">
               {suspendModalUser.isSuspended
                 ? `Reinstate access for ${suspendModalUser.firstName} ${suspendModalUser.lastName} (${suspendModalUser.email}).`
@@ -1320,8 +1319,9 @@ export function AdminDashboardPage() {
 
       {/* REPORT RESOLUTION MODAL */}
       {selectedReport && (
-        <Modal isOpen title="Update Trust &amp; Safety Report" onClose={() => setSelectedReport(null)}>
-          <div className="flex flex-col gap-4 text-xs">
+        <Modal open={Boolean(selectedReport)} onClose={() => setSelectedReport(null)}>
+          <div className="flex flex-col gap-4 p-6 text-xs">
+            <h3 className="text-base font-bold text-foreground">Update Trust &amp; Safety Report</h3>
             <p className="text-muted font-medium">{selectedReport.category}: {selectedReport.description}</p>
             <div className="flex flex-col gap-1">
               <label className="font-medium text-foreground">Status:</label>
