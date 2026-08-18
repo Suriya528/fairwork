@@ -4,11 +4,12 @@ import { EmptyState } from "@/components/feedback/EmptyState"
 import { MetricCard } from "@/components/common/MetricCard"
 import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { getClientAnalytics, getFreelancerAnalytics, type ApiAnalytics } from "@/services/analyticsApi"
-import { formatCurrency } from "@/lib/format"
 
 export function AnalyticsPage() {
   const { user, token } = useAuth()
+  const { formatAmount } = useCurrency()
   const [data, setData] = useState<ApiAnalytics | null>(null)
   const [error, setError] = useState("")
 
@@ -44,7 +45,7 @@ export function AnalyticsPage() {
               <MetricCard label="Completed" value={String(data.completedProjects)} icon={FiCheckCircle} />
               <MetricCard
                 label={isFreelancer ? "Total earnings" : "Total spent"}
-                value={formatCurrency(data.totalEarnings ?? data.totalSpent ?? 0)}
+                value={formatAmount(data.totalEarnings ?? data.totalSpent ?? 0)}
                 icon={FiDollarSign}
               />
               <MetricCard label="Success rate" value={`${data.successRate}%`} icon={FiBarChart2} />
@@ -62,7 +63,7 @@ export function AnalyticsPage() {
                 <ul className="mt-3 space-y-2 text-sm text-muted">
                   {data.monthlyData.map((m) => (
                     <li key={m.month}>
-                      Month {m.month}: {formatCurrency(m.amount)} across {m.count} project{m.count === 1 ? "" : "s"}
+                      Month {m.month}: {formatAmount(m.amount)} across {m.count} project{m.count === 1 ? "" : "s"}
                     </li>
                   ))}
                 </ul>

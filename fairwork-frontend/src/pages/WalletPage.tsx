@@ -7,11 +7,13 @@ import { MetricCard } from "@/components/common/MetricCard"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { ConfirmDialog } from "@/components/common/ConfirmDialog"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 
 export function WalletPage() {
   const { user, token } = useAuth()
+  const { formatAmount } = useCurrency()
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -108,17 +110,17 @@ export function WalletPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <MetricCard
             label={isFreelancer ? "Available earnings" : "Released to date"}
-            value={formatCurrency(available)}
+            value={formatAmount(available)}
             icon={FiCreditCard}
           />
           <MetricCard
             label={isFreelancer ? "Escrow protection" : "In project escrows"}
-            value={formatCurrency(inEscrowUsd)}
+            value={formatAmount(inEscrowUsd)}
             icon={FiLock}
           />
           <MetricCard
             label={isFreelancer ? "Pending payouts" : "Unreleased milestones"}
-            value={formatCurrency(pendingUsd)}
+            value={formatAmount(pendingUsd)}
             icon={FiRepeat}
           />
         </div>
@@ -185,7 +187,7 @@ export function WalletPage() {
                     <span className="text-[11px] text-subtle">{formatDate(t.createdAt)}</span>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
-                    {formatCurrency(t.amount)}
+                    {formatAmount(t.amount)}
                   </span>
                 </div>
               ))}
@@ -201,7 +203,7 @@ export function WalletPage() {
         loading={withdrawLoading}
         title="Withdraw earnings?"
         confirmLabel="Withdraw"
-        description={`This transfers ${formatCurrency(available)} from your FairWork earnings balance directly to your connected wallet (${user.walletAddress ? user.walletAddress.slice(0, 6) + "..." : ""}).`}
+        description={`This transfers ${formatAmount(available)} from your FairWork earnings balance directly to your connected wallet (${user.walletAddress ? user.walletAddress.slice(0, 6) + "..." : ""}).`}
       />
     </div>
   )

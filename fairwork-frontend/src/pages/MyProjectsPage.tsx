@@ -8,8 +8,9 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
-import { formatCurrency } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 
 type Filter = "active" | "completed" | "all" | "in_progress" | "escrow_funded"
 
@@ -17,6 +18,7 @@ const FILTERS: Filter[] = ["active", "completed", "all", "in_progress", "escrow_
 
 export function MyProjectsPage() {
   const { user, token } = useAuth()
+  const { formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [projects, setProjects] = useState<ApiProject[]>([])
@@ -80,7 +82,7 @@ export function MyProjectsPage() {
           <MetricCard label="Completed" value={String(completed.length)} icon={FiCheckCircle} />
           <MetricCard
             label={isClient ? "Total spent" : "Total earned"}
-            value={formatCurrency(total)}
+            value={formatAmount(total)}
             icon={isClient ? FiDollarSign : FiBriefcase}
           />
         </div>

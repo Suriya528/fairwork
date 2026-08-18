@@ -1,19 +1,21 @@
 import { useNavigate } from "react-router-dom"
-import { FiCalendar, FiDollarSign, FiLock, FiTag, FiUser } from "react-icons/fi"
+import { FiCalendar, FiLock, FiTag, FiUser } from "react-icons/fi"
 import { StatusBadge } from "@/components/common/StatusBadge"
 import { Progress } from "@/components/ui/Progress"
+import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 import { getEscrowProgress, getUserName } from "./helpers"
 import type { Project } from "@/types"
- 
+
 /** Grid-view project summary card. Used in Browse Projects and My Projects. */
 export function ProjectCard({ project }: { project: Project }) {
   const navigate = useNavigate()
+  const { formatAmount } = useCurrency()
   const progress = getEscrowProgress(project)
   const clientName = getUserName(project.clientId)
   const goToProject = () => navigate(`/projects/${project.id}`)
- 
+
   return (
     <article
       className={cn(
@@ -44,11 +46,11 @@ export function ProjectCard({ project }: { project: Project }) {
         </div>
         <StatusBadge status={project.status} />
       </div>
- 
+
       <p className="mb-4 line-clamp-2 text-xs leading-relaxed text-muted">
         {project.description}
       </p>
- 
+
       {project.tags.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1.5">
           {project.tags.slice(0, 3).map((tag) => (
@@ -67,7 +69,7 @@ export function ProjectCard({ project }: { project: Project }) {
           )}
         </div>
       )}
- 
+
       <div className="mb-4">
         <div className="mb-1.5 flex items-center justify-between text-xs">
           <span className="flex items-center gap-1 text-subtle">
@@ -78,10 +80,10 @@ export function ProjectCard({ project }: { project: Project }) {
         </div>
         <Progress value={progress} tone={progress >= 100 ? "success" : "primary"} />
       </div>
- 
+
       <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-1 text-sm font-semibold text-foreground">
-          {formatCurrency(project.budget)}
+          {formatAmount(project.budget)}
         </div>
         <div className="flex items-center gap-1 text-xs text-subtle">
           <FiCalendar className="h-3 w-3" />

@@ -3,18 +3,20 @@ import { FiClock, FiUser } from "react-icons/fi"
 import { Badge } from "@/components/ui/Badge"
 import { StatusBadge } from "@/components/common/StatusBadge"
 import { Progress } from "@/components/ui/Progress"
+import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 import { getEscrowProgress, getUserName } from "./helpers"
 import type { Project } from "@/types"
- 
+
 /** List-view project summary row. Used in Browse Projects and My Projects. */
 export function ProjectRow({ project }: { project: Project }) {
   const navigate = useNavigate()
+  const { formatAmount } = useCurrency()
   const progress = getEscrowProgress(project)
   const clientName = getUserName(project.clientId)
   const goToProject = () => navigate(`/projects/${project.id}`)
- 
+
   return (
     <article
       className={cn(
@@ -42,7 +44,7 @@ export function ProjectRow({ project }: { project: Project }) {
           {clientName}
         </span>
       </div>
- 
+
       <div className="hidden items-center gap-1.5 md:flex">
         {project.tags.slice(0, 2).map((tag) => (
           <Badge key={tag} tone="neutral">
@@ -50,7 +52,7 @@ export function ProjectRow({ project }: { project: Project }) {
           </Badge>
         ))}
       </div>
- 
+
       <div className="hidden w-28 lg:block">
         <div className="mb-1 flex justify-between text-xs text-subtle">
           <span>Escrow</span>
@@ -58,16 +60,16 @@ export function ProjectRow({ project }: { project: Project }) {
         </div>
         <Progress value={progress} tone={progress >= 100 ? "success" : "primary"} />
       </div>
- 
+
       <div className="shrink-0 text-sm font-semibold text-foreground">
-        {formatCurrency(project.budget)}
+        {formatAmount(project.budget)}
       </div>
- 
+
       <div className="hidden shrink-0 items-center gap-1 text-xs text-subtle sm:flex">
         <FiClock className="h-3 w-3" />
         {formatDate(project.dueDate)}
       </div>
- 
+
       <StatusBadge status={project.status} />
     </article>
   )

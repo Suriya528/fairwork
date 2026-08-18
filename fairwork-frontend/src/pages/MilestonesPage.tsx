@@ -6,8 +6,9 @@ import { MetricCard } from "@/components/common/MetricCard"
 import { PageHeader } from "@/components/common/PageHeader"
 import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiMilestone, type ApiProject } from "@/services/projectsApi"
-import { formatCurrency } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 
 type Tab = "active" | "completed" | "all"
 type PaymentFilter = "unreleased" | "released"
@@ -15,6 +16,7 @@ type Item = ApiMilestone & { projectTitle: string }
 
 export function MilestonesPage() {
   const { user, token } = useAuth()
+  const { formatAmount } = useCurrency()
   const nav = useNavigate()
   const [searchParams] = useSearchParams()
   const [projects, setProjects] = useState<ApiProject[]>([])
@@ -87,7 +89,7 @@ export function MilestonesPage() {
                   <p className="text-xs text-muted">{m.projectTitle}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-foreground">{formatCurrency(m.amount)}</p>
+                  <p className="font-medium text-foreground">{formatAmount(m.amount)}</p>
                   <p className="text-xs text-muted">
                     {m.paymentReleased
                       ? isClient

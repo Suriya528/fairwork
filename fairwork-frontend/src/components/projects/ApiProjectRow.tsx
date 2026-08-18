@@ -2,13 +2,15 @@ import { useNavigate } from "react-router-dom"
 import { FiClock, FiLock, FiUser } from "react-icons/fi"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { useCurrency } from "@/context/CurrencyContext"
+import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { getDisplayCategory, type ApiProject } from "@/services/projectsApi"
 
 /** List summary for the real backend project shape used by Browse Projects. */
 export function ApiProjectRow({ project }: { project: ApiProject }) {
   const navigate = useNavigate()
+  const { formatAmount } = useCurrency()
   const goToProject = () => navigate(`/projects/${project.id}`)
 
   return (
@@ -48,7 +50,7 @@ export function ApiProjectRow({ project }: { project: ApiProject }) {
       </Badge>
 
       <div className="shrink-0 text-sm font-semibold text-foreground">
-        {formatCurrency(project.budget)}
+        {formatAmount(project.budget)}
       </div>
 
       <div className="hidden w-28 shrink-0 items-center gap-1 text-xs text-subtle lg:flex">

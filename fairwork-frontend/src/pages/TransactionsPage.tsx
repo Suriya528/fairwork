@@ -14,8 +14,9 @@ import { StatusBadge } from "@/components/common/StatusBadge"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatDate } from "@/lib/format"
 import type { TransactionType } from "@/types"
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>
@@ -44,6 +45,7 @@ const TYPE_META: Record<TransactionType, { icon: IconType; label: string }> = {
 export function TransactionsPage() {
   const navigate = useNavigate()
   const { user, token } = useAuth()
+  const { formatAmount } = useCurrency()
   const [tab, setTab] = useState<FilterTab>("all")
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -183,7 +185,7 @@ export function TransactionsPage() {
 
                   <div className="flex flex-col items-start gap-1.5 sm:items-end">
                     <span className="text-sm font-semibold text-foreground">
-                      {formatCurrency(t.amount)}
+                      {formatAmount(t.amount)}
                     </span>
                     <WalletAddress address={t.hash} chars={6} />
                   </div>

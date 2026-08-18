@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/Button"
 import { EmptyState } from "@/components/feedback/EmptyState"
 import { getMyApplications, withdrawApplication, type ApiApplication } from "@/services/applicationsApi"
 import { useAuth } from "@/context/AuthContext"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { useCurrency } from "@/context/CurrencyContext"
+import { formatDate } from "@/lib/format"
 
 export function MyApplicationsPage() {
   const { token } = useAuth()
+  const { formatAmount } = useCurrency()
   const [applications, setApplications] = useState<ApiApplication[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -114,7 +116,7 @@ export function MyApplicationsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted pt-2 border-t border-border">
                     <div className="flex items-center gap-4">
                       <span>
-                        Proposed: <strong className="text-foreground font-semibold">{formatCurrency(app.proposedAmount)}</strong>
+                        Proposed: <strong className="text-foreground font-semibold">{formatAmount(app.proposedAmount)}</strong>
                       </span>
                       <span>
                         Est. Delivery: <strong className="text-foreground font-semibold">{app.estimatedDelivery}</strong>

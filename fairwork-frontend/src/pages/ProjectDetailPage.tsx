@@ -32,6 +32,7 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { ApplyModal } from "@/components/applications/ApplyModal"
 import { formatCurrency, formatDate, toPercent } from "@/lib/format"
 import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
 import { ApiError } from "@/services/apiClient"
 import {
   getProjectById,
@@ -130,7 +131,7 @@ function MilestoneRow({
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="shrink-0 text-sm font-semibold text-foreground">{formatCurrency(milestone.amount)}</span>
+        <span className="shrink-0 text-sm font-semibold text-foreground">{formatAmount(milestone.amount)}</span>
         {milestone.paymentReleased ? (
           <Badge tone="success">Paid</Badge>
         ) : (
@@ -154,6 +155,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { token, user } = useAuth()
+  const { formatAmount } = useCurrency()
   const [tab, setTab] = useState<TabValue>("overview")
   const [project, setProject] = useState<ApiProject | null>(null)
   const [loading, setLoading] = useState(true)
@@ -394,7 +396,7 @@ export function ProjectDetailPage() {
                 <ProjectStatusBadge status={project.status} />
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
-                <span className="flex items-center gap-1.5 font-semibold text-foreground">{formatCurrency(project.budget)}</span>
+                <span className="flex items-center gap-1.5 font-semibold text-foreground">{formatAmount(project.budget)}</span>
                 <span className="flex items-center gap-1.5">
                   <FiCalendar className="h-4 w-4 text-subtle" />
                   Created {formatDate(project.createdAt)}
@@ -500,7 +502,7 @@ export function ProjectDetailPage() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <span className="text-sm font-bold text-foreground">{formatCurrency(app.proposedAmount)}</span>
+                              <span className="text-sm font-bold text-foreground">{formatAmount(app.proposedAmount)}</span>
                               <span className="block text-[11px] text-muted">Est. delivery: {app.estimatedDelivery}</span>
                             </div>
                           </div>
@@ -674,14 +676,14 @@ export function ProjectDetailPage() {
 
           <aside className="flex flex-col gap-6 lg:sticky lg:top-6 lg:self-start">
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-              <MetricCard label="Total budget" value={formatCurrency(project.budget)} icon={FiDollarSign} />
+              <MetricCard label="Total budget" value={formatAmount(project.budget)} icon={FiDollarSign} />
               <MetricCard
                 label="Completed"
-                value={formatCurrency(completedAmount)}
+                value={formatAmount(completedAmount)}
                 icon={FiUnlock}
                 hint={`${completedCount} of ${project.milestones.length} milestones`}
               />
-              <MetricCard label="Remaining" value={formatCurrency(remainingAmount)} icon={FiLock} />
+              <MetricCard label="Remaining" value={formatAmount(remainingAmount)} icon={FiLock} />
             </div>
             <Card>
               <CardContent className="flex flex-col gap-3 p-5">

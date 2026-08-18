@@ -5,7 +5,7 @@ import { BarSeriesChart } from "@/components/charts/BarSeriesChart"
 import { Badge } from "@/components/ui/Badge"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/Card"
-import { formatCurrency } from "@/lib/format"
+import { useCurrency } from "@/context/CurrencyContext"
 import {
   contractStatusBreakdown,
   milestoneProgressSeries,
@@ -34,6 +34,8 @@ function ChartSkeleton({ height = 260 }: { height?: number }) {
 
 /** Analytics row: monthly earnings, contract status, and milestone progress. */
 export function AnalyticsSection({ loading = false }: AnalyticsSectionProps) {
+  const { formatAmount } = useCurrency()
+
   if (loading) {
     return (
       <section aria-labelledby="analytics-heading" className="grid gap-4 lg:grid-cols-3">
@@ -66,7 +68,7 @@ export function AnalyticsSection({ loading = false }: AnalyticsSectionProps) {
         <AreaTrendChart
           data={monthlyEarningsSeries}
           xKey="month"
-          valueFormatter={(v) => formatCurrency(v)}
+          valueFormatter={(v) => formatAmount(v)}
           series={[
             {
               key: "earnings",

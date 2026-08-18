@@ -1,5 +1,94 @@
 import { useEffect, useMemo, useState } from "react"
 import { FiCalendar, FiCheckCircle, FiDollarSign, FiFolder, FiSettings, FiStar } from "react-icons/fi"
 import { useNavigate } from "react-router-dom"
-import { Avatar } from "@/components/ui/Avatar"; import { Badge } from "@/components/ui/Badge"; import { Button } from "@/components/ui/Button"; import { Card, CardContent } from "@/components/ui/Card"; import { MetricCard } from "@/components/common/MetricCard"; import { WalletAddress } from "@/components/common/WalletAddress"; import { useAuth } from "@/context/AuthContext"; import { getMyProjects, type ApiProject } from "@/services/projectsApi"; import { formatCurrency, formatDate } from "@/lib/format"; import { cn } from "@/lib/utils"
-export function ProfilePage() { const { user, token } = useAuth(); const navigate = useNavigate(); const [projects, setProjects] = useState<ApiProject[]>([]); const [error, setError] = useState(""); useEffect(() => { if (token) getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message)) }, [token]); const active = projects.filter((p) => p.status === "in_progress").length; const completed = projects.filter((p) => p.status === "completed").length; const total = useMemo(() => projects.flatMap((p) => p.milestones).filter((m) => m.status === "completed").reduce((s, m) => s + m.amount, 0), [projects]); if (!user) return null; return <div className="p-4 sm:p-6 lg:p-8"><div className="mx-auto flex max-w-3xl flex-col gap-6">{error && <p className="text-sm text-danger">{error}</p>}<Card><CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start"><Avatar name={user.name} src={user.avatarUrl} size="lg"/><div className="flex flex-1 flex-col gap-2"><div className="flex items-center gap-2"><h1 className="text-xl font-bold">{user.name}</h1><Badge tone="neutral">{user.role === "client" ? "Client" : "Freelancer"}</Badge></div><span className="flex items-center gap-1.5 text-sm text-muted"><FiCalendar/>Member since {user.createdAt ? formatDate(user.createdAt) : "—"}</span>{user.walletAddress && <WalletAddress address={user.walletAddress} className="w-fit"/>}</div><Button variant="outline" size="sm" leftIcon={<FiSettings/>} onClick={() => navigate("/settings")}>Edit in settings</Button></CardContent></Card><Card><CardContent className="flex items-center gap-4 p-6"><div className="text-3xl font-bold">{user.rating.toFixed(1)}</div><div><div className="flex">{[1,2,3,4,5].map((n) => <FiStar key={n} className={cn("h-4 w-4", n <= Math.round(user.rating) ? "fill-current text-warning" : "text-subtle")}/>)}</div><span className="text-xs text-subtle">{user.reviewCount} reviews</span></div></CardContent></Card><div className="grid gap-4 sm:grid-cols-3"><MetricCard label="Active projects" value={String(active)} icon={FiFolder}/><MetricCard label="Completed" value={String(completed)} icon={FiCheckCircle}/><MetricCard label={user.role === "client" ? "Total spent" : "Total earned"} value={formatCurrency(total)} icon={FiDollarSign}/></div></div></div> }
+import { Avatar } from "@/components/ui/Avatar"
+import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
+import { Card, CardContent } from "@/components/ui/Card"
+import { MetricCard } from "@/components/common/MetricCard"
+import { WalletAddress } from "@/components/common/WalletAddress"
+import { useAuth } from "@/context/AuthContext"
+import { useCurrency } from "@/context/CurrencyContext"
+import { getMyProjects, type ApiProject } from "@/services/projectsApi"
+import { formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
+
+export function ProfilePage() {
+  const { user, token } = useAuth()
+  const { formatAmount } = useCurrency()
+  const navigate = useNavigate()
+  const [projects, setProjects] = useState<ApiProject[]>([])
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (token) getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
+  }, [token])
+
+  const active = projects.filter((p) => p.status === "in_progress").length
+  const completed = projects.filter((p) => p.status === "completed").length
+  const total = useMemo(
+    () =>
+      projects
+        .flatMap((p) => p.milestones)
+        .filter((m) => m.status === "completed")
+        .reduce((s, m) => s + m.amount, 0),
+    [projects],
+  )
+
+  if (!user) return null
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <Card>
+          <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-start">
+            <Avatar name={user.name} src={user.avatarUrl} size="lg" />
+            <div className="flex flex-1 flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold">{user.name}</h1>
+                <Badge tone="neutral">{user.role === "client" ? "Client" : "Freelancer"}</Badge>
+              </div>
+              <span className="flex items-center gap-1.5 text-sm text-muted">
+                <FiCalendar />
+                Member since {user.createdAt ? formatDate(user.createdAt) : "—"}
+              </span>
+              {user.walletAddress && <WalletAddress address={user.walletAddress} className="w-fit" />}
+            </div>
+            <Button variant="outline" size="sm" leftIcon={<FiSettings />} onClick={() => navigate("/settings")}>
+              Edit in settings
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="text-3xl font-bold">{user.rating.toFixed(1)}</div>
+            <div>
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <FiStar
+                    key={n}
+                    className={cn(
+                      "h-4 w-4",
+                      n <= Math.round(user.rating) ? "fill-current text-warning" : "text-subtle",
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="text-xs text-subtle">{user.reviewCount} reviews</span>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MetricCard label="Active projects" value={String(active)} icon={FiFolder} />
+          <MetricCard label="Completed" value={String(completed)} icon={FiCheckCircle} />
+          <MetricCard
+            label={user.role === "client" ? "Total spent" : "Total earned"}
+            value={formatAmount(total)}
+            icon={FiDollarSign}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
