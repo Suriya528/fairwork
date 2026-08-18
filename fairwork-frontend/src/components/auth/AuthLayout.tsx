@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import {
-  FiShield,
   FiLock,
   FiCheckCircle,
   FiZap,
@@ -11,7 +10,9 @@ import {
   FiUserPlus,
   FiFileText,
   FiArrowLeft,
+  FiShield,
 } from "react-icons/fi"
+import { Logo } from "@/components/common/Logo"
 import { cn } from "@/lib/utils"
 
 interface AuthLayoutProps {
@@ -92,16 +93,8 @@ export function AuthLayout({
     <div className="min-h-screen w-full bg-base text-foreground flex flex-col">
       {/* GLOBAL PUBLIC/AUTH TOP NAVIGATION */}
       <header className="w-full border-b border-border/80 bg-base/90 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-8 py-3 flex items-center justify-between">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
-            <FiShield className="h-4.5 w-4.5" aria-hidden />
-          </span>
-          <span className="text-base font-bold tracking-tight text-foreground font-sans">
-            FairWork
-          </span>
+        <Link to="/" aria-label="FairWork Home">
+          <Logo size="md" />
         </Link>
 
         {/* Global Public Auth Links */}

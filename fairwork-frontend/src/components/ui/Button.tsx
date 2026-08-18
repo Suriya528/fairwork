@@ -20,6 +20,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   leftIcon?: ReactNode
   rightIcon?: ReactNode
   fullWidth?: boolean
+  /** Optional AI-inspired moving gradient glow on hover (yellow -> coral/red -> violet) */
+  aiGlow?: boolean
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
@@ -55,6 +57,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       leftIcon,
       rightIcon,
       fullWidth,
+      aiGlow = false,
       disabled,
       children,
       ...props
@@ -74,6 +77,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           variantStyles[variant],
           sizeStyles[size],
           fullWidth && "w-full",
+          aiGlow && "ai-glow-cta",
           className,
         )}
         {...props}

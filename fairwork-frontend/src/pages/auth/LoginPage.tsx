@@ -138,7 +138,7 @@ export function LoginPage() {
             onChange={(e) => setRemember(e.target.checked)}
           />
 
-          <Button type="submit" fullWidth loading={submitting} className="h-11 font-semibold rounded-xl text-sm mt-1">
+          <Button type="submit" fullWidth aiGlow loading={submitting} className="h-11 font-semibold rounded-xl text-sm mt-1">
             {submitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>

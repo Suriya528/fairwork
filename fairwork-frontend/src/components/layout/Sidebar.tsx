@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom"
-import { FiShield } from "react-icons/fi"
+import { Logo } from "@/components/common/Logo"
 import { navSections } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { useDisputeSummary } from "@/context/DisputeSummaryContext"
@@ -15,13 +15,11 @@ export function Sidebar() {
   const sections = user?.role === "admin"
     ? navSections.filter((section) => section.title === "Administration")
     : navSections.filter((section) => section.title !== "Administration").map((section) => user?.role === "freelancer" ? { ...section, items: section.items.filter((item) => item.path !== "/projects/new") } : section).filter((section) => section.items.length > 0)
+
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-30 border-r border-border bg-surface">
-      <div className="flex h-16 items-center gap-2.5 px-6 border-b border-border">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <FiShield className="h-4 w-4" aria-hidden />
-        </span>
-        <span className="text-base font-semibold tracking-tight text-foreground">FairWork</span>
+      <div className="flex h-16 items-center px-6 border-b border-border">
+        <Logo size="md" />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-5" aria-label="Primary">
@@ -72,7 +70,6 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-
     </aside>
   )
 }

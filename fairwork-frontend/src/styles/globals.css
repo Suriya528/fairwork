@@ -197,6 +197,85 @@
   }
 }
 
+/* Premium AI-inspired Login CTA hover glow effect (Yellow -> Red/Coral -> Violet) */
+@keyframes ai-glow-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.ai-glow-cta {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-glow-cta::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    #eab308, /* Yellow */
+    #f43f5e, /* Red / Coral */
+    #a855f7, /* Violet / Purple */
+    #eab308  /* Yellow loop */
+  );
+  background-size: 200% 200%;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.25s ease, filter 0.25s ease;
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.ai-glow-cta::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    #facc15,
+    #fb7185,
+    #c084fc,
+    #facc15
+  );
+  background-size: 200% 200%;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.ai-glow-cta:hover:not(:disabled)::before {
+  opacity: 0.65;
+  animation: ai-glow-shimmer 3s ease infinite;
+}
+
+.ai-glow-cta:hover:not(:disabled)::after {
+  opacity: 0.85;
+  animation: ai-glow-shimmer 3s ease infinite;
+}
+
+.ai-glow-cta:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-glow-cta:hover:not(:disabled)::before,
+  .ai-glow-cta:hover:not(:disabled)::after {
+    animation: none;
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fade-in 0.3s ease-out both;

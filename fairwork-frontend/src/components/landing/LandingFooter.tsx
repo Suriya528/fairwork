@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
-import { FiShield, FiCpu, FiCheckCircle } from "react-icons/fi"
+import { FiCpu, FiCheckCircle } from "react-icons/fi"
+import { Logo } from "@/components/common/Logo"
 
 /**
  * Footer links — only routes that actually exist in the application.
@@ -38,14 +39,7 @@ export function LandingFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand & Protocol Status column */}
           <div className="lg:col-span-1">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-                <FiShield className="h-4 w-4" aria-hidden />
-              </span>
-              <span className="text-base font-bold tracking-tight text-foreground">
-                FairWork
-              </span>
-            </div>
+            <Logo size="md" />
 
             <p className="mt-3 max-w-xs text-xs leading-relaxed text-muted">
               A blockchain-powered freelancing marketplace with escrow-backed milestone payments and transparent dispute resolution.
@@ -54,7 +48,7 @@ export function LandingFooter() {
             <div className="mt-4 flex flex-col gap-1.5 pt-2">
               <div className="inline-flex items-center gap-2 font-mono text-[11px] text-subtle">
                 <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Arbitrum & Ethereum Testnet</span>
+                <span>Arbitrum &amp; Ethereum Testnet</span>
               </div>
               <div className="inline-flex items-center gap-2 font-mono text-[11px] text-subtle">
                 <FiCpu className="h-3.5 w-3.5 text-blue-400" />

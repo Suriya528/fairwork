@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { FiMenu, FiShield, FiX, FiArrowRight } from "react-icons/fi"
+import { FiMenu, FiX, FiArrowRight } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
+import { Logo } from "@/components/common/Logo"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 
@@ -66,14 +67,9 @@ export function LandingHeader() {
         className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
         aria-label="Landing"
       >
-        {/* Brand */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
-            <FiShield className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="text-base font-bold tracking-tight text-foreground font-sans">
-            FairWork
-          </span>
+        {/* Brand Logo */}
+        <Link to="/" aria-label="FairWork Home">
+          <Logo size="md" />
         </Link>
 
         {/* Desktop nav links */}

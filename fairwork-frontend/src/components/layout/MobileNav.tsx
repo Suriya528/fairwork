@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { NavLink } from "react-router-dom"
-import { FiShield, FiX } from "react-icons/fi"
+import { FiX } from "react-icons/fi"
+import { Logo } from "@/components/common/Logo"
 import { navSections } from "@/config/navigation"
 import { cn } from "@/lib/utils"
 import { useDisputeSummary } from "@/context/DisputeSummaryContext"
@@ -68,12 +69,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         )}
       >
         <div className="flex h-16 items-center justify-between px-5 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <FiShield className="h-4 w-4" aria-hidden />
-            </span>
-            <span className="text-base font-semibold tracking-tight text-foreground">FairWork</span>
-          </div>
+          <Logo size="md" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <button
