@@ -1,9 +1,14 @@
 const Contract = require("../models/Contract");
 const Project = require("../models/Project");
-const Anthropic = require("@anthropic-ai/sdk");
+const { GoogleGenAI } = require("@google/genai");
 
-const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+// Initialize Google Gemini AI client using GEMINI_API_KEY
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
+/**
+ * Generate a professional freelance contract using Google Gemini AI
+ */
 exports.generateContract = async (req, res) => {
   try {
     const { projectId } = req.body;
@@ -17,7 +22,9 @@ exports.generateContract = async (req, res) => {
 
     const freelancerId = project.freelancerId || req.body.freelancerId;
     if (!freelancerId) {
-      return res.status(400).json({ message: "No freelancer has been hired for this project yet. Please hire a freelancer from applications first." });
+      return res.status(400).json({
+        message: "No freelancer has been hired for this project yet. Please hire a freelancer from applications first.",
+      });
     }
 
     const prompt = `Generate a professional freelance contract for the following project:
@@ -26,7 +33,7 @@ Title: ${project.title}
 Description: ${project.description}
 Budget: $${project.budget}
 Client: ${project.clientId.firstName} ${project.clientId.lastName}
-Milestones: ${JSON.stringify(project.milestones)}
+Milestones: ${JSON.stringify(project.milestones || [])}
 
 Include these sections:
 1. Project Scope
@@ -37,17 +44,47 @@ Include these sections:
 6. Termination Clause
 7. Dispute Resolution
 
-Make it professional and legally structured.`;
+Make it professional, comprehensive, and legally structured.`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
-    });
+    let aiGeneratedText = "";
 
-    const aiGeneratedText = message.content[0].type === "text"
-      ? message.content[0].text
-      : "";
+    if (ai) {
+      const modelsToTry = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
+      for (const model of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+          });
+          if (response && response.text) {
+            aiGeneratedText = response.text;
+            break;
+          }
+        } catch (genErr) {
+          console.warn(`Gemini contract generation warning with model ${model}:`, genErr.message);
+        }
+      }
+    }
+
+    // Fallback template generator if AI response fails or API key is unconfigured
+    if (!aiGeneratedText.trim()) {
+      aiGeneratedText = `FREELANCE SERVICES AGREEMENT
+
+1. PROJECT SCOPE
+Project Title: ${project.title}
+Description: ${project.description}
+
+2. PAYMENT TERMS
+Total Project Budget: $${project.budget}
+Payment Model: Escrow-protected milestone payouts upon client review and approval.
+
+3. MILESTONES & DELIVERABLES
+${(project.milestones || []).map((m, idx) => `Milestone ${idx + 1}: ${m.title || "Deliverable"} - $${m.amount || 0}`).join("\n") || "Deliverables as defined in project scope."}
+
+4. INTELLECTUAL PROPERTY & TERMINATION
+All deliverables and intellectual property belong strictly to the Client upon milestone payment release.
+Either party may initiate dispute resolution or contract termination through the FairWork Escrow Protocol.`;
+    }
 
     const contract = await Contract.create({
       projectId,
@@ -60,7 +97,8 @@ Make it professional and legally structured.`;
 
     res.status(201).json(contract);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Contract generation error:", err);
+    res.status(500).json({ message: err.message || "Failed to generate contract" });
   }
 };
 
