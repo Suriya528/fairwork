@@ -6,13 +6,19 @@ const { GoogleGenAI } = require("@google/genai");
 const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
+const populateContractQuery = (query) =>
+  query
+    .populate("clientId", "firstName lastName email")
+    .populate("freelancerId", "firstName lastName email")
+    .populate("projectId", "title budget description status milestones");
+
 /**
  * Generate a professional freelance contract using Google Gemini AI
  */
 exports.generateContract = async (req, res) => {
   try {
     const { projectId } = req.body;
-    const project = await Project.findById(projectId).populate("clientId", "firstName lastName");
+    const project = await Project.findById(projectId).populate("clientId", "firstName lastName email");
 
     if (!project) return res.status(404).json({ message: "Project not found" });
 
@@ -86,14 +92,16 @@ All deliverables and intellectual property belong strictly to the Client upon mi
 Either party may initiate dispute resolution or contract termination through the FairWork Escrow Protocol.`;
     }
 
-    const contract = await Contract.create({
+    const created = await Contract.create({
       projectId,
       clientId: req.user.id,
       freelancerId,
       aiGeneratedText,
     });
 
-    await Project.findByIdAndUpdate(projectId, { contractId: contract._id, freelancerId });
+    await Project.findByIdAndUpdate(projectId, { contractId: created._id, freelancerId });
+
+    const contract = await populateContractQuery(Contract.findById(created._id));
 
     res.status(201).json(contract);
   } catch (err) {
@@ -104,10 +112,7 @@ Either party may initiate dispute resolution or contract termination through the
 
 exports.getContract = async (req, res) => {
   try {
-    const contract = await Contract.findById(req.params.id)
-      .populate("clientId", "firstName lastName")
-      .populate("freelancerId", "firstName lastName")
-      .populate("projectId", "title");
+    const contract = await populateContractQuery(Contract.findById(req.params.id));
     if (!contract) return res.status(404).json({ message: "Contract not found" });
     res.json(contract);
   } catch (err) {
@@ -117,14 +122,35 @@ exports.getContract = async (req, res) => {
 
 exports.signContract = async (req, res) => {
   try {
-    const contract = await Contract.findById(req.params.id);
-    if (!contract) return res.status(404).json({ message: "Contract not found" });
+    const existing = await Contract.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: "Contract not found" });
 
-    const update = contract.clientId.toString() === req.user.id
-      ? { signedByClient: true }
-      : { signedByFreelancer: true };
+    const clientUserId = String(existing.clientId._id || existing.clientId);
+    const freelancerUserId = String(existing.freelancerId._id || existing.freelancerId);
+    const currentUserId = String(req.user.id);
 
-    const updated = await Contract.findByIdAndUpdate(req.params.id, update, { new: true });
+    const isClient = clientUserId === currentUserId;
+    const isFreelancer = freelancerUserId === currentUserId;
+
+    if (!isClient && !isFreelancer && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only contract parties can sign this agreement" });
+    }
+
+    const now = new Date();
+    const update = {};
+
+    if (isClient) {
+      update.signedByClient = true;
+      update.clientSignedAt = now;
+    }
+    if (isFreelancer) {
+      update.signedByFreelancer = true;
+      update.freelancerSignedAt = now;
+    }
+
+    await Contract.findByIdAndUpdate(req.params.id, update, { new: true });
+    const updated = await populateContractQuery(Contract.findById(req.params.id));
+
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });

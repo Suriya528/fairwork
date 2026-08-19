@@ -4,7 +4,9 @@ import {
   FiAlertTriangle,
   FiArrowLeft,
   FiCalendar,
+  FiCheck,
   FiCheckCircle,
+  FiCopy,
   FiDollarSign,
   FiExternalLink,
   FiFileText,
@@ -12,6 +14,7 @@ import {
   FiPaperclip,
   FiPlusCircle,
   FiSend,
+  FiShield,
   FiStar,
   FiUnlock,
   FiUploadCloud,
@@ -50,9 +53,15 @@ import {
   rejectApplication,
   type ApiApplication,
 } from "@/services/applicationsApi"
+import {
+  generateContract,
+  getContract,
+  signContract,
+  type ApiContract,
+} from "@/services/contractsApi"
 import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone } from "@/services/web3"
 
-type TabValue = "overview" | "applications" | "milestones" | "files" | "activity"
+type TabValue = "overview" | "applications" | "contract" | "milestones" | "files" | "activity"
 
 function ProjectNotFound() {
   const navigate = useNavigate()
@@ -179,9 +188,61 @@ export function ProjectDetailPage() {
   const [appsLoading, setAppsLoading] = useState(false)
   const [hiringId, setHiringId] = useState<string | null>(null)
 
+  // Contract states
+  const [contract, setContract] = useState<ApiContract | null>(null)
+  const [contractLoading, setContractLoading] = useState(false)
+  const [contractBusy, setContractBusy] = useState(false)
+  const [contractError, setContractError] = useState("")
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const copyToClipboard = (text: string, id: string) => {
+    void navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
   const isClient = user?.id === project?.clientId
   const isFreelancer = user?.role === "freelancer"
   const isParty = user?.id === project?.clientId || user?.id === project?.freelancerId
+
+  useEffect(() => {
+    if (project?.contractId && token) {
+      setContractLoading(true)
+      getContract(project.contractId, token)
+        .then(setContract)
+        .catch(() => setContract(null))
+        .finally(() => setContractLoading(false))
+    }
+  }, [project?.contractId, token])
+
+  const handleGenerateContract = async () => {
+    if (!token || !project || !project.freelancerId) return
+    setContractBusy(true)
+    setContractError("")
+    try {
+      const created = await generateContract(project.id, project.freelancerId, token)
+      setContract(created)
+      setProject((prev) => (prev ? { ...prev, contractId: created.id } : prev))
+    } catch (err) {
+      setContractError(err instanceof Error ? err.message : "Failed to generate contract.")
+    } finally {
+      setContractBusy(false)
+    }
+  }
+
+  const handleSignContract = async () => {
+    if (!token || !contract) return
+    setContractBusy(true)
+    setContractError("")
+    try {
+      const updated = await signContract(contract.id, token)
+      setContract(updated)
+    } catch (err) {
+      setContractError(err instanceof Error ? err.message : "Failed to sign contract.")
+    } finally {
+      setContractBusy(false)
+    }
+  }
 
   const loadProject = useCallback(async () => {
     if (!id || !token) return
@@ -380,6 +441,7 @@ export function ProjectDetailPage() {
   const tabItems: TabItem[] = [
     { label: "Overview", value: "overview" },
     ...(isClient ? [{ label: "Applications", value: "applications", count: applications.length }] : []),
+    { label: "Contract", value: "contract" },
     { label: "Milestones", value: "milestones", count: project.milestones.length },
     { label: "Files", value: "files" },
     { label: "Activity", value: "activity", count: 1 },
@@ -543,6 +605,274 @@ export function ProjectDetailPage() {
                         </CardContent>
                       </Card>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tab === "contract" && (
+              <div className="flex flex-col gap-4">
+                {contractError && (
+                  <div className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-xs text-danger font-medium">
+                    {contractError}
+                  </div>
+                )}
+
+                {contractLoading ? (
+                  <div className="py-12 text-center text-xs text-muted">Loading contract agreement...</div>
+                ) : contract ? (
+                  <Card className="overflow-hidden border border-border shadow-sm">
+                    {/* Top Legal Document Header Banner */}
+                    <div className="border-b border-border bg-elevated/40 p-5 sm:p-6">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <FiFileText className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <h3 className="font-bold text-foreground text-base sm:text-lg">
+                              {contract.projectTitle || project.title}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-subtle font-mono mt-0.5">
+                              <span>Ref ID:</span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`FAIR-CNT-${contract.id.slice(-8).toUpperCase()}`, contract.id)}
+                                className="inline-flex items-center gap-1.5 rounded bg-surface hover:bg-surface-hover px-2 py-0.5 text-xs font-mono font-semibold text-foreground border border-border transition-colors cursor-pointer"
+                                title="Click to copy Contract Reference ID"
+                              >
+                                <span>FAIR-CNT-{contract.id.slice(-8).toUpperCase()}</span>
+                                {copiedId === contract.id ? (
+                                  <FiCheck className="h-3.5 w-3.5 text-success shrink-0" />
+                                ) : (
+                                  <FiCopy className="h-3.5 w-3.5 text-subtle shrink-0" />
+                                )}
+                              </button>
+                              <span>·</span>
+                              <span>
+                                Contract Date: {formatDate(contract.clientSignedAt || contract.freelancerSignedAt || contract.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Badge tone={contract.signedByClient && contract.signedByFreelancer ? "success" : "warning"} className="px-3 py-1 text-xs">
+                          {contract.signedByClient && contract.signedByFreelancer ? "✓ BINDING LEGAL AGREEMENT" : "⏳ AWAITING SIGNATURES"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <CardContent className="space-y-6 p-5 sm:p-6">
+                      {/* Parties Metadata Grid */}
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        {/* Client Metadata */}
+                        <div className="rounded-xl border border-border bg-base p-4">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Client / Hirer</span>
+                          <p className="font-bold text-foreground text-sm mt-1">{contract.clientName || "Client"}</p>
+                          {contract.clientEmail && <p className="text-xs text-subtle truncate">{contract.clientEmail}</p>}
+                          <div className="mt-3 flex items-center gap-1.5">
+                            {contract.signedByClient ? (
+                              <Badge tone="success" dot className="text-[11px]">
+                                Signed {formatDate(contract.clientSignedAt || contract.createdAt)}
+                              </Badge>
+                            ) : (
+                              <Badge tone="neutral" dot className="text-[11px]">
+                                Pending Signature
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Freelancer Metadata */}
+                        <div className="rounded-xl border border-border bg-base p-4">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Assigned Freelancer</span>
+                          <p className="font-bold text-foreground text-sm mt-1">{contract.freelancerName || "Freelancer"}</p>
+                          {contract.freelancerEmail && <p className="text-xs text-subtle truncate">{contract.freelancerEmail}</p>}
+                          <div className="mt-3 flex items-center gap-1.5">
+                            {contract.signedByFreelancer ? (
+                              <Badge tone="success" dot className="text-[11px]">
+                                Signed {formatDate(contract.freelancerSignedAt || contract.createdAt)}
+                              </Badge>
+                            ) : (
+                              <Badge tone="neutral" dot className="text-[11px]">
+                                Pending Signature
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Agreement Financial Details */}
+                        <div className="rounded-xl border border-border bg-base p-4">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Agreed Budget</span>
+                          <p className="font-bold text-primary text-sm mt-1">{formatAmount(contract.projectBudget || project.budget)}</p>
+                          <p className="text-[11px] text-subtle mt-0.5">P2P Escrow Protected</p>
+                          <div className="mt-3 flex items-center gap-1 text-[11px] text-muted">
+                            <FiShield className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span>Smart Contract Authority</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Legal Document Body with Embedded Preamble Header and Signatures */}
+                      <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-inner font-mono text-xs leading-relaxed text-foreground">
+                        {/* Document Header Preamble */}
+                        <div className="border-b border-border pb-4 mb-4 font-mono text-xs space-y-1">
+                          <p className="font-bold text-primary text-sm uppercase tracking-wider text-center border-b border-border/60 pb-2 mb-3">
+                            FAIRWORK FREELANCE SERVICES AGREEMENT
+                          </p>
+                          <div className="grid sm:grid-cols-2 gap-2 text-subtle text-[11px]">
+                            <div><span className="font-bold text-foreground">Ref ID:</span> FAIR-CNT-{contract.id.slice(-8).toUpperCase()}</div>
+                            <div><span className="font-bold text-foreground">Effective Date:</span> {formatDate(contract.clientSignedAt || contract.freelancerSignedAt || contract.createdAt)}</div>
+                            <div><span className="font-bold text-foreground">Client Party:</span> {contract.clientName || "Client"} ({contract.clientEmail || "N/A"})</div>
+                            <div><span className="font-bold text-foreground">Freelancer Party:</span> {contract.freelancerName || "Freelancer"} ({contract.freelancerEmail || "N/A"})</div>
+                            <div><span className="font-bold text-foreground">Agreed Budget:</span> {formatAmount(contract.projectBudget || project.budget)}</div>
+                            <div><span className="font-bold text-foreground">Escrow Security:</span> Smart Contract Escrow</div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                            <FiFileText className="h-4 w-4 text-primary" />
+                            TERMS &amp; CONDITIONS
+                          </span>
+                          <span className="text-[10px] text-subtle">Generated via Gemini AI</span>
+                        </div>
+
+                        {/* AI Generated Contract Text with Dynamic Signature Block */}
+                        <div className="max-h-80 overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground/90 pr-2 border-b border-border pb-4 mb-4 space-y-4">
+                          <div>
+                            {contract.aiGeneratedText.replace(/\[Freelancer\/Contractor Representative\]/g, contract.freelancerName || "Contractor Representative")}
+                          </div>
+
+                          {/* Exact Signature Block inside Document Body */}
+                          <div className="pt-4 border-t border-dashed border-border/80 space-y-4 font-mono text-xs">
+                            <p className="font-semibold text-foreground">
+                              IN WITNESS WHEREOF, the Parties hereto have executed this Agreement as of the Effective Date.
+                            </p>
+
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <p className="font-bold text-foreground">CLIENT:</p>
+                                <p>
+                                  Signature: <span className={contract.signedByClient ? "text-success font-bold" : "text-subtle"}>{contract.signedByClient ? "Digitally Signed ✓" : "________________________________________"}</span>
+                                </p>
+                                <p>
+                                  Printed Name: <span className="font-semibold text-foreground">{contract.clientName || "Client"}</span>
+                                </p>
+                                <p>
+                                  Date: <span className={contract.signedByClient ? "text-foreground font-semibold" : "text-subtle"}>{contract.signedByClient ? formatDate(contract.clientSignedAt || contract.createdAt) : "____________________________________________"}</span>
+                                </p>
+                              </div>
+
+                              <div className="space-y-1 pt-2">
+                                <p className="font-bold text-foreground">CONTRACTOR:</p>
+                                <p>
+                                  Signature: <span className={contract.signedByFreelancer ? "text-success font-bold" : "text-subtle"}>{contract.signedByFreelancer ? "Digitally Signed ✓" : "________________________________________"}</span>
+                                </p>
+                                <p>
+                                  Printed Name: <span className="font-semibold text-foreground">{contract.freelancerName || "Freelancer"}</span>
+                                </p>
+                                <p>
+                                  Date: <span className={contract.signedByFreelancer ? "text-foreground font-semibold" : "text-subtle"}>{contract.signedByFreelancer ? formatDate(contract.freelancerSignedAt || contract.createdAt) : "____________________________________________"}</span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Official Electronic Signatures Audit Summary Inside Document */}
+                        <div className="space-y-3 font-mono text-xs pt-1">
+                          <p className="font-bold text-foreground text-[11px] uppercase tracking-wider">
+                            OFFICIAL ELECTRONIC SIGNATURES
+                          </p>
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="rounded-xl border border-border bg-base p-3 space-y-1">
+                              <p className="font-bold text-foreground text-[10px] uppercase tracking-wider">CLIENT SIGNATURE</p>
+                              <p className="font-serif italic font-bold text-primary text-sm">
+                                {contract.signedByClient ? `Signed by ${contract.clientName || "Client"}` : "Unsigned"}
+                              </p>
+                              <p className="text-[11px] text-subtle">
+                                Status: <span className={contract.signedByClient ? "text-success font-bold" : "text-muted"}>{contract.signedByClient ? "SIGNED ✓" : "PENDING"}</span>
+                              </p>
+                              <p className="text-[11px] text-subtle">
+                                Date: {contract.signedByClient ? formatDate(contract.clientSignedAt || contract.createdAt) : "Pending Signature"}
+                              </p>
+                            </div>
+
+                            <div className="rounded-xl border border-border bg-base p-3 space-y-1">
+                              <p className="font-bold text-foreground text-[10px] uppercase tracking-wider">FREELANCER SIGNATURE</p>
+                              <p className="font-serif italic font-bold text-primary text-sm">
+                                {contract.signedByFreelancer ? `Signed by ${contract.freelancerName || "Freelancer"}` : "Unsigned"}
+                              </p>
+                              <p className="text-[11px] text-subtle">
+                                Status: <span className={contract.signedByFreelancer ? "text-success font-bold" : "text-muted"}>{contract.signedByFreelancer ? "SIGNED ✓" : "PENDING"}</span>
+                              </p>
+                              <p className="text-[11px] text-subtle">
+                                Date: {contract.signedByFreelancer ? formatDate(contract.freelancerSignedAt || contract.createdAt) : "Pending Signature"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Digital Signature Panel */}
+                      <div className="rounded-xl border border-border bg-elevated/30 p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="text-xs">
+                            {contract.signedByClient && contract.signedByFreelancer ? (
+                              <p className="font-semibold text-success flex items-center gap-1.5">
+                                <FiCheckCircle className="h-4 w-4" />
+                                Fully Executed Agreement — Both Client and Freelancer have digitally signed.
+                              </p>
+                            ) : (isClient && contract.signedByClient) || (isFreelancer && contract.signedByFreelancer) ? (
+                              <p className="font-semibold text-foreground flex items-center gap-1.5">
+                                <FiUserCheck className="h-4 w-4 text-primary" />
+                                You have digitally signed this contract. Awaiting remaining party signature.
+                              </p>
+                            ) : (isClient && !contract.signedByClient) || (isFreelancer && !contract.signedByFreelancer) ? (
+                              <p className="text-muted font-medium">
+                                By clicking <strong className="text-foreground">Sign Contract</strong>, you electronically execute and accept this agreement under FairWork Escrow terms.
+                              </p>
+                            ) : (
+                              <p className="text-muted">Awaiting contract signatures from participating parties.</p>
+                            )}
+                          </div>
+
+                          {((isClient && !contract.signedByClient) || (isFreelancer && !contract.signedByFreelancer)) && (
+                            <Button
+                              size="md"
+                              loading={contractBusy}
+                              leftIcon={<FiCheckCircle className="h-4 w-4" />}
+                              onClick={handleSignContract}
+                              className="shrink-0"
+                            >
+                              Sign Contract ({isClient ? "as Client" : "as Freelancer"})
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : isClient && project.freelancerId ? (
+                  <Card>
+                    <CardContent className="flex items-center justify-between p-6">
+                      <div>
+                        <h4 className="font-semibold text-foreground">Generate Legal Agreement</h4>
+                        <p className="text-xs text-muted mt-1">A freelancer has been hired for this project. Generate the AI legal contract now.</p>
+                      </div>
+                      <Button size="sm" loading={contractBusy} onClick={handleGenerateContract}>
+                        Generate Contract
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 text-center">
+                    <FiFileText className="h-8 w-8 text-subtle mb-3" />
+                    <p className="text-sm font-semibold text-foreground">No Contract Generated Yet</p>
+                    <p className="text-xs text-muted max-w-sm mt-1">
+                      {isClient
+                        ? "Hire a freelancer from proposals to generate a formal agreement."
+                        : "The client will generate the formal legal contract agreement once hiring is complete."}
+                    </p>
                   </div>
                 )}
               </div>
