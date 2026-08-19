@@ -42,9 +42,15 @@ import {
   getDisplayCategory,
   getProjectDeliverables,
   uploadProjectDeliverable,
+  getProjectReferenceFiles,
+  uploadProjectReferenceFile,
+  submitMilestone,
+  requestMilestoneRevision,
+  approveMilestone,
   type ApiDeliverable,
   type ApiMilestone,
   type ApiProject,
+  type ApiReferenceFile,
 } from "@/services/projectsApi"
 import {
   acceptApplication,
@@ -117,39 +123,182 @@ function IdentityCard({
 
 function MilestoneRow({
   milestone,
+  isClient,
+  isFreelancer,
   canRelease,
   releasing,
+  deliverables,
+  onSubmit,
+  onRequestRevision,
+  onApprove,
   onRelease,
 }: {
   milestone: ApiMilestone
+  isClient: boolean
+  isFreelancer: boolean
   canRelease: boolean
   releasing: boolean
+  deliverables: ApiDeliverable[]
+  onSubmit: (milestoneId: string, notes: string) => Promise<void>
+  onRequestRevision: (milestoneId: string, notes: string) => Promise<void>
+  onApprove: (milestoneId: string) => Promise<void>
   onRelease: () => void
 }) {
   const { formatAmount } = useCurrency()
+  const [submitting, setSubmitting] = useState(false)
+  const [notes, setNotes] = useState("")
+  const [showForm, setShowForm] = useState(false)
+
+  const milestoneDeliverables = deliverables.filter((d) => d.milestoneId === milestone.id)
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      await onSubmit(milestone.id, notes)
+      setShowForm(false)
+      setNotes("")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleRevisionClick = async () => {
+    const reason = window.prompt("Explain required revisions for the freelancer:")?.trim()
+    if (reason) {
+      await onRequestRevision(milestone.id, reason)
+    }
+  }
+
+  const getStatusBadge = () => {
+    switch (milestone.status) {
+      case "submitted":
+        return <Badge tone="warning">Submitted for Review ⏳</Badge>
+      case "revision_requested":
+        return <Badge tone="danger">Revision Requested ⚠️</Badge>
+      case "completed":
+        return <Badge tone="success">Completed &amp; Approved ✓</Badge>
+      default:
+        return <StatusBadge status={milestone.status} />
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex gap-3">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-medium text-muted">
-          {milestone.order}
-        </div>
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-foreground">{milestone.title}</span>
-            <StatusBadge status={milestone.status} />
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex gap-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-bold text-foreground">
+            {milestone.order}
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-base font-semibold text-foreground">{milestone.title}</span>
+              {getStatusBadge()}
+            </div>
+            {milestone.submittedAt && (
+              <p className="text-[11px] text-subtle">
+                Submitted on {formatDate(milestone.submittedAt)}
+              </p>
+            )}
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="shrink-0 text-base font-bold text-primary">{formatAmount(milestone.amount)}</span>
+
+          {/* Client Review Controls */}
+          {isClient && milestone.status === "submitted" && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id)}>
+                Approve Milestone
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleRevisionClick}>
+                Request Revision
+              </Button>
+            </div>
+          )}
+
+          {/* Client Release Payout */}
+          {isClient && milestone.status === "completed" && (
+            milestone.paymentReleased ? (
+              <Badge tone="success">Payment Released ✓</Badge>
+            ) : (
+              <Button size="sm" disabled={!canRelease || releasing} loading={releasing} onClick={onRelease}>
+                Release Escrow Payout
+              </Button>
+            )
+          )}
+
+          {/* Freelancer Submit Action */}
+          {isFreelancer && (milestone.status === "pending" || milestone.status === "in_progress" || milestone.status === "revision_requested") && (
+            <Button size="sm" variant="primary" onClick={() => setShowForm(!showForm)}>
+              {milestone.status === "revision_requested" ? "Resubmit Work" : "Submit Work"}
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="shrink-0 text-sm font-semibold text-foreground">{formatAmount(milestone.amount)}</span>
-        {milestone.paymentReleased ? (
-          <Badge tone="success">Paid</Badge>
-        ) : (
-          <Button size="sm" disabled={!canRelease || releasing} loading={releasing} onClick={onRelease}>
-            Release
-          </Button>
-        )}
-      </div>
+
+      {/* Submitted Notes Block */}
+      {milestone.submissionNotes && (
+        <div className="rounded-lg border border-border bg-base p-3 text-xs text-foreground/90 space-y-1">
+          <p className="font-semibold text-muted text-[11px] uppercase tracking-wider">Freelancer Submission Notes:</p>
+          <p className="whitespace-pre-wrap">{milestone.submissionNotes}</p>
+        </div>
+      )}
+
+      {/* Revision Request Notes Block */}
+      {milestone.revisionNotes && milestone.status === "revision_requested" && (
+        <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger space-y-1">
+          <p className="font-semibold text-[11px] uppercase tracking-wider">Client Revision Feedback:</p>
+          <p className="whitespace-pre-wrap">{milestone.revisionNotes}</p>
+        </div>
+      )}
+
+      {/* Milestone Deliverable Files Attached */}
+      {milestoneDeliverables.length > 0 && (
+        <div className="space-y-2 pt-1 border-t border-border/60">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Attached Milestone Files ({milestoneDeliverables.length}):</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {milestoneDeliverables.map((f) => (
+              <a
+                key={f.id}
+                href={f.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-lg border border-border bg-base px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-hover transition-colors"
+              >
+                <span className="truncate max-w-[200px]">{f.filename}</span>
+                <span className="text-[10px] text-subtle shrink-0">View / Download</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Freelancer Submit Form */}
+      {showForm && (
+        <form onSubmit={handleFormSubmit} className="space-y-3 pt-3 border-t border-border">
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">
+              Submission Notes / Final Delivery Description
+            </label>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Describe completed deliverables, implementation highlights, link to repository or testing environment..."
+              className="w-full rounded-lg border border-border bg-base p-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" type="submit" loading={submitting}>
+              Submit Milestone for Review
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }
@@ -318,106 +467,32 @@ export function ProjectDetailPage() {
     }
   }, [project, token, loadApplications])
 
-  const loadDeliverables = useCallback(async () => {
+  const [submissionNotes, setSubmissionNotes] = useState("")
+
+  // Reference Files states (Client uploads requirement specs, design references)
+  const [referenceFiles, setReferenceFiles] = useState<ApiReferenceFile[]>([])
+  const [refFilesLoading, setRefFilesLoading] = useState(false)
+  const [uploadingRefFile, setUploadingRefFile] = useState(false)
+  const [selectedRefFile, setSelectedRefFile] = useState<File | null>(null)
+
+  const loadReferenceFiles = useCallback(async () => {
     if (!id || !token) return
-    setFilesLoading(true)
-    setFilesError("")
+    setRefFilesLoading(true)
     try {
-      setDeliverables(await getProjectDeliverables(id, token))
-    } catch (err) {
-      setFilesError(err instanceof Error ? err.message : "Couldn't load deliverables.")
+      setReferenceFiles(await getProjectReferenceFiles(id, token))
+    } catch {
+      // ignore
     } finally {
-      setFilesLoading(false)
+      setRefFilesLoading(false)
     }
   }, [id, token])
 
   useEffect(() => {
     if (tab === "files") {
       void loadDeliverables()
+      void loadReferenceFiles()
     }
-  }, [tab, loadDeliverables])
-
-  if (loading) return <div className="p-4 text-sm text-muted sm:p-6 lg:p-8">Loading project...</div>
-  if (notFound) return <ProjectNotFound />
-  if (error || !project) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">
-          {error ?? "Couldn't load project."}
-        </div>
-      </div>
-    )
-  }
-
-  const completedCount = project.milestones.filter((milestone) => milestone.status === "completed").length
-  const completedAmount = project.milestones
-    .filter((milestone) => milestone.status === "completed")
-    .reduce((sum, milestone) => sum + milestone.amount, 0)
-  const remainingAmount = project.budget - completedAmount
-  const escrowActive = project.escrowFunded === true && project.escrowCompleted === false && project.escrowDisputed === false
-
-  const refresh = async () => {
-    if (id && token) {
-      await loadProject()
-      await loadApplications()
-    }
-  }
-
-  const runAction = async (work: () => Promise<void>) => {
-    setActionError("")
-    try {
-      await work()
-      setActionState("Transaction confirmed. Waiting for blockchain synchronization…")
-      await refresh()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Blockchain action failed.")
-    } finally {
-      setActionState("")
-    }
-  }
-
-  const fund = () =>
-    runAction(async () => {
-      if (!isClient || !project.freelancerWalletAddress || !user?.walletAddress)
-        throw new Error("Only the client with an assigned, verified freelancer wallet can fund escrow.")
-      await fundEscrow(
-        project.id,
-        project.freelancerWalletAddress as `0x${string}`,
-        project.milestones.map((m) => String(m.amount)),
-        user.walletAddress,
-        setActionState,
-      )
-    })
-
-  const release = (index: number) =>
-    runAction(async () => {
-      if (!isClient || !escrowActive || !user?.walletAddress) throw new Error("Escrow is not available for release.")
-      await releaseEscrowMilestone(project.id, index, user.walletAddress)
-    })
-
-  const dispute = () => {
-    const reason = window.prompt("Describe the dispute:")?.trim()
-    if (reason)
-      void runAction(async () => {
-        if (!isParty || !escrowActive || !user?.walletAddress)
-          throw new Error("Only an escrow party can raise an active escrow dispute.")
-        await raiseEscrowDispute(project.id, reason, user.walletAddress)
-      })
-  }
-
-  const handleHire = async (applicationId: string) => {
-    if (!token) return
-    setHiringId(applicationId)
-    setActionError("")
-    try {
-      await acceptApplication(applicationId, token)
-      await refresh()
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to hire freelancer.")
-    } finally {
-      setHiringId(null)
-    }
-  }
+  }, [tab, loadDeliverables, loadReferenceFiles])
 
   const handleReject = async (applicationId: string) => {
     if (!token) return
@@ -435,16 +510,68 @@ export function ProjectDetailPage() {
     setUploadingFile(true)
     setFilesError("")
     try {
-      await uploadProjectDeliverable(project.id, selectedFile, selectedMilestoneId, token)
+      await uploadProjectDeliverable(project.id, selectedFile, selectedMilestoneId, token, submissionNotes)
       setSelectedFile(null)
       setSelectedMilestoneId("")
+      setSubmissionNotes("")
       const input = document.getElementById("deliverable-file") as HTMLInputElement | null
       if (input) input.value = ""
       await loadDeliverables()
+      await loadProject()
     } catch (err) {
       setFilesError(err instanceof Error ? err.message : "Couldn't upload the deliverable.")
     } finally {
       setUploadingFile(false)
+    }
+  }
+
+  const uploadRefFile = async () => {
+    if (!token || !selectedRefFile || !project) return
+    setUploadingRefFile(true)
+    try {
+      await uploadProjectReferenceFile(project.id, selectedRefFile, token)
+      setSelectedRefFile(null)
+      const input = document.getElementById("reference-file") as HTMLInputElement | null
+      if (input) input.value = ""
+      await loadReferenceFiles()
+    } catch (err) {
+      setFilesError(err instanceof Error ? err.message : "Couldn't upload reference file.")
+    } finally {
+      setUploadingRefFile(false)
+    }
+  }
+
+  const handleMilestoneSubmit = async (milestoneId: string, notes: string) => {
+    if (!token || !project) return
+    setActionError("")
+    try {
+      const updated = await submitMilestone(project.id, milestoneId, notes, token)
+      setProject(updated)
+      await loadDeliverables()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to submit milestone.")
+    }
+  }
+
+  const handleMilestoneRevisionRequest = async (milestoneId: string, notes: string) => {
+    if (!token || !project) return
+    setActionError("")
+    try {
+      const updated = await requestMilestoneRevision(project.id, milestoneId, notes, token)
+      setProject(updated)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to request revision.")
+    }
+  }
+
+  const handleMilestoneApprove = async (milestoneId: string) => {
+    if (!token || !project) return
+    setActionError("")
+    try {
+      const updated = await approveMilestone(project.id, milestoneId, token)
+      setProject(updated)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to approve milestone.")
     }
   }
 
@@ -889,16 +1016,22 @@ export function ProjectDetailPage() {
             )}
 
             {tab === "milestones" && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 {project.milestones.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted">No milestones yet</p>
+                  <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted">No milestones defined for this project.</p>
                 ) : (
                   project.milestones.map((milestone, index) => (
                     <MilestoneRow
                       key={milestone.id}
                       milestone={milestone}
-                      canRelease={isClient && escrowActive && !milestone.paymentReleased}
+                      isClient={isClient}
+                      isFreelancer={Boolean(isFreelancer && project.freelancerId === user?.id)}
+                      canRelease={Boolean(isClient && escrowActive && !milestone.paymentReleased)}
                       releasing={Boolean(actionState)}
+                      deliverables={deliverables}
+                      onSubmit={handleMilestoneSubmit}
+                      onRequestRevision={handleMilestoneRevisionRequest}
+                      onApprove={handleMilestoneApprove}
                       onRelease={() => release(index)}
                     />
                   ))
@@ -907,110 +1040,202 @@ export function ProjectDetailPage() {
             )}
 
             {tab === "files" && (
-              <div className="flex flex-col gap-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Work Deliverables &amp; Submissions</h3>
-                  <p className="text-xs text-muted">Completed milestone deliverables, source files, and final assets submitted by the freelancer.</p>
+              <div className="flex flex-col gap-8">
+                {/* 1. FREELANCER WORK DELIVERABLES SECTION */}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Freelancer Work Deliverables</h3>
+                    <p className="text-xs text-muted">Completed milestone deliverables, source code, final assets, and submission notes submitted by the freelancer.</p>
+                  </div>
+
+                  {isClient && deliverables.length > 0 && (
+                    <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-foreground flex items-center gap-2">
+                      <span>💡 Review the freelancer's submitted deliverables below before approving milestones and releasing payments.</span>
+                    </div>
+                  )}
+
+                  {/* Freelancer Work Upload Card: Rendered ONLY for assigned Freelancer */}
+                  {isFreelancer && project.freelancerId === user?.id && (
+                    <Card className="border border-primary/30 shadow-sm">
+                      <CardContent className="flex flex-col gap-4 p-5">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Submit Work Deliverable &amp; Milestone Assets</h4>
+                          <p className="mt-0.5 text-[11px] text-muted">Upload source code ZIPs, design exports, documentation, build packages, or milestone files for client review.</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-foreground mb-1">Select Work File</label>
+                            <input
+                              id="deliverable-file"
+                              type="file"
+                              className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
+                              accept="image/*,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,video/*"
+                              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                              aria-label="Choose a deliverable file"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-foreground mb-1">Associate Milestone (Optional)</label>
+                            <select
+                              value={selectedMilestoneId}
+                              onChange={(event) => setSelectedMilestoneId(event.target.value)}
+                              className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            >
+                              <option value="">Project-level deliverable</option>
+                              {project.milestones.map((milestone) => (
+                                <option key={milestone.id} value={milestone.id}>
+                                  {milestone.order}. {milestone.title} ({milestone.status})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-foreground mb-1">Submission Notes &amp; Highlights</label>
+                          <textarea
+                            rows={2}
+                            value={submissionNotes}
+                            onChange={(e) => setSubmissionNotes(e.target.value)}
+                            placeholder="Add notes describing deliverables, feature updates, environment setup, testing notes..."
+                            className="w-full rounded-lg border border-border bg-surface p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                          <span className="min-w-0 truncate text-xs text-muted">
+                            {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : "Max file size: 50MB"}
+                          </span>
+                          <Button
+                            size="sm"
+                            loading={uploadingFile}
+                            disabled={!selectedFile}
+                            leftIcon={<FiUploadCloud className="h-4 w-4" />}
+                            onClick={uploadFile}
+                          >
+                            Upload &amp; Submit Deliverable
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {filesError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{filesError}</div>}
+                  {filesLoading ? (
+                    <div className="rounded-xl border border-border bg-surface px-4 py-10 text-center text-sm text-muted">Loading deliverables...</div>
+                  ) : deliverables.length === 0 && !filesError ? (
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
+                      <FiPaperclip className="mb-3 h-6 w-6 text-subtle" />
+                      <p className="text-sm font-medium text-foreground">No work deliverables submitted yet</p>
+                      <p className="mt-1 max-w-xs text-xs text-muted">Completed deliverables submitted by the freelancer will appear here for client review.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {deliverables.map((file) => {
+                        const milestone = project.milestones.find((item) => item.id === file.milestoneId)
+                        return (
+                          <Card key={file.id}>
+                            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="flex min-w-0 items-start gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-primary">
+                                  <FiFileText className="h-4 w-4" />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-foreground">{file.filename}</p>
+                                  <p className="mt-0.5 text-xs text-muted">
+                                    {formatFileSize(file.size)}
+                                    {file.mimeType ? ` · ${file.mimeType}` : ""} · Submitted {formatDate(file.uploadedAt)}
+                                    {file.uploadedByName ? ` by ${file.uploadedByName} (Freelancer)` : ""}
+                                  </p>
+                                  {milestone && <Badge className="mt-2" tone="neutral">Milestone {milestone.order}: {milestone.title}</Badge>}
+                                  {file.submissionNotes && (
+                                    <div className="mt-2 rounded-lg border border-border/80 bg-base/80 p-2.5 text-xs text-foreground/90">
+                                      <span className="font-bold text-muted text-[10px] uppercase block mb-0.5">Submission Notes:</span>
+                                      <p className="whitespace-pre-wrap">{file.submissionNotes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <a
+                                href={file.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-border-strong px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-hover"
+                              >
+                                View / Download
+                              </a>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
-                {isClient && deliverables.length > 0 && (
-                  <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-foreground">
-                    💡 Review the freelancer's submitted work deliverables below before approving milestones and releasing payment.
+                {/* 2. CLIENT PROJECT REFERENCE FILES SECTION (SEPARATED) */}
+                <div className="flex flex-col gap-4 pt-6 border-t border-border">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Client Project Requirements &amp; Reference Files</h3>
+                    <p className="text-xs text-muted">Project specification documents, brand assets, sample files, and requirement references provided by the client.</p>
                   </div>
-                )}
 
-                {/* Freelancer Work Upload Card: Rendered ONLY for assigned Freelancer */}
-                {isFreelancer && project.freelancerId === user?.id && (
-                  <Card>
-                    <CardContent className="flex flex-col gap-4 p-5">
-                      <div>
-                        <h4 className="text-xs font-semibold text-foreground">Submit Work Deliverable</h4>
-                        <p className="mt-0.5 text-[11px] text-muted">Upload source code, final assets, or milestone deliverables for client review.</p>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <input
-                          id="deliverable-file"
-                          type="file"
-                          className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
-                          accept="image/jpeg,image/png,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                          aria-label="Choose a deliverable file"
-                        />
-                        <select
-                          value={selectedMilestoneId}
-                          onChange={(event) => setSelectedMilestoneId(event.target.value)}
-                          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        >
-                          <option value="">Project-level deliverable</option>
-                          {project.milestones.map((milestone) => (
-                            <option key={milestone.id} value={milestone.id}>
-                              {milestone.order}. {milestone.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <span className="min-w-0 truncate text-xs text-muted">
-                          {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : "No file selected"}
-                        </span>
-                        <Button
-                          size="sm"
-                          loading={uploadingFile}
-                          disabled={!selectedFile}
-                          leftIcon={<FiUploadCloud className="h-4 w-4" />}
-                          onClick={uploadFile}
-                        >
-                          Submit deliverable
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                  {/* Client Upload Reference Files Box */}
+                  {isClient && (
+                    <Card>
+                      <CardContent className="flex flex-col gap-3 p-5">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Upload Reference Specification</h4>
+                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                          <input
+                            id="reference-file"
+                            type="file"
+                            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
+                            onChange={(event) => setSelectedRefFile(event.target.files?.[0] ?? null)}
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            loading={uploadingRefFile}
+                            disabled={!selectedRefFile}
+                            onClick={uploadRefFile}
+                            className="shrink-0"
+                          >
+                            Upload Reference File
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                {filesError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{filesError}</div>}
-                {filesLoading ? (
-                  <div className="rounded-xl border border-border bg-surface px-4 py-10 text-center text-sm text-muted">Loading deliverables...</div>
-                ) : deliverables.length === 0 && !filesError ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-14 text-center">
-                    <FiPaperclip className="mb-3 h-6 w-6 text-subtle" />
-                    <p className="text-sm font-medium text-foreground">No work deliverables submitted yet</p>
-                    <p className="mt-1 max-w-xs text-xs text-muted">Completed deliverables submitted by the freelancer will appear here for client review.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {deliverables.map((file) => {
-                      const milestone = project.milestones.find((item) => item.id === file.milestoneId)
-                      return (
-                        <Card key={file.id}>
-                          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex min-w-0 items-start gap-3">
-                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-subtle">
-                                <FiFileText className="h-4 w-4" />
-                              </span>
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-foreground">{file.filename}</p>
-                                <p className="mt-1 text-xs text-muted">
-                                  {formatFileSize(file.size)}
-                                  {file.mimeType ? ` · ${file.mimeType}` : ""} · Submitted {formatDate(file.uploadedAt)}
-                                  {file.uploadedByName ? ` by ${file.uploadedByName} (Freelancer)` : ""}
-                                </p>
-                                {milestone && <Badge className="mt-2" tone="neutral">Milestone {milestone.order}: {milestone.title}</Badge>}
-                              </div>
+                  {refFilesLoading ? (
+                    <div className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-xs text-muted">Loading reference files...</div>
+                  ) : referenceFiles.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted">
+                      No client reference files uploaded for this project yet.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {referenceFiles.map((rf) => (
+                        <div key={rf.id} className="flex items-center justify-between rounded-xl border border-border bg-surface p-3.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FiPaperclip className="h-4 w-4 text-subtle shrink-0" />
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-foreground">{rf.filename}</p>
+                              <p className="text-[11px] text-subtle">{formatFileSize(rf.size)} · {formatDate(rf.uploadedAt)}</p>
                             </div>
-                            <a
-                              href={file.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-border-strong px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-hover"
-                            >
-                              View / download
-                            </a>
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-                  </div>
-                )}
+                          </div>
+                          <a
+                            href={rf.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium text-primary hover:underline shrink-0"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

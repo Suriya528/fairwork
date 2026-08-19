@@ -123,8 +123,18 @@ exports.uploadProjectDeliverable = async (req, res) => {
     }
 
     const milestoneId = req.body.milestoneId || null;
-    if (milestoneId && !project.milestones.id(milestoneId)) {
-      return res.status(400).json({ message: "Milestone does not belong to this project" });
+    const submissionNotes = req.body.submissionNotes || "";
+
+    if (milestoneId) {
+      const targetMilestone = project.milestones.id(milestoneId);
+      if (!targetMilestone) {
+        return res.status(400).json({ message: "Milestone does not belong to this project" });
+      }
+      targetMilestone.status = "submitted";
+      targetMilestone.submittedAt = new Date();
+      if (submissionNotes) {
+        targetMilestone.submissionNotes = submissionNotes;
+      }
     }
 
     const result = await uploadToCloudinary(req.file);
@@ -135,11 +145,123 @@ exports.uploadProjectDeliverable = async (req, res) => {
       mimeType: req.file.mimetype,
       size: result.bytes || req.file.size,
       milestoneId,
+      submissionNotes,
       uploadedBy: req.user.id,
     });
+
     await project.save();
     await project.populate("deliverables.uploadedBy", "firstName lastName");
+
+    recordActivitySafely({
+      userIds: [project.clientId, req.user.id],
+      eventKey: `deliverable-uploaded:${project._id}:${req.file.originalname}`,
+      actorId: req.user.id,
+      type: "deliverable_uploaded",
+      title: "Deliverable uploaded",
+      message: `Work deliverable “${req.file.originalname}” was submitted for “${project.title}”.`,
+      projectId: project._id,
+    });
+
     res.status(201).json(project.deliverables[project.deliverables.length - 1]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.submitMilestone = async (req, res) => {
+  try {
+    const { project, error } = await projectForParty(req.params.id, req.user.id);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    if (!project.freelancerId || String(project.freelancerId) !== String(req.user.id)) {
+      return res.status(403).json({ message: "Only the assigned freelancer can submit milestones." });
+    }
+
+    const milestone = project.milestones.id(req.params.milestoneId);
+    if (!milestone) return res.status(404).json({ message: "Milestone not found" });
+
+    milestone.status = "submitted";
+    milestone.submittedAt = new Date();
+    if (req.body.submissionNotes) milestone.submissionNotes = req.body.submissionNotes;
+
+    await project.save();
+
+    recordActivitySafely({
+      userIds: [project.clientId, req.user.id],
+      eventKey: `milestone-submitted:${project._id}:${milestone._id}`,
+      actorId: req.user.id,
+      type: "milestone_submitted",
+      title: "Milestone submitted",
+      message: `Milestone “${milestone.title}” was submitted for review.`,
+      projectId: project._id,
+    });
+
+    res.json(project);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.requestMilestoneRevision = async (req, res) => {
+  try {
+    const { project, error } = await projectForParty(req.params.id, req.user.id);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    if (String(project.clientId) !== String(req.user.id)) {
+      return res.status(403).json({ message: "Only the project client can request revisions." });
+    }
+
+    const milestone = project.milestones.id(req.params.milestoneId);
+    if (!milestone) return res.status(404).json({ message: "Milestone not found" });
+
+    milestone.status = "revision_requested";
+    milestone.revisionRequestedAt = new Date();
+    milestone.revisionNotes = req.body.revisionNotes || "Revision requested by client.";
+
+    await project.save();
+
+    recordActivitySafely({
+      userIds: [project.freelancerId, req.user.id],
+      eventKey: `milestone-revision:${project._id}:${milestone._id}`,
+      actorId: req.user.id,
+      type: "milestone_revision_requested",
+      title: "Revision requested",
+      message: `Client requested a revision for milestone “${milestone.title}”.`,
+      projectId: project._id,
+    });
+
+    res.json(project);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.approveMilestone = async (req, res) => {
+  try {
+    const { project, error } = await projectForParty(req.params.id, req.user.id);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    if (String(project.clientId) !== String(req.user.id)) {
+      return res.status(403).json({ message: "Only the project client can approve milestones." });
+    }
+
+    const milestone = project.milestones.id(req.params.milestoneId);
+    if (!milestone) return res.status(404).json({ message: "Milestone not found" });
+
+    milestone.status = "completed";
+    await project.save();
+
+    recordActivitySafely({
+      userIds: [project.freelancerId, req.user.id],
+      eventKey: `milestone-approved:${project._id}:${milestone._id}`,
+      actorId: req.user.id,
+      type: "milestone_approved",
+      title: "Milestone approved",
+      message: `Client approved milestone “${milestone.title}”.`,
+      projectId: project._id,
+    });
+
+    res.json(project);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

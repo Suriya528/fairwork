@@ -57,6 +57,7 @@ interface BackendDeliverable {
   mimeType: string
   size: number
   milestoneId: string | null
+  submissionNotes?: string
   uploadedBy: BackendPopulatedUser | string
   uploadedAt: string
 }
@@ -64,7 +65,7 @@ interface BackendDeliverable {
 // --- Frontend-facing shape (real, adapted) --------------------------------
 
 export type ApiProjectStatus = "open" | "in_progress" | "completed" | "disputed"
-export type ApiMilestoneStatus = "pending" | "completed"
+export type ApiMilestoneStatus = "pending" | "in_progress" | "submitted" | "revision_requested" | "completed"
 
 export interface ApiMilestone {
   id: string
@@ -75,6 +76,10 @@ export interface ApiMilestone {
   /** Recovered from array position — the backend has no explicit order field. */
   order: number
   paymentReleased: boolean
+  submissionNotes?: string
+  submittedAt?: string
+  revisionNotes?: string
+  revisionRequestedAt?: string
 }
 
 export interface ApiProject {
@@ -109,6 +114,7 @@ export interface ApiDeliverable {
   mimeType: string
   size: number
   milestoneId: string | null
+  submissionNotes?: string
   uploadedByName: string | null
   uploadedAt: string
 }
@@ -147,6 +153,10 @@ function toMilestone(m: BackendMilestone, projectId: string, index: number): Api
     status: m.status,
     order: index + 1,
     paymentReleased: m.paymentReleased ?? false,
+    submissionNotes: m.submissionNotes,
+    submittedAt: m.submittedAt,
+    revisionNotes: m.revisionNotes,
+    revisionRequestedAt: m.revisionRequestedAt,
   }
 }
 
@@ -184,6 +194,7 @@ function toDeliverable(file: BackendDeliverable): ApiDeliverable {
     mimeType: file.mimeType,
     size: file.size,
     milestoneId: file.milestoneId,
+    submissionNotes: file.submissionNotes,
     uploadedByName: personName(file.uploadedBy),
     uploadedAt: file.uploadedAt,
   }
@@ -280,10 +291,17 @@ export async function getProjectDeliverables(projectId: string, token: string): 
   return data.map(toDeliverable)
 }
 
-export async function uploadProjectDeliverable(projectId: string, file: File, milestoneId: string, token: string): Promise<ApiDeliverable> {
+export async function uploadProjectDeliverable(
+  projectId: string,
+  file: File,
+  milestoneId: string,
+  token: string,
+  submissionNotes?: string,
+): Promise<ApiDeliverable> {
   const formData = new FormData()
   formData.append("file", file)
   if (milestoneId) formData.append("milestoneId", milestoneId)
+  if (submissionNotes) formData.append("submissionNotes", submissionNotes)
 
   let response: Response
   try {
@@ -304,6 +322,46 @@ export async function uploadProjectDeliverable(projectId: string, file: File, mi
     throw new ApiError(message, response.status)
   }
   return toDeliverable(data as BackendDeliverable)
+}
+
+export async function submitMilestone(
+  projectId: string,
+  milestoneId: string,
+  submissionNotes: string,
+  token: string,
+): Promise<ApiProject> {
+  const data = await apiFetch<BackendProject>(`/projects/${projectId}/milestones/${milestoneId}/submit`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ submissionNotes }),
+  })
+  return toProject(data)
+}
+
+export async function requestMilestoneRevision(
+  projectId: string,
+  milestoneId: string,
+  revisionNotes: string,
+  token: string,
+): Promise<ApiProject> {
+  const data = await apiFetch<BackendProject>(`/projects/${projectId}/milestones/${milestoneId}/request-revision`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ revisionNotes }),
+  })
+  return toProject(data)
+}
+
+export async function approveMilestone(
+  projectId: string,
+  milestoneId: string,
+  token: string,
+): Promise<ApiProject> {
+  const data = await apiFetch<BackendProject>(`/projects/${projectId}/milestones/${milestoneId}/approve`, {
+    method: "POST",
+    token,
+  })
+  return toProject(data)
 }
 
 export async function getProjectReferenceFiles(projectId: string, token: string): Promise<ApiReferenceFile[]> {
