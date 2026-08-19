@@ -32,6 +32,16 @@ export function ContractsPage() {
   const [error, setError] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
+  const formatDDMMYYYY = (dateInput?: string | Date | null): string => {
+    if (!dateInput) return "____________________________________________"
+    const d = new Date(dateInput)
+    if (isNaN(d.getTime())) return "____________________________________________"
+    const day = String(d.getDate()).padStart(2, "0")
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const year = d.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
   const copyToClipboard = (text: string, id: string) => {
     void navigator.clipboard.writeText(text)
     setCopiedId(id)
@@ -249,26 +259,26 @@ export function ContractsPage() {
                         <div className="space-y-1">
                           <p className="font-bold text-foreground">CLIENT:</p>
                           <p>
-                            Signature: <span className={c.signedByClient ? "text-success font-bold" : "text-subtle"}>{c.signedByClient ? "Digitally Signed ✓" : "________________________________________"}</span>
+                            Signature: <span className={c.signedByClient ? "text-foreground font-bold" : "text-subtle"}>{c.signedByClient ? (c.clientName || "Client") : "________________________________________"}</span>
                           </p>
                           <p>
                             Printed Name: <span className="font-semibold text-foreground">{c.clientName || "Client"}</span>
                           </p>
                           <p>
-                            Date: <span className={c.signedByClient ? "text-foreground font-semibold" : "text-subtle"}>{c.signedByClient ? formatDate(c.clientSignedAt || c.createdAt) : "____________________________________________"}</span>
+                            Date: <span className={c.signedByClient ? "text-foreground font-semibold" : "text-subtle"}>{c.signedByClient ? formatDDMMYYYY(c.clientSignedAt || c.createdAt) : "____________________________________________"}</span>
                           </p>
                         </div>
 
                         <div className="space-y-1 pt-2">
                           <p className="font-bold text-foreground">CONTRACTOR:</p>
                           <p>
-                            Signature: <span className={c.signedByFreelancer ? "text-success font-bold" : "text-subtle"}>{c.signedByFreelancer ? "Digitally Signed ✓" : "________________________________________"}</span>
+                            Signature: <span className={c.signedByFreelancer ? "text-foreground font-bold" : "text-subtle"}>{c.signedByFreelancer ? (c.freelancerName || "Freelancer") : "________________________________________"}</span>
                           </p>
                           <p>
                             Printed Name: <span className="font-semibold text-foreground">{c.freelancerName || "Freelancer"}</span>
                           </p>
                           <p>
-                            Date: <span className={c.signedByFreelancer ? "text-foreground font-semibold" : "text-subtle"}>{c.signedByFreelancer ? formatDate(c.freelancerSignedAt || c.createdAt) : "____________________________________________"}</span>
+                            Date: <span className={c.signedByFreelancer ? "text-foreground font-semibold" : "text-subtle"}>{c.signedByFreelancer ? formatDDMMYYYY(c.freelancerSignedAt || c.createdAt) : "____________________________________________"}</span>
                           </p>
                         </div>
                       </div>
