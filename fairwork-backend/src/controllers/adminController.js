@@ -7,6 +7,7 @@ const Dispute = require("../models/Dispute");
 const Report = require("../models/Report");
 const AuditLog = require("../models/AuditLog");
 const SyncState = require("../models/BlockchainSyncState");
+const { recordActivitySafely } = require("../services/activityService");
 
 function pagination(query) {
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
@@ -252,7 +253,11 @@ exports.suspendUser = async (req, res) => {
   try {
     const reasonText = (req.body && typeof req.body.reason === "string" && req.body.reason.trim())
       ? req.body.reason.trim()
-      : "Suspended by platform administrator";
+      : "";
+
+    if (!reasonText) {
+      return res.status(400).json({ message: "Suspension reason is required." });
+    }
 
     const targetUser = await User.findById(req.params.id);
     if (!targetUser) return res.status(404).json({ message: "User not found" });
@@ -278,6 +283,15 @@ exports.suspendUser = async (req, res) => {
       details: { email: targetUser.email, role: targetUser.role },
     });
 
+    recordActivitySafely({
+      userIds: [targetUser._id],
+      eventKey: `user_suspended:${targetUser._id}:${Date.now()}`,
+      actorId: req.user.id,
+      type: "user_suspended",
+      title: "Account Suspended",
+      message: `Your account has been suspended by an administrator. Reason: ${reasonText}`,
+    });
+
     res.json({
       message: `User ${targetUser.email} has been suspended.`,
       user: {
@@ -294,7 +308,10 @@ exports.suspendUser = async (req, res) => {
 
 exports.unsuspendUser = async (req, res) => {
   try {
-    const { reason } = req.body;
+    const reasonText = (req.body && typeof req.body.reason === "string" && req.body.reason.trim())
+      ? req.body.reason.trim()
+      : "Admin unsuspended user account";
+
     const targetUser = await User.findById(req.params.id);
     if (!targetUser) return res.status(404).json({ message: "User not found" });
 
@@ -307,8 +324,17 @@ exports.unsuspendUser = async (req, res) => {
       action: "UNSUSPEND_USER",
       targetType: "User",
       targetId: targetUser._id,
-      reason: (reason || "Admin unsuspended user").trim(),
+      reason: reasonText,
       details: { email: targetUser.email, role: targetUser.role },
+    });
+
+    recordActivitySafely({
+      userIds: [targetUser._id],
+      eventKey: `user_unsuspended:${targetUser._id}:${Date.now()}`,
+      actorId: req.user.id,
+      type: "user_unsuspended",
+      title: "Account Restored",
+      message: "Your FairWork account access has been fully restored by an administrator.",
     });
 
     res.json({

@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { FiAlertTriangle, FiSun, FiMoon } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import {
@@ -9,46 +8,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card"
-import { WalletAddress } from "@/components/common/WalletAddress"
 import { PageHeader } from "@/components/common/PageHeader"
 import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
-import { useAuth } from "@/context/AuthContext"
 import { useTheme } from "@/context/ThemeContext"
 import { useCurrency } from "@/context/CurrencyContext"
-import { connectWallet } from "@/services/web3"
-import { getWalletNonce, verifyWallet } from "@/services/authApi"
+import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { cn } from "@/lib/utils"
 
 export function SettingsPage() {
-  const { user, token, updateWallet } = useAuth()
   const { theme, setTheme } = useTheme()
   const { currency, setCurrency } = useCurrency()
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState("")
-
-  const verify = async () => {
-    if (!token) return
-    setSaving(true)
-    setMessage("")
-    try {
-      const { wallet, account } = await connectWallet()
-      const nonce = await getWalletNonce(token)
-      const signature = await wallet.signTypedData({
-        account,
- domain: nonce.domain,
-        types: nonce.types,
-        primaryType: nonce.primaryType,
-        message: { walletAddress: account, nonce: nonce.nonce, purpose: nonce.purpose },
-      })
-      const verified = await verifyWallet(account, nonce.nonce, signature, token)
-      await updateWallet(verified.walletAddress)
-      setMessage("Wallet verified.")
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Wallet verification failed.")
-    } finally {
-      setSaving(false)
-    }
-  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -169,28 +138,10 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Wallet Verification Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Wallet</CardTitle>
-            <CardDescription>
-              Connect and sign an EIP-712 message to verify wallet ownership.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {user?.walletAddress ? (
-              <WalletAddress address={user.walletAddress} />
-            ) : (
-              <p className="text-sm text-muted">No verified wallet connected.</p>
-            )}
-            {message && <p className="mt-3 text-sm text-foreground">{message}</p>}
-          </CardContent>
-          <CardFooter>
-            <Button loading={saving} onClick={verify}>
-              Connect &amp; verify wallet
-            </Button>
-          </CardFooter>
-        </Card>
+        <Web3WalletCard
+          title="Connected Web3 Wallet &amp; EIP-712 Ownership Verification"
+          description="Connect your browser wallet and sign a cryptographically secure one-time backend challenge to link ownership to your FairWork account."
+        />
 
         {/* Danger Zone */}
         <Card className="border-danger/25">

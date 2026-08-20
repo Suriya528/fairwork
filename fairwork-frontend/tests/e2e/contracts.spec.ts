@@ -84,13 +84,13 @@ test("Contract generation, detailed legal document view, and dual signature flow
   const contract = await genContract.json()
 
   // 7. Client UI Login & Contract Document View Check
-  await page.goto("http://localhost:5173/login")
+  await page.goto("/login")
   await page.getByLabel("Email").fill(clientEmail)
   await page.locator("#password").fill(password)
   await page.getByRole("button", { name: /Sign in/i }).click()
   await page.waitForURL("**/dashboard")
 
-  await page.goto("http://localhost:5173/contracts")
+  await page.goto("/contracts")
   await expect(page.getByRole("heading", { name: `E2E Contract Project ${timestamp}` })).toBeVisible()
   await expect(page.getByRole("paragraph").filter({ hasText: "Alice Client" }).first()).toBeVisible()
   await expect(page.getByRole("paragraph").filter({ hasText: "Bob Developer" }).first()).toBeVisible()
@@ -106,13 +106,13 @@ test("Contract generation, detailed legal document view, and dual signature flow
 
   // 10. Freelancer Logs in and Signs Contract
   await page.evaluate(() => localStorage.clear())
-  await page.goto("http://localhost:5173/login")
+  await page.goto("/login")
   await page.getByLabel("Email").fill(freelancerEmail)
   await page.locator("#password").fill(password)
   await page.getByRole("button", { name: /Sign in/i }).click()
   await page.waitForURL("**/dashboard")
 
-  await page.goto("http://localhost:5173/contracts")
+  await page.goto("/contracts")
   const freelancerSignButton = page.getByRole("button", { name: /Sign Contract \(as Freelancer\)/i })
   await expect(freelancerSignButton).toBeVisible()
   await freelancerSignButton.click()

@@ -251,12 +251,17 @@ export function AdminDashboardPage() {
     if (!token || !suspendModalUser) return
     const targetId = suspendModalUser.id
     const wasSuspended = suspendModalUser.isSuspended
+    if (!wasSuspended && !suspendReason.trim()) {
+      setError("Suspension reason is required.")
+      return
+    }
     setActionLoading(true)
+    setError(null)
     try {
       if (wasSuspended) {
         await unsuspendUser(token, targetId, suspendReason)
       } else {
-        await suspendUser(token, targetId, suspendReason)
+        await suspendUser(token, targetId, suspendReason.trim())
       }
 
       setUsers((prev) =>
@@ -265,7 +270,7 @@ export function AdminDashboardPage() {
             ? {
                 ...u,
                 isSuspended: !wasSuspended,
-                suspendedReason: wasSuspended ? "" : (suspendReason || "Suspended by platform administrator"),
+                suspendedReason: wasSuspended ? "" : suspendReason.trim(),
               }
             : u
         )
@@ -385,7 +390,7 @@ export function AdminDashboardPage() {
               setSuspendReason(row.suspendedReason || "")
             }}
           >
-            {row.isSuspended ? "Reinstate" : "Suspend"}
+            {row.isSuspended ? "Unsuspend" : "Suspend"}
           </Button>
         ),
     },
@@ -1284,12 +1289,12 @@ export function AdminDashboardPage() {
         <Modal open={Boolean(suspendModalUser)} onClose={() => setSuspendModalUser(null)}>
           <div className="flex flex-col gap-4 p-6 text-xs">
             <h3 className="text-base font-bold text-foreground">
-              {suspendModalUser.isSuspended ? "Reinstate User Account" : "Suspend User Account"}
+              {suspendModalUser.isSuspended ? "Unsuspend User Account" : "Suspend User Account"}
             </h3>
-            <p className="text-muted">
+            <p className="text-muted leading-relaxed">
               {suspendModalUser.isSuspended
-                ? `Reinstate access for ${suspendModalUser.firstName} ${suspendModalUser.lastName} (${suspendModalUser.email}).`
-                : `Suspend ${suspendModalUser.firstName} ${suspendModalUser.lastName} (${suspendModalUser.email}). This will immediately block login and all platform API interactions.`}
+                ? `Unsuspend access for ${suspendModalUser.firstName} ${suspendModalUser.lastName} (${suspendModalUser.email}).`
+                : `Suspend ${suspendModalUser.firstName} ${suspendModalUser.lastName} (${suspendModalUser.email}). This action restricts normal protected platform actions for this account. Historical user data, projects, contracts, and escrow records are preserved and not deleted. This moderation event is recorded in system audit logs and can be reversed by an authorized administrator at any time.`}
             </p>
             <div className="flex flex-col gap-1">
               <label className="font-medium text-foreground">Reason / Moderation Notes:</label>
@@ -1309,8 +1314,9 @@ export function AdminDashboardPage() {
                 tone={suspendModalUser.isSuspended ? "primary" : "danger"}
                 loading={actionLoading}
                 onClick={handleToggleSuspend}
+                disabled={!suspendModalUser.isSuspended && !suspendReason.trim()}
               >
-                {suspendModalUser.isSuspended ? "Confirm Reinstatement" : "Confirm Suspension"}
+                {suspendModalUser.isSuspended ? "Confirm Unsuspend" : "Confirm Suspension"}
               </Button>
             </div>
           </div>

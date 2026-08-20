@@ -13,6 +13,7 @@ const milestoneSchema = new mongoose.Schema({
   submittedAt: { type: Date },
   revisionNotes: { type: String, default: "" },
   revisionRequestedAt: { type: Date },
+  dueDate: { type: Date },
 });
 
 const referenceFileSchema = new mongoose.Schema({
@@ -59,6 +60,9 @@ const projectSchema = new mongoose.Schema({
   escrowDisputed: { type: Boolean, default: false },
   escrowToken: { type: String, default: "" },
   contractId: { type: mongoose.Schema.Types.ObjectId, ref: "Contract" },
+  deadlineAt: { type: Date },
+  durationDays: { type: Number },
+  deadlineMode: { type: String, enum: ["duration", "exact"], default: "duration" },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Project", projectSchema);

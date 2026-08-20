@@ -13,15 +13,69 @@ async function projectForParty(projectId, userId) {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, description, category, customCategory, budget, milestones } = req.body;
+    const {
+      title,
+      description,
+      category,
+      customCategory,
+      budget,
+      milestones,
+      deadlineMode,
+      durationValue,
+      durationUnit,
+      deadlineAt: inputDeadlineAt,
+    } = req.body;
+
+    let computedDeadlineAt = null;
+    let computedDurationDays = null;
+    const mode = deadlineMode === "exact" ? "exact" : "duration";
+
+    if (mode === "exact" && inputDeadlineAt) {
+      const parsed = new Date(inputDeadlineAt);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({ message: "Invalid exact deadline timestamp." });
+      }
+      if (parsed.getTime() <= Date.now()) {
+        return res.status(400).json({ message: "Deadline must be strictly in the future." });
+      }
+      computedDeadlineAt = parsed;
+      computedDurationDays = Math.max(0.1, Number(((parsed.getTime() - Date.now()) / (86400 * 1000)).toFixed(2)));
+    } else {
+      const val = Number(durationValue) > 0 ? Number(durationValue) : 1;
+      const unit = durationUnit || "days";
+      let ms = val * 86400 * 1000;
+      if (unit === "hours") ms = val * 3600 * 1000;
+      else if (unit === "weeks") ms = val * 7 * 86400 * 1000;
+      else if (unit === "months") ms = val * 30 * 86400 * 1000;
+
+      computedDeadlineAt = new Date(Date.now() + ms);
+      computedDurationDays = Math.max(0.1, Number((ms / (86400 * 1000)).toFixed(2)));
+    }
+
+    const formattedMilestones = (milestones || []).map((m) => {
+      let mDueDate = m.dueDate ? new Date(m.dueDate) : null;
+      if (mDueDate && isNaN(mDueDate.getTime())) mDueDate = null;
+      if (mDueDate && computedDeadlineAt && mDueDate > computedDeadlineAt) {
+        mDueDate = computedDeadlineAt;
+      }
+      return {
+        title: m.title,
+        amount: m.amount,
+        dueDate: mDueDate || computedDeadlineAt,
+      };
+    });
+
     const project = await Project.create({
       title,
       description,
       category: category || "Web Development",
       customCategory: category === "Other" ? (customCategory ? String(customCategory).trim() : "") : "",
       budget,
-      milestones,
+      milestones: formattedMilestones,
       clientId: req.user.id,
+      deadlineAt: computedDeadlineAt,
+      durationDays: computedDurationDays,
+      deadlineMode: mode,
     });
     recordActivitySafely({ userIds: [req.user.id], eventKey: `project-created:${project._id}`, actorId: req.user.id, type: "project_created", title: "Project created", message: `You created “${project.title}”.`, projectId: project._id });
     res.status(201).json(project);
@@ -85,8 +139,18 @@ exports.completeProject = async (req, res) => {
 
 exports.getMyProjects = async (req, res) => {
   try {
+    const mongoose = require("mongoose");
+    const userIdObj = mongoose.Types.ObjectId.isValid(req.user.id)
+      ? new mongoose.Types.ObjectId(req.user.id)
+      : req.user.id;
+
     const projects = await Project.find({
-      $or: [{ clientId: req.user.id }, { freelancerId: req.user.id }],
+      $or: [
+        { clientId: req.user.id },
+        { clientId: userIdObj },
+        { freelancerId: req.user.id },
+        { freelancerId: userIdObj },
+      ],
     })
       .populate("clientId", "firstName lastName")
       .populate("freelancerId", "firstName lastName")

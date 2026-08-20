@@ -23,18 +23,24 @@ export function project(overrides: Record<string, unknown> = {}) {
   }
 }
 
-export async function mockAuthenticatedClient(page: Page) {
+export async function mockAuthenticatedClient(page: Page, walletAddressOverride?: string) {
+  const walletAddress = walletAddressOverride !== undefined ? walletAddressOverride : client.walletAddress
   await page.addInitScript(({ user }) => {
     localStorage.setItem("fairwork_auth_session", JSON.stringify({ token: "e2e-token", user }))
-  }, { user: { id: client._id, name: "Casey Client", email: client.email, role: "client", walletAddress: client.walletAddress, avatarUrl: "", bio: "", rating: 0, reviewCount: 0, createdAt: "" } })
-  await page.route("**/api/auth/me", route => route.fulfill({ json: client }))
+  }, { user: { id: client._id, name: "Casey Client", email: client.email, role: "client", walletAddress, avatarUrl: "", bio: "", rating: 0, reviewCount: 0, createdAt: "" } })
+  await page.route("**/api/auth/me", route => route.fulfill({ json: { ...client, walletAddress } }))
+  await page.route("**/api/projects/mine", route => route.fulfill({ json: [] }))
+  await page.route("**/api/disputes", route => route.fulfill({ json: [] }))
 }
 
-export async function mockAuthenticatedFreelancer(page: Page) {
+export async function mockAuthenticatedFreelancer(page: Page, walletAddressOverride?: string) {
+  const walletAddress = walletAddressOverride !== undefined ? walletAddressOverride : freelancer.walletAddress
   await page.addInitScript(({ user }) => {
     localStorage.setItem("fairwork_auth_session", JSON.stringify({ token: "e2e-token", user }))
-  }, { user: { id: freelancer._id, name: "Frankie Freelancer", email: freelancer.email, role: "freelancer", walletAddress: freelancer.walletAddress, avatarUrl: "", bio: "", rating: 0, reviewCount: 0, createdAt: "" } })
-  await page.route("**/api/auth/me", route => route.fulfill({ json: freelancer }))
+  }, { user: { id: freelancer._id, name: "Frankie Freelancer", email: freelancer.email, role: "freelancer", walletAddress, avatarUrl: "", bio: "", rating: 0, reviewCount: 0, createdAt: "" } })
+  await page.route("**/api/auth/me", route => route.fulfill({ json: { ...freelancer, walletAddress } }))
+  await page.route("**/api/projects/mine", route => route.fulfill({ json: [] }))
+  await page.route("**/api/disputes", route => route.fulfill({ json: [] }))
 }
 
 export { expect, test }

@@ -14,7 +14,9 @@ async function authenticate(req, res, next) {
     if (dbUser && dbUser.isSuspended && dbUser.role !== "admin") {
       return res.status(403).json({
         message: `Account is suspended. ${dbUser.suspendedReason ? "Reason: " + dbUser.suspendedReason : "Contact support for assistance."}`,
+        code: "ACCOUNT_SUSPENDED",
         isSuspended: true,
+        suspendedReason: dbUser.suspendedReason || "",
       });
     }
 

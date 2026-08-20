@@ -47,7 +47,11 @@ exports.login = async (req, res) => {
 
     if (user.isSuspended && user.role !== "admin") {
       return res.status(403).json({
-        message: `Account is suspended. ${user.suspendedReason ? "Reason: " + user.suspendedReason : "Contact support for assistance."}`
+        message: `Account is suspended. ${user.suspendedReason ? "Reason: " + user.suspendedReason : "Contact support for assistance."}`,
+        code: "ACCOUNT_SUSPENDED",
+        isSuspended: true,
+        suspendedAt: user.suspendedAt,
+        suspendedReason: user.suspendedReason || "",
       });
     }
 

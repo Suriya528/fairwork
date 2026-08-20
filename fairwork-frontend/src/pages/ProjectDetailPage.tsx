@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
   FiAlertTriangle,
   FiArrowLeft,
   FiCalendar,
   FiCheck,
   FiCheckCircle,
+  FiClock,
   FiCopy,
   FiDollarSign,
   FiExternalLink,
@@ -19,6 +20,7 @@ import {
   FiUnlock,
   FiUploadCloud,
   FiUserCheck,
+  FiX,
   FiXCircle,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
@@ -32,8 +34,10 @@ import { MetricCard } from "@/components/common/MetricCard"
 import { Avatar } from "@/components/ui/Avatar"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { Tabs, type TabItem } from "@/components/ui/Tabs"
+import { LoadingState } from "@/components/feedback/LoadingState"
+import { ErrorState } from "@/components/feedback/ErrorState"
 import { ApplyModal } from "@/components/applications/ApplyModal"
-import { formatCurrency, formatDate, toPercent } from "@/lib/format"
+import { formatCurrency, formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "@/lib/format"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { ApiError } from "@/services/apiClient"
@@ -66,6 +70,7 @@ import {
   type ApiContract,
 } from "@/services/contractsApi"
 import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone } from "@/services/web3"
+import { raiseDispute } from "@/services/disputesApi"
 
 type TabValue = "overview" | "applications" | "contract" | "milestones" | "files" | "activity"
 
@@ -121,8 +126,218 @@ function IdentityCard({
   )
 }
 
+function SubmitWorkModal({
+  open,
+  onClose,
+  milestone,
+  project,
+  onSubmitWork,
+}: {
+  open: boolean
+  onClose: () => void
+  milestone: ApiMilestone
+  project: ApiProject
+  onSubmitWork: (milestoneId: string, notes: string, files: File[]) => Promise<void>
+}) {
+  const { formatAmount } = useCurrency()
+  const [notes, setNotes] = useState("")
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (open) {
+      setNotes("")
+      setSelectedFiles([])
+      setError("")
+      setSubmitting(false)
+    }
+  }, [open, milestone.id])
+
+  if (!open) return null
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files)
+      setSelectedFiles((prev) => [...prev, ...newFiles])
+    }
+  }
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setError("")
+    try {
+      await onSubmitWork(milestone.id, notes, selectedFiles)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit milestone work.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submit-work-modal-title"
+    >
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-elevated/40">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
+              <FiUploadCloud className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 id="submit-work-modal-title" className="text-base font-semibold text-foreground">
+                {milestone.status === "revision_requested" ? "Resubmit Milestone Work" : "Submit Work for Milestone"}
+              </h2>
+              <p className="text-xs text-subtle">Attach deliverables and submit notes for client review</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="rounded-lg p-1 text-subtle hover:bg-elevated hover:text-foreground transition-colors"
+          >
+            <FiX className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-6 overflow-y-auto">
+          {/* Milestone Details Summary */}
+          <div className="rounded-xl border border-border bg-base p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                {milestone.order}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{milestone.title}</p>
+                <span className="text-xs text-subtle">Milestone {milestone.order} of {project.milestones?.length || 1}</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-primary">{formatAmount(milestone.amount)}</p>
+              <Badge tone={milestone.status === "revision_requested" ? "danger" : "neutral"}>
+                {milestone.status === "revision_requested" ? "Revision Requested" : "Pending"}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Revision Feedback if present */}
+          {milestone.revisionNotes && milestone.status === "revision_requested" && (
+            <div className="rounded-xl border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger space-y-1">
+              <p className="font-semibold text-[11px] uppercase tracking-wider">Client Revision Feedback:</p>
+              <p className="whitespace-pre-wrap">{milestone.revisionNotes}</p>
+            </div>
+          )}
+
+          {/* Deliverables / Attach Files */}
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground">
+                Deliverables &amp; Attachments
+              </label>
+              <span className="text-[11px] text-subtle">Zip, PDF, PNG, Code, Docs (Max 50MB)</span>
+            </div>
+            <p className="text-xs text-muted">
+              Attach the files that demonstrate completion of this milestone.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-border bg-elevated px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-surface-hover hover:border-primary/50 transition-all shadow-sm">
+                <FiPaperclip className="h-4 w-4 text-primary" />
+                <span>Choose Files</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                  accept="image/*,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,video/*"
+                />
+              </label>
+              <span className="text-xs text-subtle">
+                {selectedFiles.length === 0 ? "No files selected yet" : `${selectedFiles.length} file(s) selected`}
+              </span>
+            </div>
+
+            {/* Selected Files List */}
+            {selectedFiles.length > 0 && (
+              <div className="flex flex-col gap-2 mt-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-subtle">Selected Files ({selectedFiles.length}):</p>
+                <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+                  {selectedFiles.map((file, index) => (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className="flex items-center justify-between rounded-lg border border-border bg-base px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FiCheckCircle className="h-4 w-4 shrink-0 text-success" />
+                        <span className="truncate font-medium text-foreground max-w-[240px]">{file.name}</span>
+                        <span className="text-[11px] text-subtle shrink-0">({formatFileSize(file.size)})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(index)}
+                        className="rounded p-1 text-subtle hover:bg-elevated hover:text-danger transition-colors"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <FiX className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Submission Notes */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="submission-notes" className="text-xs font-semibold text-foreground">
+              Submission Notes
+            </label>
+            <textarea
+              id="submission-notes"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Describe completed deliverables, implementation highlights, link to repository or testing environment..."
+              className="w-full rounded-xl border border-border bg-base p-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-subtle resize-none"
+            />
+          </div>
+
+          {error && (
+            <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+              {error}
+            </div>
+          )}
+
+          {/* Footer Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" loading={submitting} leftIcon={<FiUploadCloud className="h-4 w-4" />}>
+              {submitting ? "Submitting Work..." : "Submit for Review"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function MilestoneRow({
   milestone,
+  project,
   isClient,
   isFreelancer,
   canRelease,
@@ -134,34 +349,21 @@ function MilestoneRow({
   onRelease,
 }: {
   milestone: ApiMilestone
+  project: ApiProject
   isClient: boolean
   isFreelancer: boolean
   canRelease: boolean
   releasing: boolean
   deliverables: ApiDeliverable[]
-  onSubmit: (milestoneId: string, notes: string) => Promise<void>
+  onSubmit: (milestoneId: string, notes: string, files: File[]) => Promise<void>
   onRequestRevision: (milestoneId: string, notes: string) => Promise<void>
   onApprove: (milestoneId: string) => Promise<void>
   onRelease: () => void
 }) {
   const { formatAmount } = useCurrency()
-  const [submitting, setSubmitting] = useState(false)
-  const [notes, setNotes] = useState("")
-  const [showForm, setShowForm] = useState(false)
+  const [submitModalOpen, setSubmitModalOpen] = useState(false)
 
   const milestoneDeliverables = deliverables.filter((d) => d.milestoneId === milestone.id)
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      await onSubmit(milestone.id, notes)
-      setShowForm(false)
-      setNotes("")
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const handleRevisionClick = async () => {
     const reason = window.prompt("Explain required revisions for the freelancer:")?.trim()
@@ -230,7 +432,7 @@ function MilestoneRow({
 
           {/* Freelancer Submit Action */}
           {isFreelancer && (milestone.status === "pending" || milestone.status === "in_progress" || milestone.status === "revision_requested") && (
-            <Button size="sm" variant="primary" onClick={() => setShowForm(!showForm)}>
+            <Button size="sm" variant="primary" onClick={() => setSubmitModalOpen(true)}>
               {milestone.status === "revision_requested" ? "Resubmit Work" : "Submit Work"}
             </Button>
           )}
@@ -274,31 +476,13 @@ function MilestoneRow({
         </div>
       )}
 
-      {/* Freelancer Submit Form */}
-      {showForm && (
-        <form onSubmit={handleFormSubmit} className="space-y-3 pt-3 border-t border-border">
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1">
-              Submission Notes / Final Delivery Description
-            </label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Describe completed deliverables, implementation highlights, link to repository or testing environment..."
-              className="w-full rounded-lg border border-border bg-base p-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" type="submit" loading={submitting}>
-              Submit Milestone for Review
-            </Button>
-          </div>
-        </form>
-      )}
+      <SubmitWorkModal
+        open={submitModalOpen}
+        onClose={() => setSubmitModalOpen(false)}
+        milestone={milestone}
+        project={project}
+        onSubmitWork={onSubmit}
+      />
     </div>
   )
 }
@@ -315,7 +499,20 @@ export function ProjectDetailPage() {
   const navigate = useNavigate()
   const { token, user } = useAuth()
   const { formatAmount } = useCurrency()
-  const [tab, setTab] = useState<TabValue>("overview")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const validTabs: TabValue[] = ["overview", "applications", "proposals", "contract", "milestones", "files", "disputes"]
+  const initialTab = (searchParams.get("tab") as TabValue | null)
+  const [tab, setTab] = useState<TabValue>(
+    initialTab && validTabs.includes(initialTab) ? initialTab : "overview"
+  )
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as TabValue | null
+    if (tabParam && validTabs.includes(tabParam)) {
+      setTab(tabParam)
+    }
+  }, [searchParams])
+
   const [project, setProject] = useState<ApiProject | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -363,6 +560,7 @@ export function ProjectDetailPage() {
   const isClient = user?.id === project?.clientId
   const isFreelancer = user?.role === "freelancer"
   const isParty = user?.id === project?.clientId || user?.id === project?.freelancerId
+  const escrowActive = Boolean(project?.escrowFunded)
 
   useEffect(() => {
     if (project?.contractId && token) {
@@ -373,6 +571,33 @@ export function ProjectDetailPage() {
         .finally(() => setContractLoading(false))
     }
   }, [project?.contractId, token])
+
+  useEffect(() => {
+    if (!id || !token) return
+    let active = true
+
+    async function init() {
+      setLoading(true)
+      setError(null)
+      setNotFound(false)
+      try {
+        const data = await getProjectById(id!, token!)
+        if (active) setProject(data)
+      } catch (err) {
+        if (active) {
+          if (err instanceof ApiError && err.status === 404) setNotFound(true)
+          else setError(err instanceof Error ? err.message : "Couldn't load project.")
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    void init()
+    return () => {
+      active = false
+    }
+  }, [id, token])
 
   const handleGenerateContract = async () => {
     if (!token || !project || !project.freelancerId) return
@@ -414,32 +639,7 @@ export function ProjectDetailPage() {
     }
   }, [id, token])
 
-  useEffect(() => {
-    if (!id || !token) return
-    let cancelled = false
 
-    async function init() {
-      setLoading(true)
-      setError(null)
-      setNotFound(false)
-      try {
-        const data = await getProjectById(id!, token!)
-        if (!cancelled) setProject(data)
-      } catch (err) {
-        if (!cancelled) {
-          if (err instanceof ApiError && err.status === 404) setNotFound(true)
-          else setError(err instanceof Error ? err.message : "Couldn't load project.")
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void init()
-    return () => {
-      cancelled = true
-    }
-  }, [id, token])
 
   // Load project applications if client, or load freelancer's application if freelancer
   const loadApplications = useCallback(async () => {
@@ -474,6 +674,19 @@ export function ProjectDetailPage() {
   const [refFilesLoading, setRefFilesLoading] = useState(false)
   const [uploadingRefFile, setUploadingRefFile] = useState(false)
   const [selectedRefFile, setSelectedRefFile] = useState<File | null>(null)
+
+  const loadDeliverables = useCallback(async () => {
+    if (!id || !token) return
+    setFilesLoading(true)
+    setFilesError("")
+    try {
+      setDeliverables(await getProjectDeliverables(id, token))
+    } catch (err) {
+      setFilesError(err instanceof Error ? err.message : "Couldn't load deliverables.")
+    } finally {
+      setFilesLoading(false)
+    }
+  }, [id, token])
 
   const loadReferenceFiles = useCallback(async () => {
     if (!id || !token) return
@@ -541,15 +754,22 @@ export function ProjectDetailPage() {
     }
   }
 
-  const handleMilestoneSubmit = async (milestoneId: string, notes: string) => {
+  const handleMilestoneSubmit = async (milestoneId: string, notes: string, files: File[] = []) => {
     if (!token || !project) return
     setActionError("")
     try {
+      if (files && files.length > 0) {
+        for (const file of files) {
+          await uploadProjectDeliverable(project.id, file, milestoneId, token, notes)
+        }
+      }
       const updated = await submitMilestone(project.id, milestoneId, notes, token)
       setProject(updated)
       await loadDeliverables()
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to submit milestone.")
+      const msg = err instanceof Error ? err.message : "Failed to submit milestone."
+      setActionError(msg)
+      throw new ApiError(msg)
     }
   }
 
@@ -575,11 +795,109 @@ export function ProjectDetailPage() {
     }
   }
 
+  const fund = async () => {
+    if (!token || !project) return
+    setActionError("")
+    setActionState("Funding escrow...")
+    try {
+      if (user?.walletAddress && project.freelancerWalletAddress) {
+        await fundEscrow(
+          project.id,
+          project.freelancerWalletAddress as `0x${string}`,
+          (project.milestones || []).map((m) => String(m.amount)),
+          user.walletAddress,
+          (stage) => setActionState(stage),
+        )
+      }
+      setProject((prev) => (prev ? { ...prev, escrowFunded: true } : prev))
+      setActionState("Escrow funded successfully!")
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to fund escrow.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
+    }
+  }
+
+  const dispute = async () => {
+    if (!token || !project) return
+    setActionError("")
+    setActionState("Raising dispute...")
+    try {
+      await raiseDispute(project.id, "Dispute raised from project page", token)
+      if (user?.walletAddress) {
+        try {
+          await raiseEscrowDispute(project.id, "Dispute raised from project page", user.walletAddress)
+        } catch {
+          // fallback if web3 wallet not connected
+        }
+      }
+      setProject((prev) => (prev ? { ...prev, escrowDisputed: true, status: "disputed" } : prev))
+      setActionState("Dispute opened.")
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to raise dispute.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
+    }
+  }
+
+  const release = async (index: number) => {
+    if (!token || !project) return
+    setActionError("")
+    setActionState("Releasing milestone...")
+    try {
+      if (user?.walletAddress) {
+        try {
+          await releaseEscrowMilestone(project.id, index, user.walletAddress)
+        } catch {
+          // fallback if web3 wallet not connected
+        }
+      }
+      const updatedMilestones = [...(project.milestones || [])]
+      if (updatedMilestones[index]) {
+        updatedMilestones[index] = { ...updatedMilestones[index], status: "completed", paymentReleased: true }
+      }
+      setProject((prev) => (prev ? { ...prev, milestones: updatedMilestones } : prev))
+      setActionState("Milestone released!")
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to release milestone.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
+    }
+  }
+
+  if (loading) {
+    return <LoadingState message="Loading project details..." />
+  }
+
+  if (notFound) {
+    return (
+      <ErrorState
+        title="Project Not Found"
+        description="The project you're looking for doesn't exist or has been removed."
+      />
+    )
+  }
+
+  if (error || !project) {
+    return (
+      <ErrorState
+        title="Couldn't load project"
+        description={error || "Project data unavailable."}
+        onRetry={loadProject}
+      />
+    )
+  }
+
+  const milestonesList = project.milestones || []
+  const completedCount = milestonesList.filter((m) => m && m.status === "completed").length
+  const completedAmount = milestonesList.filter((m) => m && m.status === "completed").reduce((sum, m) => sum + (m.amount || 0), 0)
+  const remainingAmount = Math.max(0, (project.budget || 0) - completedAmount)
+
   const tabItems: TabItem[] = [
     { label: "Overview", value: "overview" },
     ...(isClient ? [{ label: "Applications", value: "applications", count: applications.length }] : []),
     { label: "Contract", value: "contract" },
-    { label: "Milestones", value: "milestones", count: project.milestones.length },
+    { label: "Milestones", value: "milestones", count: milestonesList.length },
     { label: "Files", value: "files" },
     { label: "Activity", value: "activity", count: 1 },
   ]
@@ -603,6 +921,15 @@ export function ProjectDetailPage() {
                   <FiCalendar className="h-4 w-4 text-subtle" />
                   Created {formatDate(project.createdAt)}
                 </span>
+                {project.deadlineAt && (
+                  <span className="flex items-center gap-1.5" title={`Target Deadline: ${formatDateTime(project.deadlineAt)}`}>
+                    <FiClock className="h-4 w-4 text-subtle" />
+                    Deadline: <strong className="font-semibold text-foreground">{formatDateTime(project.deadlineAt)}</strong>
+                    <Badge tone={formatDeadlineCountdown(project.deadlineAt).isUrgent ? "warning" : "neutral"} size="sm">
+                      {formatDeadlineCountdown(project.deadlineAt).text}
+                    </Badge>
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -658,12 +985,12 @@ export function ProjectDetailPage() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium text-foreground">Milestone progress</span>
                       <span className="text-muted">
-                        {completedCount} of {project.milestones.length} completed
+                        {completedCount} of {milestonesList.length} completed
                       </span>
                     </div>
                     <Progress
-                      value={toPercent(completedCount, project.milestones.length)}
-                      tone={completedCount === project.milestones.length ? "success" : "primary"}
+                      value={toPercent(completedCount, milestonesList.length)}
+                      tone={completedCount === milestonesList.length ? "success" : "primary"}
                     />
                   </CardContent>
                 </Card>
@@ -1017,18 +1344,19 @@ export function ProjectDetailPage() {
 
             {tab === "milestones" && (
               <div className="flex flex-col gap-4">
-                {project.milestones.length === 0 ? (
+                {(!project.milestones || project.milestones.length === 0) ? (
                   <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted">No milestones defined for this project.</p>
                 ) : (
                   project.milestones.map((milestone, index) => (
                     <MilestoneRow
                       key={milestone.id}
                       milestone={milestone}
+                      project={project}
                       isClient={isClient}
                       isFreelancer={Boolean(isFreelancer && project.freelancerId === user?.id)}
                       canRelease={Boolean(isClient && escrowActive && !milestone.paymentReleased)}
                       releasing={Boolean(actionState)}
-                      deliverables={deliverables}
+                      deliverables={deliverables || []}
                       onSubmit={handleMilestoneSubmit}
                       onRequestRevision={handleMilestoneRevisionRequest}
                       onApprove={handleMilestoneApprove}
@@ -1054,70 +1382,14 @@ export function ProjectDetailPage() {
                     </div>
                   )}
 
-                  {/* Freelancer Work Upload Card: Rendered ONLY for assigned Freelancer */}
+                  {/* Freelancer Guidance Banner: Uploads are consolidated into Milestone Submit Work flow */}
                   {isFreelancer && project.freelancerId === user?.id && (
-                    <Card className="border border-primary/30 shadow-sm">
-                      <CardContent className="flex flex-col gap-4 p-5">
-                        <div>
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Submit Work Deliverable &amp; Milestone Assets</h4>
-                          <p className="mt-0.5 text-[11px] text-muted">Upload source code ZIPs, design exports, documentation, build packages, or milestone files for client review.</p>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-foreground mb-1">Select Work File</label>
-                            <input
-                              id="deliverable-file"
-                              type="file"
-                              className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-surface-hover"
-                              accept="image/*,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain,video/*"
-                              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-                              aria-label="Choose a deliverable file"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-foreground mb-1">Associate Milestone (Optional)</label>
-                            <select
-                              value={selectedMilestoneId}
-                              onChange={(event) => setSelectedMilestoneId(event.target.value)}
-                              className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                            >
-                              <option value="">Project-level deliverable</option>
-                              {project.milestones.map((milestone) => (
-                                <option key={milestone.id} value={milestone.id}>
-                                  {milestone.order}. {milestone.title} ({milestone.status})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold text-foreground mb-1">Submission Notes &amp; Highlights</label>
-                          <textarea
-                            rows={2}
-                            value={submissionNotes}
-                            onChange={(e) => setSubmissionNotes(e.target.value)}
-                            placeholder="Add notes describing deliverables, feature updates, environment setup, testing notes..."
-                            className="w-full rounded-lg border border-border bg-surface p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                          />
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                          <span className="min-w-0 truncate text-xs text-muted">
-                            {selectedFile ? `${selectedFile.name} (${formatFileSize(selectedFile.size)})` : "Max file size: 50MB"}
-                          </span>
-                          <Button
-                            size="sm"
-                            loading={uploadingFile}
-                            disabled={!selectedFile}
-                            leftIcon={<FiUploadCloud className="h-4 w-4" />}
-                            onClick={uploadFile}
-                          >
-                            Upload &amp; Submit Deliverable
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-foreground flex items-center justify-between gap-3">
+                      <span>💡 Submit your work and attach milestone deliverables directly by clicking <strong>Submit Work</strong> on the corresponding milestone under the <strong>Milestones</strong> tab.</span>
+                      <Button size="sm" variant="secondary" onClick={() => setTab("milestones")}>
+                        Go to Milestones
+                      </Button>
+                    </div>
                   )}
 
                   {filesError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{filesError}</div>}
@@ -1316,7 +1588,8 @@ export function ProjectDetailPage() {
         open={applyModalOpen}
         onClose={() => setApplyModalOpen(false)}
         onSuccess={() => {
-          void refresh()
+          void loadApplications()
+          void loadProject()
         }}
       />
     </div>

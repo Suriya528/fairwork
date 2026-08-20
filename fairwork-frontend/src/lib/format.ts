@@ -84,8 +84,10 @@ export function toUsd(amount: number, symbol: "ETH" | "USDC"): number {
 }
 
 /** Format an ISO date string to a readable date, e.g. "Jul 21, 2026". */
-export function formatDate(input: string | Date): string {
+export function formatDate(input?: string | Date | null): string {
+  if (!input) return "N/A"
   const date = typeof input === "string" ? new Date(input) : input
+  if (isNaN(date.getTime())) return "N/A"
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -93,9 +95,51 @@ export function formatDate(input: string | Date): string {
   }).format(date)
 }
 
-/** Relative time from now, e.g. "3 days ago" / "in 2 hours". */
-export function formatRelativeTime(input: string | Date): string {
+/** Format an ISO date string to date & time, e.g. "21 Aug 2026, 10:00 PM". */
+export function formatDateTime(input?: string | Date | null): string {
+  if (!input) return "N/A"
   const date = typeof input === "string" ? new Date(input) : input
+  if (isNaN(date.getTime())) return "N/A"
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)
+}
+
+/** User-friendly countdown badge string, e.g. "⚡ Due in 18 hours" or "Overdue by 2 hours". */
+export function formatDeadlineCountdown(input?: string | Date | null): { text: string; isUrgent: boolean; isOverdue: boolean } {
+  if (!input) return { text: "No deadline", isUrgent: false, isOverdue: false }
+  const date = typeof input === "string" ? new Date(input) : input
+  if (isNaN(date.getTime())) return { text: "No deadline", isUrgent: false, isOverdue: false }
+
+  const diffMs = date.getTime() - Date.now()
+  if (diffMs < 0) {
+    const overdueHours = Math.max(1, Math.abs(Math.round(diffMs / (1000 * 60 * 60))))
+    const overdueDays = Math.max(1, Math.abs(Math.round(diffMs / (1000 * 60 * 60 * 24))))
+    return {
+      text: overdueHours < 24 ? `Overdue by ${overdueHours}h` : `Overdue by ${overdueDays}d`,
+      isUrgent: true,
+      isOverdue: true,
+    }
+  }
+
+  const hours = Math.max(1, Math.round(diffMs / (1000 * 60 * 60)))
+  const days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+
+  if (hours <= 24) {
+    return { text: `⚡ Due in ${hours} hour${hours !== 1 ? "s" : ""}`, isUrgent: true, isOverdue: false }
+  }
+  return { text: `Due in ${days} day${days !== 1 ? "s" : ""}`, isUrgent: false, isOverdue: false }
+}
+
+/** Relative time from now, e.g. "3 days ago" / "in 2 hours". */
+export function formatRelativeTime(input?: string | Date | null): string {
+  if (!input) return "just now"
+  const date = typeof input === "string" ? new Date(input) : input
+  if (isNaN(date.getTime())) return "just now"
   const diff = date.getTime() - Date.now()
   const rtf = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" })
 

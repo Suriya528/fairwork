@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { MetricCard } from "@/components/common/MetricCard"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { ConfirmDialog } from "@/components/common/ConfirmDialog"
+import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
@@ -125,39 +126,14 @@ export function WalletPage() {
           />
         </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-subtle">Connected Web3 Wallet</span>
-              {user.walletAddress ? (
-                <WalletAddress address={user.walletAddress} chars={6} />
-              ) : (
-                <span className="text-xs text-muted">No wallet address connected yet</span>
-              )}
-            </div>
-            {isFreelancer && (
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={available <= 0 || !user.walletAddress}
-                leftIcon={<FiArrowUpRight className="h-4 w-4" />}
-                onClick={() => setWithdrawOpen(true)}
-              >
-                Withdraw earnings
-              </Button>
-            )}
-          </div>
-          {isFreelancer && available <= 0 && (
-            <p className="text-xs text-subtle">
-              Nothing available to withdraw right now — funds appear here once milestone payments are released by your clients.
-            </p>
-          )}
-          {!isFreelancer && (
-            <p className="text-xs text-subtle">
-              Client project deposits are locked securely inside Smart Contract Escrows until milestone release.
-            </p>
-          )}
-        </div>
+        <Web3WalletCard
+          title="Web3 Payout & Escrow Wallet"
+          description={
+            isFreelancer
+              ? "Connect and verify your Ethereum wallet to receive milestone payouts securely via smart contract escrow."
+              : "Connect and verify your Ethereum wallet to fund project escrows and release approved milestone payments."
+          }
+        />
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">

@@ -45,6 +45,9 @@ interface BackendProject {
   escrowDisputed?: boolean
   escrowToken?: string
   contractId: string | null
+  deadlineAt?: string
+  durationDays?: number
+  deadlineMode?: "duration" | "exact"
   createdAt: string
   updatedAt: string
 }
@@ -104,6 +107,9 @@ export interface ApiProject {
   escrowCompleted: boolean
   escrowDisputed: boolean
   escrowToken: string
+  deadlineAt: string | null
+  durationDays: number | null
+  deadlineMode: "duration" | "exact"
   createdAt: string
 }
 
@@ -131,7 +137,7 @@ export function getDisplayCategory(project: { category?: string; customCategory?
 
 function personId(u: BackendPopulatedUser | string | null | undefined): string | null {
   if (!u) return null
-  return typeof u === "string" ? u : u._id
+  return typeof u === "string" ? u : (u.id || u._id || null)
 }
 
 function personName(u: BackendPopulatedUser | string | null | undefined): string | null {
@@ -146,11 +152,11 @@ function personWallet(u: BackendPopulatedUser | string | null | undefined): stri
 
 function toMilestone(m: BackendMilestone, projectId: string, index: number): ApiMilestone {
   return {
-    id: m._id,
+    id: m.id || m._id || `milestone-${index + 1}`,
     projectId,
-    title: m.title,
-    amount: m.amount,
-    status: m.status,
+    title: m.title || "",
+    amount: m.amount || 0,
+    status: m.status || "pending",
     order: index + 1,
     paymentReleased: m.paymentReleased ?? false,
     submissionNotes: m.submissionNotes,
@@ -161,28 +167,36 @@ function toMilestone(m: BackendMilestone, projectId: string, index: number): Api
 }
 
 function toProject(p: BackendProject): ApiProject {
+  if (!p || typeof p !== "object") {
+    throw new Error("Invalid project data received")
+  }
+  const projId = p.id || p._id || ""
   return {
-    id: p._id,
-    title: p.title,
-    description: p.description,
+    id: projId,
+    title: p.title || "",
+    description: p.description || "",
     category: p.category || "Web Development",
     customCategory: p.customCategory || "",
-    budget: p.budget,
-    status: p.status,
+    budget: p.budget || 0,
+    status: p.status || "open",
     clientId: personId(p.clientId) ?? "",
     clientName: personName(p.clientId),
     clientWalletAddress: personWallet(p.clientId),
     freelancerId: personId(p.freelancerId),
     freelancerName: personName(p.freelancerId),
     freelancerWalletAddress: personWallet(p.freelancerId),
-    milestones: p.milestones.map((m, i) => toMilestone(m, p._id, i)),
-    escrowTxnHash: p.escrowTxnHash,
-    contractId: p.contractId,
-    escrowFunded: p.escrowFunded ?? false,
-    escrowCompleted: p.escrowCompleted ?? false,
-    escrowDisputed: p.escrowDisputed ?? false,
-    escrowToken: p.escrowToken ?? "",
-    createdAt: p.createdAt,
+    milestones: (p.milestones || []).map((m, i) => toMilestone(m, projId, i)),
+    escrowTxnHash: p.escrowTxnHash || "",
+    contractId: p.contractId || null,
+    escrowFunded: Boolean(p.escrowFunded),
+    escrowCompleted: Boolean(p.escrowCompleted),
+    escrowDisputed: Boolean(p.escrowDisputed),
+    escrowToken: p.escrowToken || "",
+    deadlineAt: p.deadlineAt || null,
+    durationDays: typeof p.durationDays === "number" ? p.durationDays : null,
+    deadlineMode: p.deadlineMode === "exact" ? "exact" : "duration",
+    createdAt: p.createdAt || new Date().toISOString(),
+    updatedAt: p.updatedAt || new Date().toISOString(),
   }
 }
 
@@ -209,12 +223,12 @@ function toDeliverable(file: BackendDeliverable): ApiDeliverable {
  */
 export async function getProjects(token: string): Promise<ApiProject[]> {
   const data = await apiFetch<BackendProject[]>("/projects", { token })
-  return data.map(toProject)
+  return (Array.isArray(data) ? data : []).map(toProject)
 }
 
 export async function getMyProjects(token: string): Promise<ApiProject[]> {
   const data = await apiFetch<BackendProject[]>("/projects/mine", { token })
-  return data.map(toProject)
+  return (Array.isArray(data) ? data : []).map(toProject)
 }
 
 export async function getProjectById(id: string, token: string): Promise<ApiProject> {
@@ -228,7 +242,11 @@ export interface CreateProjectPayload {
   category: string
   customCategory?: string
   budget: number
-  milestones: { title: string; amount: number }[]
+  deadlineMode?: "duration" | "exact"
+  durationValue?: number
+  durationUnit?: "hours" | "days" | "weeks" | "months"
+  deadlineAt?: string
+  milestones: { title: string; amount: number; dueDate?: string }[]
 }
 
 export async function createProject(
@@ -288,7 +306,7 @@ function toReferenceFile(raw: BackendReferenceFile): ApiReferenceFile {
 
 export async function getProjectDeliverables(projectId: string, token: string): Promise<ApiDeliverable[]> {
   const data = await apiFetch<BackendDeliverable[]>(`/projects/${projectId}/files`, { token })
-  return data.map(toDeliverable)
+  return (Array.isArray(data) ? data : []).map(toDeliverable)
 }
 
 export async function uploadProjectDeliverable(

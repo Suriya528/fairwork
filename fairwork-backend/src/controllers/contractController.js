@@ -26,6 +26,12 @@ exports.generateContract = async (req, res) => {
       return res.status(403).json({ message: "Only the project client can generate a contract" });
     }
 
+    const existingContract = await Contract.findOne({ projectId });
+    if (existingContract) {
+      const contract = await populateContractQuery(Contract.findById(existingContract._id));
+      return res.json(contract);
+    }
+
     const freelancerId = project.freelancerId || req.body.freelancerId;
     if (!freelancerId) {
       return res.status(400).json({

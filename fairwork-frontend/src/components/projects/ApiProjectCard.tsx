@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom"
-import { FiCalendar, FiLock, FiUser } from "react-icons/fi"
+import { FiCalendar, FiClock, FiLock, FiUser } from "react-icons/fi"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { Badge } from "@/components/ui/Badge"
 import { useCurrency } from "@/context/CurrencyContext"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDeadlineCountdown } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { getDisplayCategory, type ApiProject } from "@/services/projectsApi"
 
@@ -56,6 +56,12 @@ export function ApiProjectCard({ project }: { project: ApiProject }) {
         <Badge tone="neutral">
           {project.milestones.length} milestone{project.milestones.length !== 1 ? "s" : ""}
         </Badge>
+        {project.deadlineAt && (
+          <Badge tone={formatDeadlineCountdown(project.deadlineAt).isUrgent ? "warning" : "neutral"}>
+            <FiClock className="h-3 w-3 mr-1" />
+            {formatDeadlineCountdown(project.deadlineAt).text}
+          </Badge>
+        )}
       </div>
 
       <div className="mt-auto flex items-center justify-between border-t border-border pt-4">

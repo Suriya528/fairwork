@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/feedback/EmptyState"
 import { PageHeader } from "@/components/common/PageHeader"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { useAuth } from "@/context/AuthContext"
+import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 
 export function EscrowPage() {
@@ -29,6 +30,15 @@ export function EscrowPage() {
               : "Track smart contract payment protection backing your assigned projects."
           }
         />
+        <Web3WalletCard
+          title="Escrow Web3 Wallet Verification"
+          description={
+            isClient
+              ? "Your connected wallet must be verified via EIP-712 to fund project escrows on Sepolia."
+              : "Your connected wallet must be verified via EIP-712 to receive milestone payment releases."
+          }
+        />
+
         {error && <p className="text-sm text-danger">{error}</p>}
         {projects.length ? (
           <div className="flex flex-col gap-3">

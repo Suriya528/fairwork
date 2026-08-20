@@ -1,11 +1,15 @@
+import { useEffect } from "react"
 import { Navigate, Routes, Route } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 import { ToastProvider } from "@/components/ui/Toast"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
+import { WalletProvider } from "@/context/WalletContext"
 import { ThemeProvider } from "@/context/ThemeContext"
 import { CurrencyProvider } from "@/context/CurrencyContext"
 import { ScrollToTop } from "@/components/common/ScrollToTop"
+import { GlobalErrorBoundary, RouteErrorBoundary } from "@/components/common/ErrorBoundary"
+import { setupGlobalErrorListeners } from "@/lib/errorLogger"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { DashboardPage } from "@/pages/DashboardPage"
@@ -22,7 +26,10 @@ import { EscrowPage } from "@/pages/EscrowPage"
 import { DisputesPage } from "@/pages/DisputesPage"
 import { ActivityPage } from "@/pages/ActivityPage"
 import { ProfilePage } from "@/pages/ProfilePage"
+import { WalletPage } from "@/pages/WalletPage"
 import { SettingsPage } from "@/pages/SettingsPage"
+import { NotificationsPage } from "@/pages/NotificationsPage"
+import { TransactionsPage } from "@/pages/TransactionsPage"
 import { HelpCenterPage } from "@/pages/HelpCenterPage"
 import { ChatPage } from "@/pages/ChatPage"
 import { AdminDashboardPage } from "@/pages/AdminDashboardPage"
@@ -71,54 +78,65 @@ function HelpRouteHandler() {
  * App root: global providers + the route table.
  */
 export function App() {
+  useEffect(() => {
+    setupGlobalErrorListeners()
+  }, [])
+
   return (
-    <ThemeProvider>
-      <CurrencyProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <ScrollToTop />
-            <Routes>
-              {/* Public landing page — visible to unauthenticated visitors */}
-              <Route index element={<PublicHome />} />
+    <GlobalErrorBoundary>
+      <ThemeProvider>
+        <CurrencyProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <WalletProvider>
+                <ScrollToTop />
+                <Routes>
+                {/* Public landing page — visible to unauthenticated visitors */}
+                <Route index element={<PublicHome />} />
 
-              {/* Public Help Center route — accessible to logged-out and logged-in visitors */}
-              <Route path="help" element={<HelpRouteHandler />} />
+                {/* Public Help Center route — accessible to logged-out and logged-in visitors */}
+                <Route path="help" element={<HelpRouteHandler />} />
 
-              {/* Auth routes render standalone */}
-              <Route path="login" element={<LoginPage />} />
-              <Route path="register" element={<RegisterPage />} />
-              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                {/* Auth routes render standalone */}
+                <Route path="login" element={<LoginPage />} />
+                <Route path="register" element={<RegisterPage />} />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
 
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="dashboard" element={<RoleHome />} />
-                <Route path="analytics" element={<AnalyticsPage />} />
-                <Route path="projects" element={<ProjectsPage />} />
-                <Route path="projects/new" element={<ProtectedRoute requiredRole="client"><CreateProjectPage /></ProtectedRoute>} />
-                <Route path="projects/mine" element={<MyProjectsPage />} />
-                <Route path="applications" element={<ProtectedRoute requiredRole="freelancer"><MyApplicationsPage /></ProtectedRoute>} />
-                <Route path="projects/:id" element={<ProjectDetailPage />} />
-                <Route path="contracts" element={<ContractsPage />} />
-                <Route path="milestones" element={<MilestonesPage />} />
-                <Route path="escrow" element={<EscrowPage />} />
-                <Route path="disputes" element={<DisputesPage />} />
-                <Route path="activity" element={<ActivityPage />} />
-                <Route path="profile" element={<ProfilePage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="chat" element={<ChatPage />} />
-                <Route path="admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Route>
-            </Routes>
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="dashboard" element={<RouteErrorBoundary featureName="Dashboard"><RoleHome /></RouteErrorBoundary>} />
+                  <Route path="analytics" element={<RouteErrorBoundary featureName="Analytics"><AnalyticsPage /></RouteErrorBoundary>} />
+                  <Route path="projects" element={<RouteErrorBoundary featureName="Projects"><ProjectsPage /></RouteErrorBoundary>} />
+                  <Route path="projects/new" element={<ProtectedRoute requiredRole="client"><RouteErrorBoundary featureName="Create Project"><CreateProjectPage /></RouteErrorBoundary></ProtectedRoute>} />
+                  <Route path="projects/mine" element={<RouteErrorBoundary featureName="My Projects"><MyProjectsPage /></RouteErrorBoundary>} />
+                  <Route path="applications" element={<ProtectedRoute requiredRole="freelancer"><RouteErrorBoundary featureName="Applications"><MyApplicationsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                  <Route path="projects/:id" element={<RouteErrorBoundary featureName="Project Details"><ProjectDetailPage /></RouteErrorBoundary>} />
+                  <Route path="contracts" element={<RouteErrorBoundary featureName="Contracts"><ContractsPage /></RouteErrorBoundary>} />
+                  <Route path="milestones" element={<RouteErrorBoundary featureName="Milestones"><MilestonesPage /></RouteErrorBoundary>} />
+                  <Route path="escrow" element={<RouteErrorBoundary featureName="Escrow"><EscrowPage /></RouteErrorBoundary>} />
+                  <Route path="disputes" element={<RouteErrorBoundary featureName="Disputes"><DisputesPage /></RouteErrorBoundary>} />
+                  <Route path="activity" element={<RouteErrorBoundary featureName="Activity"><ActivityPage /></RouteErrorBoundary>} />
+                  <Route path="profile" element={<RouteErrorBoundary featureName="Profile"><ProfilePage /></RouteErrorBoundary>} />
+                  <Route path="wallet" element={<RouteErrorBoundary featureName="Wallet"><WalletPage /></RouteErrorBoundary>} />
+                  <Route path="settings" element={<RouteErrorBoundary featureName="Settings"><SettingsPage /></RouteErrorBoundary>} />
+                  <Route path="notifications" element={<RouteErrorBoundary featureName="Notifications"><NotificationsPage /></RouteErrorBoundary>} />
+                  <Route path="transactions" element={<RouteErrorBoundary featureName="Transactions"><TransactionsPage /></RouteErrorBoundary>} />
+                  <Route path="chat" element={<RouteErrorBoundary featureName="Chat"><ChatPage /></RouteErrorBoundary>} />
+                  <Route path="admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
+                  <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Route>
+              </Routes>
+            </WalletProvider>
           </AuthProvider>
-        </ToastProvider>
-      </CurrencyProvider>
-    </ThemeProvider>
+          </ToastProvider>
+        </CurrencyProvider>
+      </ThemeProvider>
+    </GlobalErrorBoundary>
   )
 }

@@ -29,6 +29,10 @@ exports.createApplication = async (req, res) => {
       return res.status(400).json({ message: "Applications are closed for this project" });
     }
 
+    if (project.deadlineAt && new Date() > new Date(project.deadlineAt)) {
+      return res.status(400).json({ message: "This project has passed its submission deadline and is no longer accepting applications" });
+    }
+
     if (String(project.clientId) === String(req.user.id)) {
       return res.status(400).json({ message: "You cannot apply to your own project" });
     }

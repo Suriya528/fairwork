@@ -16,9 +16,18 @@ async function recordBlockchainActivity(projectId, log, type, title, message, ex
   recordActivitySafely({ userIds: [project.clientId, project.freelancerId], eventKey: `chain:${eventIdentity}`, type, title, message, projectId, ...extra });
 }
 async function startBlockchainListener() {
-  const escrowAddress = process.env.ESCROW_CONTRACT_ADDRESS, disputeAddress = process.env.DISPUTE_CONTRACT_ADDRESS;
-  if (!process.env.SEPOLIA_RPC_URL || !escrowAddress || !disputeAddress) return;
-  const client = createPublicClient({ chain: sepolia, transport: http(process.env.SEPOLIA_RPC_URL) }); const escrowAbi = artifact("EscrowContract"), disputeAbi = artifact("DisputeContract");
+  try {
+    const escrowAddress = process.env.ESCROW_CONTRACT_ADDRESS, disputeAddress = process.env.DISPUTE_CONTRACT_ADDRESS;
+    if (!process.env.SEPOLIA_RPC_URL || !escrowAddress || !disputeAddress) return;
+    const client = createPublicClient({ chain: sepolia, transport: http(process.env.SEPOLIA_RPC_URL) });
+    let escrowAbi, disputeAbi;
+    try {
+      escrowAbi = artifact("EscrowContract");
+      disputeAbi = artifact("DisputeContract");
+    } catch {
+      console.warn("Blockchain contract artifacts not found; listener paused.");
+      return;
+    }
   const processLog = async (log, abi, address) => { const event = decodeEventLog({ abi, data: log.data, topics: log.topics }); const a = event.args, projectId = a.projectId;
     if (event.eventName === "EscrowCreated") { await Project.findByIdAndUpdate(projectId, { escrowToken: a.token.toLowerCase() }); await recordBlockchainActivity(projectId, log, "escrow_created", "Escrow created", "Escrow was created on-chain."); }
     if (event.eventName === "EscrowFunded") { await Project.findByIdAndUpdate(projectId, { escrowFunded: true }); await recordBlockchainActivity(projectId, log, "escrow_funded", "Escrow funded", "Escrow funding was confirmed on-chain."); }
@@ -34,5 +43,8 @@ async function startBlockchainListener() {
   // viem's polling subscription is live processing; catch-up preserves the
   // same confirmation policy after reconnects and missed blocks.
   client.watchBlockNumber({ emitOnBegin: false, onBlockNumber: () => catchUp().catch(console.error) });
+  } catch (err) {
+    console.warn("Blockchain listener initialization error:", err.message);
+  }
 }
 module.exports = { startBlockchainListener };
