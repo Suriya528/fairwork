@@ -1,78 +1,44 @@
-const Project = require("../models/Project");
-const { verifyTransactionReceipt, verifyOnChainEscrowFunded } = require("../services/blockchainVerification");
+const { reconcileEscrowFunding, reconcileMilestoneRelease } = require("../services/reconciliationService");
 
+/**
+ * REST Endpoint for Client Escrow Deposit Reconciliation Request.
+ *
+ * This endpoint accepts a reconciliation request with a confirmed transaction hash.
+ * It DOES NOT independently mutate financial state; it delegates to the single
+ * authoritative reconciliation service which verifies on-chain facts (chain, contract,
+ * sender wallet, event log, contract state) before recording financial truth.
+ */
 exports.depositEscrow = async (req, res) => {
   try {
     const { projectId, txnHash } = req.body;
     if (!projectId) return res.status(400).json({ message: "projectId is required" });
     if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 
-    const project = await Project.findById(projectId);
-    if (!project) return res.status(404).json({ message: "Project not found" });
-
-    if (String(project.clientId) !== String(req.user.id) && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Only the project client can deposit escrow" });
-    }
-
-    // Verify transaction receipt on-chain
-    const receiptCheck = await verifyTransactionReceipt(txnHash);
-    if (!receiptCheck.verified) {
-      return res.status(400).json({ message: `Escrow deposit verification failed: ${receiptCheck.error}` });
-    }
-
-    // Verify on-chain escrow contract state if configured
-    const contractCheck = await verifyOnChainEscrowFunded(projectId);
-    if (!contractCheck.verified) {
-      return res.status(400).json({ message: `Escrow contract verification failed: ${contractCheck.error}` });
-    }
-
-    project.escrowTxnHash = txnHash;
-    project.escrowFunded = true;
-    await project.save();
+    const project = await reconcileEscrowFunding(projectId, txnHash, req.user.id);
     res.json({ message: "Escrow recorded successfully", project });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message || "Failed to reconcile escrow deposit." });
   }
 };
 
+/**
+ * REST Endpoint for Client Milestone Escrow Release Reconciliation Request.
+ *
+ * This endpoint accepts a reconciliation request with a confirmed transaction hash.
+ * It DOES NOT independently mutate financial state; it delegates to the single
+ * authoritative reconciliation service which verifies on-chain facts (chain, contract,
+ * sender wallet, recipient wallet, event log, contract state) before recording financial truth.
+ */
 exports.releaseEscrow = async (req, res) => {
   try {
     const { projectId, milestoneIndex, txnHash } = req.body;
     if (!projectId) return res.status(400).json({ message: "projectId is required" });
 
-    const project = await Project.findById(projectId);
-    if (!project) return res.status(404).json({ message: "Project not found" });
-
-    if (String(project.clientId) !== String(req.user.id) && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Only the project client can release milestone escrow" });
-    }
-
-    if (!project.escrowFunded) {
-      return res.status(400).json({ message: "Cannot release milestone payment: project escrow is not funded." });
-    }
-
-    // Verify transaction receipt on-chain if hash was provided
-    if (txnHash) {
-      const receiptCheck = await verifyTransactionReceipt(txnHash);
-      if (!receiptCheck.verified) {
-        return res.status(400).json({ message: `Milestone release verification failed: ${receiptCheck.error}` });
-      }
-    }
-
-    if (milestoneIndex !== undefined && project.milestones && project.milestones[milestoneIndex]) {
-      project.milestones[milestoneIndex].paymentReleased = true;
-      project.milestones[milestoneIndex].status = "completed";
-    }
-
-    const allReleased = (project.milestones || []).length > 0 && project.milestones.every((m) => m.paymentReleased);
-    if (allReleased) {
-      project.escrowCompleted = true;
-      project.status = "completed";
-    }
-
-    await project.save();
+    const project = await reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req.user.id);
     res.json({ message: "Escrow payment released successfully", project });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message || "Failed to reconcile milestone release." });
   }
 };

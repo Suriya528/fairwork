@@ -14,9 +14,23 @@ import { sepolia } from "viem/chains"
  *   VITE_SEPOLIA_RPC_URL           (no alias)
  * ──────────────────────────────────────────────────────────── */
 
-export const escrowAddress = (import.meta.env.VITE_ESCROW_CONTRACT_ADDRESS || import.meta.env.VITE_ESCROW_ADDRESS) as `0x${string}` | undefined
-export const disputeAddress = (import.meta.env.VITE_DISPUTE_CONTRACT_ADDRESS || import.meta.env.VITE_DISPUTE_ADDRESS) as `0x${string}` | undefined
-export const usdcAddress = (import.meta.env.VITE_USDC_ADDRESS || import.meta.env.VITE_TOKEN_ADDRESS) as `0x${string}` | undefined
+function resolveAddressEnv(canonicalKey: string, aliasKey: string): `0x${string}` | undefined {
+  const canonical = (import.meta.env[canonicalKey] as string | undefined)?.trim()
+  const alias = (import.meta.env[aliasKey] as string | undefined)?.trim()
+
+  if (canonical && alias && canonical.toLowerCase() !== alias.toLowerCase()) {
+    throw new Error(
+      `Blockchain configuration conflict: Both ${canonicalKey} ("${canonical}") and legacy alias ${aliasKey} ("${alias}") are defined with different values. Resolve this conflict in your environment configuration.`
+    )
+  }
+
+  const value = canonical || alias || ""
+  return value ? (value as `0x${string}`) : undefined
+}
+
+export const escrowAddress = resolveAddressEnv("VITE_ESCROW_CONTRACT_ADDRESS", "VITE_ESCROW_ADDRESS")
+export const disputeAddress = resolveAddressEnv("VITE_DISPUTE_CONTRACT_ADDRESS", "VITE_DISPUTE_ADDRESS")
+export const usdcAddress = resolveAddressEnv("VITE_USDC_ADDRESS", "VITE_TOKEN_ADDRESS")
 
 const sepoliaRpcUrl = import.meta.env.VITE_SEPOLIA_RPC_URL as string | undefined
 export const publicClient = sepoliaRpcUrl
