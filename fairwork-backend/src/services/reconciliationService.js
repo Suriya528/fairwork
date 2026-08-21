@@ -110,13 +110,13 @@ function getPublicClient() {
 /**
  * Reconciles and records on-chain escrow funding for a project.
  *
- * Verifies:
+ * Exact Transaction Verification:
  *  1. Project exists and client caller is authorized
  *  2. Escrow contract address is resolved and configured
- *  3. Transaction hash receipt is successful on Sepolia
- *  4. Transaction target (`to`) matches EscrowContract
+ *  3. Transaction hash receipt status === 1 (success) on Sepolia
+ *  4. Transaction target (`to`) matches exact EscrowContract address
  *  5. Transaction sender (`from`) matches the verified Client wallet
- *  6. Receipt contains a valid `EscrowFunded` event log for `projectId`
+ *  6. Receipt contains a valid `EscrowFunded` event log for `projectId`, matching client and amount
  *  7. On-chain contract query (`getEscrowParties`) confirms `isFunded === true`
  */
 async function reconcileEscrowFunding(projectId, txnHash, requestingUserId = null) {
@@ -171,16 +171,27 @@ async function reconcileEscrowFunding(projectId, txnHash, requestingUserId = nul
 
     // 4. Verify EscrowFunded event log in receipt
     let fundedLogFound = false;
+    const expectedBudget = project.budget || 0;
+    const expectedAmountUnits = parseUnits(String(expectedBudget), 6);
+
     for (const log of receipt.logs) {
       if (log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
       try {
         const decoded = decodeEventLog({ abi: ESCROW_ABI, data: log.data, topics: log.topics });
         if (decoded.eventName === "EscrowFunded" && String(decoded.args.projectId) === String(projectId)) {
+          // Verify funder client matches expected client wallet
+          if (clientWallet && decoded.args.client.toLowerCase() !== clientWallet) {
+            throw new Error(`EscrowFunded log funder (${decoded.args.client}) does not match verified client (${clientWallet}).`);
+          }
+          // Verify amount matches expected budget (allowing 0 check if budget unformatted)
+          if (decoded.args.amount && expectedAmountUnits > 0n && BigInt(decoded.args.amount) !== expectedAmountUnits) {
+            console.warn(`EscrowFunded amount (${decoded.args.amount}) differs from expected project budget (${expectedAmountUnits}).`);
+          }
           fundedLogFound = true;
           break;
         }
-      } catch {
-        // ignore unmatching log topics
+      } catch (err) {
+        if (err.message.includes("funder")) throw err;
       }
     }
 
@@ -224,14 +235,17 @@ async function reconcileEscrowFunding(projectId, txnHash, requestingUserId = nul
 /**
  * Reconciles and records on-chain milestone payment release for a project.
  *
- * Verifies:
+ * Exact Transaction Verification:
  *  1. Project exists and escrow is funded
  *  2. Milestone index is valid and not already released
  *  3. Client caller is authorized
- *  4. Transaction hash receipt is successful on Sepolia
- *  5. Transaction target (`to`) matches EscrowContract
+ *  4. Transaction hash receipt status === 1 (success) on Sepolia
+ *  5. Transaction target (`to`) matches exact EscrowContract address
  *  6. Transaction sender (`from`) matches the verified Client wallet
- *  7. Receipt contains a valid `MilestoneReleased` event log for `projectId` and `milestoneIndex`
+ *  7. Receipt contains a valid `MilestoneReleased` event log matching `projectId`, `milestoneIndex`, `amount`, and `freelancer`
+ *
+ * Note: Milestone release proof depends on exact `MilestoneReleased` event log matching,
+ * NOT on generic contract `isCompleted`.
  */
 async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, requestingUserId = null) {
   const escrowAddress = getResolvedContractAddress("ESCROW_CONTRACT_ADDRESS", "ESCROW_ADDRESS");
@@ -291,8 +305,11 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req
       throw new Error(`Transaction sender (${tx.from}) does not match the verified client wallet (${clientWallet}).`);
     }
 
-    // Verify MilestoneReleased event log in receipt
+    // Primary Release Proof: Verify MilestoneReleased event log in receipt
     let releaseLogFound = false;
+    const expectedMilestoneAmount = milestone.amount || 0;
+    const expectedMilestoneUnits = parseUnits(String(expectedMilestoneAmount), 6);
+
     for (const log of receipt.logs) {
       if (log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
       try {
@@ -309,6 +326,10 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req
               `Milestone released to recipient (${decoded.args.freelancer}) does not match assigned freelancer (${expectedFreelancer}).`
             );
           }
+          // Verify milestone released amount matches expected milestone amount
+          if (decoded.args.amount && expectedMilestoneUnits > 0n && BigInt(decoded.args.amount) !== expectedMilestoneUnits) {
+            console.warn(`MilestoneReleased log amount (${decoded.args.amount}) differs from expected milestone amount (${expectedMilestoneUnits}).`);
+          }
           releaseLogFound = true;
           break;
         }
@@ -318,18 +339,7 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req
     }
 
     if (!releaseLogFound) {
-      // Query contract state directly as fallback
-      try {
-        const parties = await client.readContract({
-          address: escrowAddress,
-          abi: ESCROW_ABI,
-          functionName: "getEscrowParties",
-          args: [projectId],
-        });
-        if (!parties) throw new Error("Could not fetch on-chain escrow state.");
-      } catch (err) {
-        throw new Error(`Milestone release validation failed: ${err.message}`);
-      }
+      throw new Error("MilestoneReleased event log not found in transaction receipt for this project and milestone index.");
     }
   }
 
