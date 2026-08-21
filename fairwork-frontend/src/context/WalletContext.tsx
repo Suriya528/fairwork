@@ -435,6 +435,31 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
 export function useWallet(): WalletContextValue {
   const ctx = useContext(WalletContext)
-  if (!ctx) throw new Error("useWallet must be used within a WalletProvider")
+  if (!ctx) {
+    return {
+      walletState: "DISCONNECTED",
+      errorState: null,
+      errorMessage: "",
+      connectedAccount: null,
+      chainId: null,
+      isCorrectNetwork: true,
+      verifiedWalletAddress: null,
+      isVerified: false,
+      isConnecting: false,
+      isVerifying: false,
+      isProviderAvailable: false,
+      hasMetaMask: false,
+      noWalletModalOpen: false,
+      openNoWalletModal: () => {},
+      closeNoWalletModal: () => {},
+      redetectProvider: async () => false,
+      connect: async () => null,
+      verify: async () => false,
+      connectAndVerify: async () => false,
+      switchNetwork: async () => false,
+      disconnect: () => {},
+      clearError: () => {},
+    }
+  }
   return ctx
 }
