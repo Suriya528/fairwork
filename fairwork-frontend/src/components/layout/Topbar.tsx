@@ -1,19 +1,23 @@
-import { FiSearch, FiMenu } from "react-icons/fi"
-import { WalletAddress } from "@/components/common/WalletAddress"
+import { FiSearch, FiMenu, FiCheckCircle, FiShieldOff } from "react-icons/fi"
+import { Badge } from "@/components/ui/Badge"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
 import { AccountMenu } from "./AccountMenu"
 import { useAuth } from "@/context/AuthContext"
+import { useWallet } from "@/context/WalletContext"
 import { useCurrency } from "@/context/CurrencyContext"
 
 interface TopbarProps {
   onOpenMobileNav: () => void
 }
 
-/** Sticky top bar with search, wallet, theme toggle, currency selector with flag hover effect, notifications, and user account. */
+/** Sticky top bar with search, compact wallet status badge, theme toggle, currency selector, and user account. */
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const { user } = useAuth()
+  const { isVerified, connectedAccount } = useWallet()
   const { currency, setCurrency } = useCurrency()
+
+  const isUserVerified = isVerified || Boolean(user?.walletAddress)
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/80 px-4 backdrop-blur-md lg:px-8">
@@ -40,9 +44,23 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
       </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        {user?.walletAddress && (
-          <WalletAddress address={user.walletAddress} className="hidden md:inline-flex" />
+        {/* Compact Wallet Status Badge (No raw wallet address in global header) */}
+        {isUserVerified ? (
+          <Badge tone="success" className="hidden md:inline-flex items-center gap-1 font-medium">
+            <FiCheckCircle className="h-3 w-3" />
+            Wallet Verified ✓
+          </Badge>
+        ) : connectedAccount ? (
+          <Badge tone="warning" className="hidden md:inline-flex items-center gap-1 font-medium">
+            <FiShieldOff className="h-3 w-3" />
+            Wallet Connected
+          </Badge>
+        ) : (
+          <Badge tone="neutral" className="hidden md:inline-flex">
+            Not Connected
+          </Badge>
         )}
+
         <button
           type="button"
           onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}

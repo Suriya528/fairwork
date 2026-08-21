@@ -10,6 +10,9 @@ import { createWalletClient, custom } from "viem"
 import { sepolia } from "viem/chains"
 import { useAuth } from "./AuthContext"
 import { getWalletNonce, verifyWallet as apiVerifyWallet } from "@/services/authApi"
+import { NoWalletModal } from "@/components/wallet/NoWalletModal"
+
+export const OFFICIAL_METAMASK_INSTALL_URL = "https://metamask.io/download/"
 
 export type WalletState = "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "VERIFYING" | "VERIFIED"
 
@@ -33,6 +36,12 @@ interface WalletContextValue {
   isVerified: boolean
   isConnecting: boolean
   isVerifying: boolean
+  isProviderAvailable: boolean
+  hasMetaMask: boolean
+  noWalletModalOpen: boolean
+  openNoWalletModal: () => void
+  closeNoWalletModal: () => void
+  redetectProvider: () => Promise<boolean>
   connect: () => Promise<string | null>
   verify: () => Promise<boolean>
   connectAndVerify: () => Promise<boolean>
@@ -46,6 +55,24 @@ const WalletContext = createContext<WalletContextValue | undefined>(undefined)
 const TARGET_CHAIN_ID = sepolia.id // 11155111
 const TARGET_CHAIN_HEX = `0x${TARGET_CHAIN_ID.toString(16)}`
 
+/**
+ * Safely inspects browser window for injected Web3 EVM provider.
+ * Supports provider arrays (e.g., when multiple wallets like MetaMask + Coinbase are injected).
+ */
+export function getInjectedProvider(): any {
+  if (typeof window === "undefined") return null
+
+  const eth = (window as any).ethereum
+  if (!eth) return null
+
+  if (Array.isArray(eth.providers) && eth.providers.length > 0) {
+    const mm = eth.providers.find((p: any) => p && p.isMetaMask)
+    return mm || eth.providers[0]
+  }
+
+  return eth
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { user, token, updateWallet } = useAuth()
 
@@ -56,6 +83,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [connectedAccount, setConnectedAccount] = useState<string | null>(null)
   const [chainId, setChainId] = useState<number | null>(null)
 
+  const [noWalletModalOpen, setNoWalletModalOpen] = useState(false)
+  const [isProviderAvailable, setIsProviderAvailable] = useState<boolean>(() => Boolean(getInjectedProvider()))
+  const [hasMetaMask, setHasMetaMask] = useState<boolean>(() => Boolean(getInjectedProvider()?.isMetaMask))
+
   const verifiedWalletAddress = user?.walletAddress ? user.walletAddress.toLowerCase() : null
   const isCorrectNetwork = chainId === TARGET_CHAIN_ID
   const isVerified = Boolean(
@@ -64,16 +95,50 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       connectedAccount.toLowerCase() === verifiedWalletAddress,
   )
 
+  const openNoWalletModal = useCallback(() => {
+    setNoWalletModalOpen(true)
+  }, [])
+
+  const closeNoWalletModal = useCallback(() => {
+    setNoWalletModalOpen(false)
+  }, [])
+
   const clearError = useCallback(() => {
     setErrorState(null)
     setErrorMessage("")
   }, [])
 
-  // Auto-detect existing connected accounts & Listen for MetaMask changes
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.ethereum || typeof window.ethereum.request !== "function") return
+  // Check provider availability
+  const checkProviderState = useCallback(() => {
+    const provider = getInjectedProvider()
+    const available = Boolean(provider)
+    const isMM = Boolean(provider?.isMetaMask)
+    setIsProviderAvailable(available)
+    setHasMetaMask(isMM)
+    return available
+  }, [])
 
-    const provider = window.ethereum
+  // Bounded re-detection helper for "I've Installed MetaMask"
+  const redetectProvider = useCallback(async (): Promise<boolean> => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const available = checkProviderState()
+      if (available) {
+        clearError()
+        setNoWalletModalOpen(false)
+        return true
+      }
+      await new Promise((r) => setTimeout(r, 500))
+    }
+    return false
+  }, [checkProviderState, clearError])
+
+  // Auto-detect existing connected accounts & Listen for wallet changes
+  useEffect(() => {
+    const provider = getInjectedProvider()
+    if (!provider || typeof provider.request !== "function") return
+
+    setIsProviderAvailable(true)
+    setHasMetaMask(Boolean(provider.isMetaMask))
 
     try {
       provider
@@ -105,7 +170,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // Ignore provider initialization errors
     }
 
-    // Event handler: Account switched in wallet
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts && accounts.length > 0) {
         const newAcc = accounts[0].toLowerCase()
@@ -121,7 +185,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Event handler: Network/Chain switched in wallet
     const handleChainChanged = (hexChainId: string) => {
       const parsed = parseInt(hexChainId, 16)
       setChainId(parsed)
@@ -134,8 +197,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    provider.on("accountsChanged", handleAccountsChanged)
-    provider.on("chainChanged", handleChainChanged)
+    if (provider.on) {
+      provider.on("accountsChanged", handleAccountsChanged)
+      provider.on("chainChanged", handleChainChanged)
+    }
 
     return () => {
       if (provider.removeListener) {
@@ -145,7 +210,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [verifiedWalletAddress, errorState])
 
-  // Sync walletState with user.walletAddress when user updates
+  // Sync walletState with user.walletAddress
   useEffect(() => {
     if (connectedAccount && verifiedWalletAddress && connectedAccount.toLowerCase() === verifiedWalletAddress) {
       setWalletState("VERIFIED")
@@ -160,16 +225,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connect = useCallback(async (): Promise<string | null> => {
     clearError()
 
-    if (typeof window === "undefined" || !window.ethereum) {
+    const provider = getInjectedProvider()
+    if (!provider) {
       setErrorState("PROVIDER_UNAVAILABLE")
-      setErrorMessage("No Web3 wallet detected. Please install MetaMask or another compatible browser wallet.")
+      setErrorMessage("No compatible wallet detected. Install MetaMask, create or import your wallet there, then return to FairWork and connect it.")
+      setIsProviderAvailable(false)
+      setNoWalletModalOpen(true)
       return null
     }
 
     setWalletState("CONNECTING")
 
     try {
-      const wallet = createWalletClient({ chain: sepolia, transport: custom(window.ethereum) })
+      const wallet = createWalletClient({ chain: sepolia, transport: custom(provider) })
       const [account] = await wallet.requestAddresses()
       const currentChain = await wallet.getChainId()
 
@@ -211,11 +279,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   // Step 2: Switch Network to Sepolia
   const switchNetwork = useCallback(async (): Promise<boolean> => {
-    if (typeof window === "undefined" || !window.ethereum) return false
+    const provider = getInjectedProvider()
+    if (!provider) return false
     clearError()
 
     try {
-      await window.ethereum.request({
+      await provider.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: TARGET_CHAIN_HEX }],
       })
@@ -241,6 +310,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       return false
     }
 
+    const provider = getInjectedProvider()
+    if (!provider) {
+      setErrorState("PROVIDER_UNAVAILABLE")
+      setErrorMessage("No compatible wallet detected. Please install MetaMask.")
+      setNoWalletModalOpen(true)
+      return false
+    }
+
     if (!connectedAccount) {
       const acc = await connect()
       if (!acc) return false
@@ -249,7 +326,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletState("VERIFYING")
 
     try {
-      const wallet = createWalletClient({ chain: sepolia, transport: custom(window.ethereum!) })
+      const wallet = createWalletClient({ chain: sepolia, transport: custom(provider) })
       const currentChain = await wallet.getChainId()
 
       if (currentChain !== TARGET_CHAIN_ID) {
@@ -264,10 +341,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Fetch one-time backend challenge nonce
       const challenge = await getWalletNonce(token)
 
-      // Sign EIP-712 typed data
       const signature = await wallet.signTypedData({
         account: connectedAccount as `0x${string}`,
         domain: challenge.domain,
@@ -280,10 +355,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         },
       })
 
-      // Submit cryptographic proof to backend
       const verifiedUser = await apiVerifyWallet(connectedAccount!, challenge.nonce, signature, token)
 
-      // Update local auth context
       await updateWallet(verifiedUser.walletAddress)
 
       setWalletState("VERIFIED")
@@ -309,7 +382,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [clearError, connectedAccount, connect, token, updateWallet])
 
-  // Full Seamless Flow: Connect + Verify
+  // Full Flow: Connect + Verify
   const connectAndVerify = useCallback(async (): Promise<boolean> => {
     const acc = await connect()
     if (!acc) return false
@@ -336,6 +409,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isVerified,
         isConnecting: walletState === "CONNECTING",
         isVerifying: walletState === "VERIFYING",
+        isProviderAvailable,
+        hasMetaMask,
+        noWalletModalOpen,
+        openNoWalletModal,
+        closeNoWalletModal,
+        redetectProvider,
         connect,
         verify,
         connectAndVerify,
@@ -345,6 +424,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <NoWalletModal
+        open={noWalletModalOpen}
+        onClose={closeNoWalletModal}
+        onRedetect={redetectProvider}
+      />
     </WalletContext.Provider>
   )
 }

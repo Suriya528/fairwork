@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
-import { formatDate } from "@/lib/format"
 
 type Filter = "active" | "completed" | "all" | "in_progress" | "escrow_funded"
 
@@ -67,7 +66,7 @@ export function MyProjectsPage() {
     () =>
       roleProjects
         .flatMap((p) => p.milestones)
-        .filter((m) => m.status === "completed")
+        .filter((m) => m.paymentReleased)
         .reduce((sum, m) => sum + m.amount, 0),
     [roleProjects],
   )

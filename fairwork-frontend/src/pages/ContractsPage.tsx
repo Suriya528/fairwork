@@ -2,10 +2,8 @@ import { useEffect, useState } from "react"
 import {
   FiCheck,
   FiCheckCircle,
-  FiClock,
   FiCopy,
   FiFileText,
-  FiLock,
   FiShield,
   FiUserCheck,
 } from "react-icons/fi"

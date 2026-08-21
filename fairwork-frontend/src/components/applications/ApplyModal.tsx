@@ -24,7 +24,7 @@ export function ApplyModal({
   onSuccess,
 }: ApplyModalProps) {
   const { token } = useAuth()
-  const { currency, symbol, convertAmount, formatAmount } = useCurrency()
+  const { currency, convertAmount, formatAmount } = useCurrency()
   const [proposalText, setProposalText] = useState("")
   const [proposedAmount, setProposedAmount] = useState(String(convertAmount(projectBudget)))
   const [estimatedDelivery, setEstimatedDelivery] = useState("7 days")

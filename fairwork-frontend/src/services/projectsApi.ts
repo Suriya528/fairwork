@@ -15,6 +15,7 @@ import { API_URL, ApiError, apiFetch } from "./apiClient"
 
 interface BackendPopulatedUser {
   _id: string
+  id?: string
   firstName: string
   lastName: string
   walletAddress?: string
@@ -22,14 +23,20 @@ interface BackendPopulatedUser {
 
 interface BackendMilestone {
   _id: string
+  id?: string
   title: string
   amount: number
-  status: "pending" | "completed"
+  status: "pending" | "in_progress" | "submitted" | "revision_requested" | "completed"
   paymentReleased?: boolean
+  submissionNotes?: string
+  submittedAt?: string
+  revisionNotes?: string
+  revisionRequestedAt?: string
 }
 
 interface BackendProject {
   _id: string
+  id?: string
   title: string
   description: string
   category?: string
@@ -48,8 +55,8 @@ interface BackendProject {
   deadlineAt?: string
   durationDays?: number
   deadlineMode?: "duration" | "exact"
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 interface BackendDeliverable {
@@ -111,6 +118,7 @@ export interface ApiProject {
   durationDays: number | null
   deadlineMode: "duration" | "exact"
   createdAt: string
+  updatedAt?: string
 }
 
 export interface ApiDeliverable {
@@ -299,7 +307,7 @@ function toReferenceFile(raw: BackendReferenceFile): ApiReferenceFile {
     mimeType: raw.mimeType,
     size: raw.size,
     uploadedById: isPop ? (raw.uploadedBy as BackendPopulatedUser)._id : (raw.uploadedBy as string),
-    uploadedByName: isPop ? getUserName(raw.uploadedBy as BackendPopulatedUser) : null,
+    uploadedByName: isPop ? personName(raw.uploadedBy as BackendPopulatedUser) : null,
     uploadedAt: raw.uploadedAt,
   }
 }

@@ -21,7 +21,6 @@ import {
   FiUploadCloud,
   FiUserCheck,
   FiX,
-  FiXCircle,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
@@ -37,7 +36,7 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { LoadingState } from "@/components/feedback/LoadingState"
 import { ErrorState } from "@/components/feedback/ErrorState"
 import { ApplyModal } from "@/components/applications/ApplyModal"
-import { formatCurrency, formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "@/lib/format"
+import { formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "@/lib/format"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { ApiError } from "@/services/apiClient"
@@ -51,13 +50,13 @@ import {
   submitMilestone,
   requestMilestoneRevision,
   approveMilestone,
+  assignFreelancer,
   type ApiDeliverable,
   type ApiMilestone,
   type ApiProject,
   type ApiReferenceFile,
 } from "@/services/projectsApi"
 import {
-  acceptApplication,
   getMyApplications,
   getProjectApplications,
   rejectApplication,
@@ -70,31 +69,10 @@ import {
   type ApiContract,
 } from "@/services/contractsApi"
 import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone } from "@/services/web3"
+import { depositEscrow, releaseEscrowPayment } from "@/services/escrowApi"
 import { raiseDispute } from "@/services/disputesApi"
 
-type TabValue = "overview" | "applications" | "contract" | "milestones" | "files" | "activity"
-
-function ProjectNotFound() {
-  const navigate = useNavigate()
-  return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <Card className="mx-auto max-w-md">
-        <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface">
-            <FiAlertTriangle className="h-6 w-6 text-subtle" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <h3 className="text-base font-semibold text-foreground">Project not found</h3>
-            <p className="text-sm text-muted">This project may have been removed, or the link is incorrect.</p>
-          </div>
-          <Button variant="primary" onClick={() => navigate("/projects")}>
-            Back to projects
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
+type TabValue = "overview" | "applications" | "proposals" | "contract" | "milestones" | "files" | "disputes" | "activity"
 
 function IdentityCard({
   role,
@@ -419,14 +397,23 @@ function MilestoneRow({
             </div>
           )}
 
-          {/* Client Release Payout */}
-          {isClient && milestone.status === "completed" && (
+          {/* Milestone Payment Status & Actions */}
+          {milestone.status === "completed" && (
             milestone.paymentReleased ? (
               <Badge tone="success">Payment Released ✓</Badge>
-            ) : (
-              <Button size="sm" disabled={!canRelease || releasing} loading={releasing} onClick={onRelease}>
-                Release Escrow Payout
+            ) : releasing ? (
+              <Button size="sm" disabled loading>
+                Releasing Payment...
               </Button>
+            ) : isClient ? (
+              <div className="flex items-center gap-2">
+                <Badge tone="warning">Payment: Pending Release</Badge>
+                <Button size="sm" variant="primary" disabled={!canRelease} onClick={onRelease}>
+                  Release Escrow Payout
+                </Button>
+              </div>
+            ) : (
+              <Badge tone="warning">Payment: Pending Release</Badge>
             )
           )}
 
@@ -499,7 +486,7 @@ export function ProjectDetailPage() {
   const navigate = useNavigate()
   const { token, user } = useAuth()
   const { formatAmount } = useCurrency()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const validTabs: TabValue[] = ["overview", "applications", "proposals", "contract", "milestones", "files", "disputes"]
   const initialTab = (searchParams.get("tab") as TabValue | null)
   const [tab, setTab] = useState<TabValue>(
@@ -523,9 +510,6 @@ export function ProjectDetailPage() {
   const [deliverables, setDeliverables] = useState<ApiDeliverable[]>([])
   const [filesLoading, setFilesLoading] = useState(false)
   const [filesError, setFilesError] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState("")
-  const [uploadingFile, setUploadingFile] = useState(false)
 
   // Application system states
   const [applyModalOpen, setApplyModalOpen] = useState(false)
@@ -667,9 +651,7 @@ export function ProjectDetailPage() {
     }
   }, [project, token, loadApplications])
 
-  const [submissionNotes, setSubmissionNotes] = useState("")
-
-  // Reference Files states (Client uploads requirement specs, design references)
+  // Deliverables & Reference Files states
   const [referenceFiles, setReferenceFiles] = useState<ApiReferenceFile[]>([])
   const [refFilesLoading, setRefFilesLoading] = useState(false)
   const [uploadingRefFile, setUploadingRefFile] = useState(false)
@@ -718,26 +700,6 @@ export function ProjectDetailPage() {
     }
   }
 
-  const uploadFile = async () => {
-    if (!token || !selectedFile || !project) return
-    setUploadingFile(true)
-    setFilesError("")
-    try {
-      await uploadProjectDeliverable(project.id, selectedFile, selectedMilestoneId, token, submissionNotes)
-      setSelectedFile(null)
-      setSelectedMilestoneId("")
-      setSubmissionNotes("")
-      const input = document.getElementById("deliverable-file") as HTMLInputElement | null
-      if (input) input.value = ""
-      await loadDeliverables()
-      await loadProject()
-    } catch (err) {
-      setFilesError(err instanceof Error ? err.message : "Couldn't upload the deliverable.")
-    } finally {
-      setUploadingFile(false)
-    }
-  }
-
   const uploadRefFile = async () => {
     if (!token || !selectedRefFile || !project) return
     setUploadingRefFile(true)
@@ -751,6 +713,24 @@ export function ProjectDetailPage() {
       setFilesError(err instanceof Error ? err.message : "Couldn't upload reference file.")
     } finally {
       setUploadingRefFile(false)
+    }
+  }
+
+  const handleHire = async (applicationId: string) => {
+    if (!token || !project) return
+    setActionError("")
+    setHiringId(applicationId)
+    try {
+      const app = (applications as ApiApplication[]).find((a) => a.id === applicationId)
+      if (app?.freelancerId) {
+        await assignFreelancer(project.id, app.freelancerId, token)
+        await loadProject()
+        await loadApplications()
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to hire freelancer.")
+    } finally {
+      setHiringId(null)
     }
   }
 
@@ -800,16 +780,22 @@ export function ProjectDetailPage() {
     setActionError("")
     setActionState("Funding escrow...")
     try {
-      if (user?.walletAddress && project.freelancerWalletAddress) {
-        await fundEscrow(
-          project.id,
-          project.freelancerWalletAddress as `0x${string}`,
-          (project.milestones || []).map((m) => String(m.amount)),
-          user.walletAddress,
-          (stage) => setActionState(stage),
-        )
+      if (!user?.walletAddress) {
+        throw new Error("Verify your client wallet first to fund escrow.")
       }
-      setProject((prev) => (prev ? { ...prev, escrowFunded: true } : prev))
+      if (!project.freelancerWalletAddress) {
+        throw new Error("Assigned freelancer does not have a verified wallet address.")
+      }
+      const fundTxHash = await fundEscrow(
+        project.id,
+        project.freelancerWalletAddress as `0x${string}`,
+        (project.milestones || []).map((m) => String(m.amount)),
+        user.walletAddress,
+        (stage) => setActionState(stage),
+      )
+      setActionState("Syncing escrow status with server...")
+      const response = await depositEscrow(project.id, fundTxHash, token)
+      setProject((prev) => (prev ? { ...prev, escrowFunded: response.project.escrowFunded, escrowTxnHash: fundTxHash } : prev))
       setActionState("Escrow funded successfully!")
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to fund escrow.")
@@ -823,14 +809,10 @@ export function ProjectDetailPage() {
     setActionError("")
     setActionState("Raising dispute...")
     try {
-      await raiseDispute(project.id, "Dispute raised from project page", token)
       if (user?.walletAddress) {
-        try {
-          await raiseEscrowDispute(project.id, "Dispute raised from project page", user.walletAddress)
-        } catch {
-          // fallback if web3 wallet not connected
-        }
+        await raiseEscrowDispute(project.id, "Dispute raised from project page", user.walletAddress)
       }
+      await raiseDispute(project.id, "Dispute raised from project page", token)
       setProject((prev) => (prev ? { ...prev, escrowDisputed: true, status: "disputed" } : prev))
       setActionState("Dispute opened.")
     } catch (err) {
@@ -845,19 +827,26 @@ export function ProjectDetailPage() {
     setActionError("")
     setActionState("Releasing milestone...")
     try {
-      if (user?.walletAddress) {
-        try {
-          await releaseEscrowMilestone(project.id, index, user.walletAddress)
-        } catch {
-          // fallback if web3 wallet not connected
+      if (!user?.walletAddress) {
+        throw new Error("Verify your client wallet to release milestone escrow payments.")
+      }
+      const releaseTxHash = await releaseEscrowMilestone(project.id, index, user.walletAddress)
+      setActionState("Syncing payment release with server...")
+      const response = await releaseEscrowPayment(project.id, index, releaseTxHash, token)
+      setProject((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          milestones: (response.project.milestones || []).map((m, i) => ({
+            ...(prev.milestones[i] || m),
+            paymentReleased: m.paymentReleased,
+            status: m.status as any,
+          })),
+          escrowCompleted: response.project.escrowCompleted,
+          status: (response.project.status as any) || prev.status,
         }
-      }
-      const updatedMilestones = [...(project.milestones || [])]
-      if (updatedMilestones[index]) {
-        updatedMilestones[index] = { ...updatedMilestones[index], status: "completed", paymentReleased: true }
-      }
-      setProject((prev) => (prev ? { ...prev, milestones: updatedMilestones } : prev))
-      setActionState("Milestone released!")
+      })
+      setActionState("Milestone released successfully!")
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to release milestone.")
     } finally {
@@ -866,7 +855,7 @@ export function ProjectDetailPage() {
   }
 
   if (loading) {
-    return <LoadingState message="Loading project details..." />
+    return <LoadingState label="Loading project details..." />
   }
 
   if (notFound) {
@@ -890,8 +879,9 @@ export function ProjectDetailPage() {
 
   const milestonesList = project.milestones || []
   const completedCount = milestonesList.filter((m) => m && m.status === "completed").length
-  const completedAmount = milestonesList.filter((m) => m && m.status === "completed").reduce((sum, m) => sum + (m.amount || 0), 0)
-  const remainingAmount = Math.max(0, (project.budget || 0) - completedAmount)
+  const releasedCount = milestonesList.filter((m) => m && m.paymentReleased).length
+  const releasedAmount = milestonesList.filter((m) => m && m.paymentReleased).reduce((sum, m) => sum + (m.amount || 0), 0)
+  const remainingAmount = Math.max(0, (project.budget || 0) - releasedAmount)
 
   const tabItems: TabItem[] = [
     { label: "Overview", value: "overview" },
@@ -925,7 +915,7 @@ export function ProjectDetailPage() {
                   <span className="flex items-center gap-1.5" title={`Target Deadline: ${formatDateTime(project.deadlineAt)}`}>
                     <FiClock className="h-4 w-4 text-subtle" />
                     Deadline: <strong className="font-semibold text-foreground">{formatDateTime(project.deadlineAt)}</strong>
-                    <Badge tone={formatDeadlineCountdown(project.deadlineAt).isUrgent ? "warning" : "neutral"} size="sm">
+                    <Badge tone={formatDeadlineCountdown(project.deadlineAt).isUrgent ? "warning" : "neutral"}>
                       {formatDeadlineCountdown(project.deadlineAt).text}
                     </Badge>
                   </span>
@@ -1533,12 +1523,12 @@ export function ProjectDetailPage() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-1">
               <MetricCard label="Total budget" value={formatAmount(project.budget)} icon={FiDollarSign} />
               <MetricCard
-                label="Completed"
-                value={formatAmount(completedAmount)}
+                label="Paid / Released"
+                value={formatAmount(releasedAmount)}
                 icon={FiUnlock}
-                hint={`${completedCount} of ${project.milestones.length} milestones`}
+                hint={`${releasedCount} of ${milestonesList.length} milestones paid`}
               />
-              <MetricCard label="Remaining" value={formatAmount(remainingAmount)} icon={FiLock} />
+              <MetricCard label="Unreleased" value={formatAmount(remainingAmount)} icon={FiLock} />
             </div>
             <Card>
               <CardContent className="flex flex-col gap-3 p-5">

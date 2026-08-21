@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from "react"
+import React, { Component, type ReactNode } from "react"
 import { useLocation } from "react-router-dom"
 import { FiAlertOctagon, FiRefreshCw, FiRotateCw } from "react-icons/fi"
 import { FeatureErrorFallback } from "@/components/feedback/FeatureErrorFallback"

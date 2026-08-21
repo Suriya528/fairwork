@@ -5,13 +5,9 @@ import {
   FiAlertTriangle,
   FiBarChart2,
   FiCheckCircle,
-  FiDatabase,
   FiFileText,
-  FiFilter,
   FiFlag,
   FiFolder,
-  FiList,
-  FiLock,
   FiRefreshCw,
   FiSearch,
   FiShield,
@@ -20,7 +16,6 @@ import {
   FiCheckSquare,
   FiUserCheck,
   FiUsers,
-  FiXCircle,
 } from "react-icons/fi"
 import { PageHeader } from "@/components/common/PageHeader"
 import { MetricCard } from "@/components/common/MetricCard"
@@ -109,12 +104,12 @@ export function AdminDashboardPage() {
   // Data states
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
-  const [usersTotal, setUsersTotal] = useState(0)
-  const [usersPage, setUsersPage] = useState(1)
+  const [_usersTotal, setUsersTotal] = useState(0)
+  const [usersPage, _setUsersPage] = useState(1)
 
   const [projects, setProjects] = useState<AdminProject[]>([])
-  const [projectsTotal, setProjectsTotal] = useState(0)
-  const [projectsPage, setProjectsPage] = useState(1)
+  const [_projectsTotal, setProjectsTotal] = useState(0)
+  const [projectsPage, _setProjectsPage] = useState(1)
 
   const [applications, setApplications] = useState<AdminApplication[]>([])
   const [contracts, setContracts] = useState<AdminContract[]>([])
@@ -139,7 +134,7 @@ export function AdminDashboardPage() {
 
   // User Detail Inspector Modal
   const [selectedUserDetail, setSelectedUserDetail] = useState<AdminUserDetail | null>(null)
-  const [userDetailLoading, setUserDetailLoading] = useState(false)
+  const [_userDetailLoading, setUserDetailLoading] = useState(false)
 
   // Suspension Modal
   const [suspendModalUser, setSuspendModalUser] = useState<AdminUser | null>(null)
@@ -383,8 +378,7 @@ export function AdminDashboardPage() {
         row.role === "admin" || row.id === currentUser?.id ? null : (
           <Button
             size="sm"
-            variant={row.isSuspended ? "outline" : "ghost"}
-            tone={row.isSuspended ? "neutral" : "danger"}
+            variant={row.isSuspended ? "outline" : "danger"}
             onClick={() => {
               setSuspendModalUser(row)
               setSuspendReason(row.suspendedReason || "")
@@ -445,11 +439,15 @@ export function AdminDashboardPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8 p-4 sm:p-6 lg:p-8">
-      <PageHeader title={title} description={description}>
-        <Button size="sm" variant="outline" leftIcon={<FiRefreshCw className="h-4 w-4" />} onClick={() => void loadData()}>
-          Refresh Data
-        </Button>
-      </PageHeader>
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          <Button size="sm" variant="outline" leftIcon={<FiRefreshCw className="h-4 w-4" />} onClick={() => void loadData()}>
+            Refresh Data
+          </Button>
+        }
+      />
 
       {/* VIEW: OVERVIEW */}
       {view === "overview" && overview && (
@@ -1311,7 +1309,7 @@ export function AdminDashboardPage() {
               </Button>
               <Button
                 size="sm"
-                tone={suspendModalUser.isSuspended ? "primary" : "danger"}
+                variant={suspendModalUser.isSuspended ? "primary" : "danger"}
                 loading={actionLoading}
                 onClick={handleToggleSuspend}
                 disabled={!suspendModalUser.isSuspended && !suspendReason.trim()}

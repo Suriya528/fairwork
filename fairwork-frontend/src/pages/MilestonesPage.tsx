@@ -8,7 +8,6 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiMilestone, type ApiProject } from "@/services/projectsApi"
-import { formatDate } from "@/lib/format"
 
 type Tab = "active" | "completed" | "all"
 type PaymentFilter = "unreleased" | "released"

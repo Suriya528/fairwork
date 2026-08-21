@@ -30,7 +30,7 @@ export function ProfilePage() {
     () =>
       projects
         .flatMap((p) => p.milestones)
-        .filter((m) => m.status === "completed")
+        .filter((m) => m.paymentReleased)
         .reduce((s, m) => s + m.amount, 0),
     [projects],
   )

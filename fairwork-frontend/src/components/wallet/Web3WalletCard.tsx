@@ -3,6 +3,7 @@ import {
   FiAlertTriangle,
   FiCheckCircle,
   FiCopy,
+  FiDownload,
   FiExternalLink,
   FiLock,
   FiRefreshCw,
@@ -13,7 +14,7 @@ import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
 import { WalletAddress } from "@/components/common/WalletAddress"
-import { useWallet } from "@/context/WalletContext"
+import { useWallet, OFFICIAL_METAMASK_INSTALL_URL } from "@/context/WalletContext"
 
 export function Web3WalletCard({
   title = "Web3 Wallet Ownership & Connection",
@@ -23,17 +24,16 @@ export function Web3WalletCard({
   description?: string
 }) {
   const {
-    walletState,
     errorState,
     errorMessage,
     connectedAccount,
-    chainId,
     isCorrectNetwork,
     verifiedWalletAddress,
     isVerified,
     isConnecting,
     isVerifying,
-    connect,
+    isProviderAvailable,
+    openNoWalletModal,
     verify,
     connectAndVerify,
     switchNetwork,
@@ -71,6 +71,11 @@ export function Web3WalletCard({
               <Badge tone="warning" className="flex items-center gap-1">
                 <FiShieldOff className="h-3 w-3" />
                 Verification Required
+              </Badge>
+            ) : !isProviderAvailable ? (
+              <Badge tone="neutral" className="flex items-center gap-1">
+                <FiAlertTriangle className="h-3 w-3 text-warning" />
+                Not Detected
               </Badge>
             ) : (
               <Badge tone="neutral">Not Connected</Badge>
@@ -111,6 +116,8 @@ export function Web3WalletCard({
                     ? "Wallet Conflict"
                     : errorState === "USER_REJECTED"
                     ? "Action Cancelled"
+                    : errorState === "PROVIDER_UNAVAILABLE"
+                    ? "Wallet Not Detected"
                     : "Wallet Notice"}
                 </p>
                 <p>{errorMessage}</p>
@@ -160,13 +167,38 @@ export function Web3WalletCard({
                 </a>
               </div>
             ) : (
-              <span className="text-xs text-muted">No Web3 wallet connected</span>
+              <span className="text-xs text-muted">
+                {!isProviderAvailable
+                  ? "No compatible Web3 browser wallet detected."
+                  : "No Web3 wallet connected"}
+              </span>
             )}
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            {!connectedAccount ? (
+            {!isProviderAvailable ? (
+              <>
+                <a
+                  href={OFFICIAL_METAMASK_INSTALL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                >
+                  <FiDownload className="h-3.5 w-3.5" />
+                  Install MetaMask
+                  <FiExternalLink className="h-3 w-3" />
+                </a>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={openNoWalletModal}
+                  leftIcon={<FiShield className="h-3.5 w-3.5" />}
+                >
+                  Connect Wallet
+                </Button>
+              </>
+            ) : !connectedAccount ? (
               <Button
                 size="sm"
                 variant="primary"
@@ -179,7 +211,7 @@ export function Web3WalletCard({
             ) : !isCorrectNetwork ? (
               <Button
                 size="sm"
-                variant="warning"
+                variant="outline"
                 onClick={switchNetwork}
                 leftIcon={<FiRefreshCw className="h-4 w-4" />}
               >
