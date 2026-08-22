@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, custom, http, parseUnits } from "viem"
+import { createPublicClient, createWalletClient, custom, formatUnits, http, parseUnits } from "viem"
 import { sepolia } from "viem/chains"
 
 /* ────────────────────────────────────────────────────────────
@@ -38,6 +38,7 @@ export const publicClient = sepoliaRpcUrl
   : undefined
 
 export const ERC20_ABI = [
+  { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
   { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ type: "address", name: "owner" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "allowance", stateMutability: "view", inputs: [{ type: "address", name: "owner" }, { type: "address", name: "spender" }], outputs: [{ type: "uint256" }] },
@@ -122,8 +123,34 @@ export async function fundEscrow(
   const amounts = await Promise.all(amountsText.map((a) => units(c.usdcAddress, a)))
   const total = amounts.reduce((a, b) => a + b, 0n)
 
-  if ((await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "balanceOf", args: [account] })) < total) {
-    throw new Error("Insufficient token balance.")
+  // Audit exact token balance calculation
+  const decimals = await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "decimals" })
+  let symbol = "USDC"
+  try {
+    symbol = await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "symbol" })
+  } catch {
+    // default symbol fallback
+  }
+
+  const rawBalance = await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "balanceOf", args: [account] })
+  const formattedBalance = formatUnits(rawBalance, decimals)
+  const formattedRequired = formatUnits(total, decimals)
+
+  console.info("=== FAIRWORK ESCROW FUNDING DIAGNOSTIC ===", {
+    connectedWalletAddress: account,
+    configuredTokenContractAddress: c.usdcAddress,
+    tokenSymbol: symbol,
+    tokenDecimals: decimals,
+    rawTokenBalance: rawBalance.toString(),
+    formattedTokenBalance: `${formattedBalance} ${symbol}`,
+    requiredRawAmount: total.toString(),
+    formattedRequiredAmount: `${formattedRequired} ${symbol}`,
+  })
+
+  if (rawBalance < total) {
+    throw new Error(
+      `Insufficient ${symbol} token balance on Sepolia testnet. Connected wallet (${account}) has ${formattedBalance} ${symbol}, but project requires ${formattedRequired} ${symbol}. Note: Sepolia ETH is used for gas fees and cannot be used as ${symbol} escrow tokens.`
+    )
   }
 
   const escrow = await c.publicClient.readContract({
