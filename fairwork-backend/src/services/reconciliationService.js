@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { createPublicClient, http, decodeEventLog, parseUnits } = require("viem");
+const { createPublicClient, http, decodeEventLog, parseUnits, keccak256, toHex } = require("viem");
 const { sepolia } = require("viem/chains");
 const Project = require("../models/Project");
 const User = require("../models/User");
@@ -109,15 +109,6 @@ function getPublicClient() {
 
 /**
  * Reconciles and records on-chain escrow funding for a project.
- *
- * Exact Transaction Verification:
- *  1. Project exists and client caller is authorized
- *  2. Escrow contract address is resolved and configured
- *  3. Transaction hash receipt status === 1 (success) on Sepolia
- *  4. Transaction target (`to`) matches exact EscrowContract address
- *  5. Transaction sender (`from`) matches the verified Client wallet
- *  6. Receipt contains a valid `EscrowFunded` event log for `projectId`, matching client and amount
- *  7. On-chain contract query (`getEscrowParties`) confirms `isFunded === true`
  */
 async function reconcileEscrowFunding(projectId, txnHash, requestingUserId = null) {
   const escrowAddress = getResolvedContractAddress("ESCROW_CONTRACT_ADDRESS", "ESCROW_ADDRESS");
@@ -173,12 +164,17 @@ async function reconcileEscrowFunding(projectId, txnHash, requestingUserId = nul
     let fundedLogFound = false;
     const expectedBudget = project.budget || 0;
     const expectedAmountUnits = parseUnits(String(expectedBudget), 6);
+    const expectedProjectIdHash = keccak256(toHex(String(projectId))).toLowerCase();
 
     for (const log of receipt.logs) {
       if (log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
       try {
         const decoded = decodeEventLog({ abi: ESCROW_ABI, data: log.data, topics: log.topics });
-        if (decoded.eventName === "EscrowFunded" && String(decoded.args.projectId) === String(projectId)) {
+        const matchesProject =
+          String(decoded.args.projectId) === String(projectId) ||
+          String(decoded.args.projectId).toLowerCase() === expectedProjectIdHash;
+
+        if (decoded.eventName === "EscrowFunded" && matchesProject) {
           // Verify funder client matches expected client wallet
           if (clientWallet && decoded.args.client.toLowerCase() !== clientWallet) {
             throw new Error(`EscrowFunded log funder (${decoded.args.client}) does not match verified client (${clientWallet}).`);
@@ -234,18 +230,6 @@ async function reconcileEscrowFunding(projectId, txnHash, requestingUserId = nul
 
 /**
  * Reconciles and records on-chain milestone payment release for a project.
- *
- * Exact Transaction Verification:
- *  1. Project exists and escrow is funded
- *  2. Milestone index is valid and not already released
- *  3. Client caller is authorized
- *  4. Transaction hash receipt status === 1 (success) on Sepolia
- *  5. Transaction target (`to`) matches exact EscrowContract address
- *  6. Transaction sender (`from`) matches the verified Client wallet
- *  7. Receipt contains a valid `MilestoneReleased` event log matching `projectId`, `milestoneIndex`, `amount`, and `freelancer`
- *
- * Note: Milestone release proof depends on exact `MilestoneReleased` event log matching,
- * NOT on generic contract `isCompleted`.
  */
 async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, requestingUserId = null) {
   const escrowAddress = getResolvedContractAddress("ESCROW_CONTRACT_ADDRESS", "ESCROW_ADDRESS");
@@ -309,14 +293,19 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req
     let releaseLogFound = false;
     const expectedMilestoneAmount = milestone.amount || 0;
     const expectedMilestoneUnits = parseUnits(String(expectedMilestoneAmount), 6);
+    const expectedProjectIdHash = keccak256(toHex(String(projectId))).toLowerCase();
 
     for (const log of receipt.logs) {
       if (log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
       try {
         const decoded = decodeEventLog({ abi: ESCROW_ABI, data: log.data, topics: log.topics });
+        const matchesProject =
+          String(decoded.args.projectId) === String(projectId) ||
+          String(decoded.args.projectId).toLowerCase() === expectedProjectIdHash;
+
         if (
           decoded.eventName === "MilestoneReleased" &&
-          String(decoded.args.projectId) === String(projectId) &&
+          matchesProject &&
           Number(decoded.args.milestoneIndex) === index
         ) {
           // Verify recipient freelancer address matches expected freelancer
