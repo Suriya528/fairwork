@@ -13,6 +13,7 @@ import { useCurrency } from "@/context/CurrencyContext"
 import { createProject } from "@/services/projectsApi"
 import { PROJECT_CATEGORIES } from "@/data/categories"
 import { formatDateTime, formatDeadlineCountdown } from "@/lib/format"
+import { AiProjectGeneratorModal } from "@/components/ai/AiProjectGeneratorModal"
 
 interface Draft {
   id: string
@@ -54,6 +55,30 @@ export function CreateProjectPage() {
   const [milestones, setMilestones] = useState<Draft[]>([draft()])
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
+
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+
+  const handleApplyAiScope = (scope: {
+    title: string
+    category: string
+    description: string
+    budget: number
+    milestones: { title: string; amount: number }[]
+  }) => {
+    setTitle(scope.title)
+    if (scope.category) setCategory(scope.category)
+    setDescription(scope.description)
+    const displayBudget = currency === "INR" ? Math.round(scope.budget * 83) : scope.budget
+    setBudget(String(displayBudget))
+    setMilestones(
+      scope.milestones.map((m) => ({
+        id: crypto.randomUUID(),
+        title: m.title,
+        amount: String(currency === "INR" ? Math.round(m.amount * 83) : m.amount),
+        dueDate: "",
+      })),
+    )
+  }
 
   const currencyTag = currency === "INR" ? "₹ INR" : "$ USD"
   const allocation = milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0)
@@ -150,14 +175,31 @@ export function CreateProjectPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      <AiProjectGeneratorModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onApplyScope={handleApplyAiScope}
+        currentBudget={Number(budget) || 1000}
+      />
       <div className="mx-auto max-w-3xl">
         <PageHeader
           title="Post a new project"
           description={`Describe the work, select a category, set the target deadline, and divide its budget into milestones (${currencyTag}).`}
         />
         <Card className="mt-6">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Project details</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Ask AI project scope generator"
+              onClick={() => setIsAiModalOpen(true)}
+              className="border-primary-500/30 text-primary-400 hover:bg-primary-500/10 text-xs"
+            >
+              <FiZap className="h-3.5 w-3.5 mr-1.5 text-accent-300 animate-pulse" />
+              Ask AI
+            </Button>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div>

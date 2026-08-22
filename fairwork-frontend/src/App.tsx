@@ -10,6 +10,7 @@ import { CurrencyProvider } from "@/context/CurrencyContext"
 import { ScrollToTop } from "@/components/common/ScrollToTop"
 import { GlobalErrorBoundary, RouteErrorBoundary } from "@/components/common/ErrorBoundary"
 import { setupGlobalErrorListeners } from "@/lib/errorLogger"
+import { AiAssistantDrawer } from "@/components/ai/AiAssistantDrawer"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { DashboardPage } from "@/pages/DashboardPage"
@@ -90,6 +91,7 @@ export function App() {
             <AuthProvider>
               <WalletProvider>
                 <ScrollToTop />
+                <AiAssistantDrawer />
                 <Routes>
                 {/* Public landing page — visible to unauthenticated visitors */}
                 <Route index element={<PublicHome />} />

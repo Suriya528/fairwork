@@ -30,6 +30,7 @@ app.use("/api/activity", require("./routes/activity"));
 app.use("/api/messages", require("./routes/message"));
 app.use("/api/reports", require("./routes/report"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/ai", require("./routes/ai"));
 
 app.get("/", (req, res) => res.json({ message: "FairWork API running" }));
 
