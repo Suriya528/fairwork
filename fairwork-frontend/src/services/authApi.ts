@@ -29,6 +29,10 @@ export interface AuthUser {
   avatarUrl: string
   /** Empty string if none set. */
   bio: string
+  skills?: string[]
+  githubUrl?: string
+  linkedinUrl?: string
+  portfolio?: string
   /** Backend field is reputationScore — renamed here to match how the UI refers to it. */
   rating: number
   /** Backend field is totalReviews. */
@@ -95,6 +99,10 @@ interface BackendUser {
   walletAddress?: string
   avatarUrl?: string
   bio?: string
+  skills?: string[]
+  githubUrl?: string
+  linkedinUrl?: string
+  portfolio?: string
   /** Only present on GET /me — register/login responses don't include it. */
   reputationScore?: number
   /** Only present on GET /me — register/login responses don't include it. */
@@ -116,6 +124,10 @@ function toAuthUser(user: BackendUser): AuthUser {
     walletAddress: user.walletAddress ?? "",
     avatarUrl: user.avatarUrl ?? "",
     bio: user.bio ?? "",
+    skills: user.skills ?? [],
+    githubUrl: user.githubUrl ?? "",
+    linkedinUrl: user.linkedinUrl ?? "",
+    portfolio: user.portfolio ?? "",
     rating: user.reputationScore ?? 0,
     reviewCount: user.totalReviews ?? 0,
     createdAt: user.createdAt ?? "",

@@ -31,6 +31,7 @@ app.use("/api/messages", require("./routes/message"));
 app.use("/api/reports", require("./routes/report"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/ai", require("./routes/ai"));
+app.use("/api/users", require("./routes/users"));
 
 app.get("/", (req, res) => res.json({ message: "FairWork API running" }));
 
@@ -50,10 +51,21 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.user.id);
 
-  // Join project room
-  socket.on("join_project", (projectId) => {
-    socket.join(projectId);
-    console.log(`User ${socket.user.id} joined project ${projectId}`);
+  // Join project room with room authorization check
+  socket.on("join_project", async (projectId) => {
+    try {
+      const Project = require("./models/Project");
+      const proj = await Project.findById(projectId);
+      if (proj) {
+        const clientMatch = String(proj.clientId) === String(socket.user.id);
+        const freelancerMatch = proj.freelancerId && String(proj.freelancerId) === String(socket.user.id);
+        if (clientMatch || freelancerMatch || socket.user.role === "admin") {
+          socket.join(projectId);
+        }
+      }
+    } catch {
+      socket.join(projectId);
+    }
   });
 
   // Send message
@@ -62,16 +74,22 @@ io.on("connection", (socket) => {
     const message = await Message.create({
       projectId: data.projectId,
       senderId: socket.user.id,
-      content: data.content,
+      content: data.content || "",
       fileUrl: data.fileUrl || "",
+      fileMeta: data.fileMeta || {},
+      type: data.type || (data.fileUrl ? "FILE" : "TEXT"),
     });
     const populated = await message.populate("senderId", "firstName lastName avatarUrl");
     io.to(data.projectId).emit("receive_message", populated);
   });
 
-  // Typing indicator
+  // Typing indicators
   socket.on("typing", (projectId) => {
-    socket.to(projectId).emit("user_typing", socket.user.id);
+    socket.to(projectId).emit("user_typing", { userId: socket.user.id, projectId });
+  });
+
+  socket.on("stop_typing", (projectId) => {
+    socket.to(projectId).emit("user_stop_typing", { userId: socket.user.id, projectId });
   });
 
   // Dispute notification
