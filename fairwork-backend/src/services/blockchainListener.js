@@ -7,7 +7,7 @@ const Dispute = require("../models/Dispute");
 const User = require("../models/User");
 const SyncState = require("../models/BlockchainSyncState");
 const { recordActivitySafely } = require("./activityService");
-const { getResolvedContractAddress, reconcileEscrowFunding, reconcileMilestoneRelease } = require("./reconciliationService");
+const { getResolvedContractAddress, reconcileEscrowFunding, reconcileMilestoneRelease, reconcileEscrowCloseout } = require("./reconciliationService");
 
 const CONFIRMATIONS = 2;
 
@@ -66,7 +66,7 @@ async function startBlockchainListener() {
         }
 
         if (event.eventName === "EscrowRefunded") {
-          await Project.findByIdAndUpdate(projectId, { escrowCompleted: true });
+          await reconcileEscrowCloseout(projectId, "refunded", log.transactionHash);
           await recordBlockchainActivity(projectId, log, "escrow_refunded", "Escrow refunded", "An escrow refund was confirmed on-chain.");
         }
 
@@ -84,7 +84,8 @@ async function startBlockchainListener() {
         if (event.eventName === "DisputeResolved") {
           const parties = await client.readContract({ address: escrowAddress, abi: escrowAbi, functionName: "getEscrowParties", args: [projectId] });
           const winner = a.winner.toLowerCase() === parties[0].toLowerCase() ? "client" : "freelancer";
-          await Project.findByIdAndUpdate(projectId, { escrowCompleted: true, escrowDisputed: false });
+          await reconcileEscrowCloseout(projectId, "resolved", log.transactionHash);
+          await Project.findByIdAndUpdate(projectId, { escrowDisputed: false });
           const dispute = await Dispute.findOneAndUpdate({ projectId }, { status: "resolved", winner }, { new: true });
           await recordBlockchainActivity(projectId, log, "dispute_resolved", "Dispute resolved", "A dispute resolution was confirmed on-chain.", { disputeId: dispute?._id });
         }
