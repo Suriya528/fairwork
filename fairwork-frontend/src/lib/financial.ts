@@ -9,6 +9,8 @@ import type { ApiProject } from "@/services/projectsApi"
  *  - Unreleased: SUM(milestone.amount WHERE milestone.paymentReleased !== true)
  *  - Completed Work Value: SUM(milestone.amount WHERE milestone.status === "completed")
  *  - Pending Payout: SUM(milestone.amount WHERE milestone.status === "completed" && !milestone.paymentReleased)
+ *  - Remaining Project Budget: project.budget - getReleasedAmount(project)
+ *  - Unallocated Budget: project.budget - getMilestoneAllocatedAmount(project)
  */
 
 /** Returns total agreed project budget. */
@@ -49,6 +51,16 @@ export function getPendingPayoutAmount(project: ApiProject): number {
     .reduce((sum, m) => sum + (m.amount || 0), 0)
 }
 
+/** Returns remaining project budget (project.budget - releasedAmount). */
+export function getRemainingProjectBudget(project: ApiProject): number {
+  return getProjectBudget(project) - getReleasedAmount(project)
+}
+
+/** Returns unallocated project budget (project.budget - totalMilestoneAllocation). */
+export function getUnallocatedBudget(project: ApiProject): number {
+  return getProjectBudget(project) - getMilestoneAllocatedAmount(project)
+}
+
 /** Returns comprehensive financial metrics object for a project. */
 export function getProjectFinancialMetrics(project: ApiProject) {
   const budget = getProjectBudget(project)
@@ -57,6 +69,8 @@ export function getProjectFinancialMetrics(project: ApiProject) {
   const unreleased = getUnreleasedAmount(project)
   const completedWork = getCompletedWorkAmount(project)
   const pendingPayout = getPendingPayoutAmount(project)
+  const remainingBudget = getRemainingProjectBudget(project)
+  const unallocated = getUnallocatedBudget(project)
 
   return {
     budget,
@@ -65,6 +79,8 @@ export function getProjectFinancialMetrics(project: ApiProject) {
     unreleased,
     completedWork,
     pendingPayout,
+    remainingBudget,
+    unallocated,
     isFullyFunded: Boolean(project.escrowFunded),
     isFullyReleased: Boolean(
       project.escrowCompleted ||

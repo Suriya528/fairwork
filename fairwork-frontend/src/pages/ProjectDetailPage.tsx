@@ -1528,7 +1528,7 @@ export function ProjectDetailPage() {
                 icon={FiUnlock}
                 hint={`${releasedCount} of ${milestonesList.length} milestones paid`}
               />
-              <MetricCard label="Unreleased" value={formatAmount(remainingAmount)} icon={FiLock} />
+              <MetricCard label="Unreleased Milestones" value={formatAmount(remainingAmount)} icon={FiLock} />
             </div>
             <Card>
               <CardContent className="flex flex-col gap-3 p-5">

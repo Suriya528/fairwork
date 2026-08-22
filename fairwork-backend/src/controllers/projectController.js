@@ -52,6 +52,15 @@ exports.createProject = async (req, res) => {
       computedDurationDays = Math.max(0.1, Number((ms / (86400 * 1000)).toFixed(2)));
     }
 
+    const numBudget = Number(budget);
+    if (isNaN(numBudget) || numBudget <= 0) {
+      return res.status(400).json({ message: "Project budget must be a positive number." });
+    }
+
+    if (!milestones || !Array.isArray(milestones) || milestones.length === 0) {
+      return res.status(400).json({ message: "Project must have at least one milestone." });
+    }
+
     const formattedMilestones = (milestones || []).map((m) => {
       let mDueDate = m.dueDate ? new Date(m.dueDate) : null;
       if (mDueDate && isNaN(mDueDate.getTime())) mDueDate = null;
@@ -60,10 +69,17 @@ exports.createProject = async (req, res) => {
       }
       return {
         title: m.title,
-        amount: m.amount,
+        amount: Number(m.amount) || 0,
         dueDate: mDueDate || computedDeadlineAt,
       };
     });
+
+    const milestoneSum = formattedMilestones.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
+    if (Math.abs(milestoneSum - numBudget) > 0.01) {
+      return res.status(400).json({
+        message: `Milestone amounts total (${milestoneSum}) must equal total project budget (${numBudget}).`,
+      });
+    }
 
     const project = await Project.create({
       title,
