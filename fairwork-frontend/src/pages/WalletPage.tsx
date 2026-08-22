@@ -10,6 +10,8 @@ import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 import { formatDate } from "@/lib/format"
 
+import { getPendingPayoutAmount, getReleasedAmount, getUnreleasedAmount } from "@/lib/financial"
+
 export function WalletPage() {
   const { user, token } = useAuth()
   const { formatAmount } = useCurrency()
@@ -42,27 +44,17 @@ export function WalletPage() {
   }, [token])
 
   const releasedUsd = useMemo(() => {
-    return projects.reduce((sum, p) => {
-      const milestoneSum = p.milestones
-        .filter((m) => m.paymentReleased)
-        .reduce((s, m) => s + m.amount, 0)
-      return sum + milestoneSum
-    }, 0)
+    return projects.reduce((sum, p) => sum + getReleasedAmount(p), 0)
   }, [projects])
 
   const inEscrowUsd = useMemo(() => {
     return projects
       .filter((p) => p.escrowFunded && !p.escrowCompleted && !p.escrowDisputed)
-      .reduce((sum, p) => sum + p.budget, 0)
+      .reduce((sum, p) => sum + getUnreleasedAmount(p), 0)
   }, [projects])
 
   const pendingUsd = useMemo(() => {
-    return projects.reduce((sum, p) => {
-      const pendingMilestones = p.milestones
-        .filter((m) => !m.paymentReleased && m.status === "completed")
-        .reduce((s, m) => s + m.amount, 0)
-      return sum + pendingMilestones
-    }, 0)
+    return projects.reduce((sum, p) => sum + getPendingPayoutAmount(p), 0)
   }, [projects])
 
   const available = Math.max(0, releasedUsd - locallyWithdrawn)

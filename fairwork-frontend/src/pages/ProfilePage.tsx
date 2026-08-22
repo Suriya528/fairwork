@@ -13,6 +13,8 @@ import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
+import { getReleasedAmount } from "@/lib/financial"
+
 export function ProfilePage() {
   const { user, token } = useAuth()
   const { formatAmount } = useCurrency()
@@ -27,11 +29,7 @@ export function ProfilePage() {
   const active = projects.filter((p) => p.status === "in_progress").length
   const completed = projects.filter((p) => p.status === "completed").length
   const total = useMemo(
-    () =>
-      projects
-        .flatMap((p) => p.milestones)
-        .filter((m) => m.paymentReleased)
-        .reduce((s, m) => s + m.amount, 0),
+    () => projects.reduce((s, p) => s + getReleasedAmount(p), 0),
     [projects],
   )
 

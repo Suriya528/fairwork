@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
+import { getReleasedAmount } from "@/lib/financial"
 
 type Filter = "active" | "completed" | "all" | "in_progress" | "escrow_funded"
 
@@ -63,11 +64,7 @@ export function MyProjectsPage() {
   }, [filter, active, completed, roleProjects])
 
   const total = useMemo(
-    () =>
-      roleProjects
-        .flatMap((p) => p.milestones)
-        .filter((m) => m.paymentReleased)
-        .reduce((sum, m) => sum + m.amount, 0),
+    () => roleProjects.reduce((sum, p) => sum + getReleasedAmount(p), 0),
     [roleProjects],
   )
 

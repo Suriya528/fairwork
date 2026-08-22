@@ -71,6 +71,7 @@ import {
 import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone } from "@/services/web3"
 import { depositEscrow, releaseEscrowPayment } from "@/services/escrowApi"
 import { raiseDispute } from "@/services/disputesApi"
+import { getReleasedAmount, getUnreleasedAmount } from "@/lib/financial"
 
 type TabValue = "overview" | "applications" | "proposals" | "contract" | "milestones" | "files" | "disputes" | "activity"
 
@@ -876,12 +877,11 @@ export function ProjectDetailPage() {
       />
     )
   }
-
   const milestonesList = project.milestones || []
   const completedCount = milestonesList.filter((m) => m && m.status === "completed").length
   const releasedCount = milestonesList.filter((m) => m && m.paymentReleased).length
-  const releasedAmount = milestonesList.filter((m) => m && m.paymentReleased).reduce((sum, m) => sum + (m.amount || 0), 0)
-  const remainingAmount = Math.max(0, (project.budget || 0) - releasedAmount)
+  const releasedAmount = getReleasedAmount(project)
+  const remainingAmount = getUnreleasedAmount(project)
 
   const tabItems: TabItem[] = [
     { label: "Overview", value: "overview" },
