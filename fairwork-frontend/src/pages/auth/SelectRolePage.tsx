@@ -12,18 +12,19 @@ export function SelectRolePage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { loginSession } = useAuth()
+  const roleSelectionToken: string | undefined = location.state?.roleSelectionToken
   const profile = location.state?.profile
 
   const [role, setRole] = useState<Role>("freelancer")
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  if (!profile) {
+  if (!roleSelectionToken) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-lg">
           <h2 className="text-lg font-bold text-foreground">Session Invalid</h2>
-          <p className="mt-2 text-sm text-subtle">No pending social account profile found.</p>
+          <p className="mt-2 text-sm text-subtle">No pending social account session found. Please try signing in again.</p>
           <button
             onClick={() => navigate("/register", { replace: true })}
             className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
@@ -35,13 +36,15 @@ export function SelectRolePage() {
     )
   }
 
+  const displayName = profile?.firstName || profile?.email || "there"
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setErrorMsg(null)
 
     try {
-      const session = await completeOAuthRoleSelection(profile, role)
+      const session = await completeOAuthRoleSelection(roleSelectionToken, role)
       loginSession(session)
       navigate("/dashboard", { replace: true })
     } catch (err: unknown) {
@@ -56,7 +59,7 @@ export function SelectRolePage() {
     <AuthLayout
       variant="register"
       title="Choose Your Role"
-      subtitle={`Welcome ${profile.firstName || profile.email}! Select how you intend to use FairWork.`}
+      subtitle={`Welcome ${displayName}! Select how you intend to use FairWork.`}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {errorMsg && (

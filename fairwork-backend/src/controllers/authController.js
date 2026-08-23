@@ -56,8 +56,9 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email: cleanEmail });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    if (user.authProvider === "local" && !user.password) {
-      return res.status(400).json({ message: "Please log in using your Google or GitHub account." });
+    if (!user.password || user.authProvider !== "local") {
+      const provider = user.authProvider === "google" ? "Google" : user.authProvider === "github" ? "GitHub" : "social";
+      return res.status(400).json({ message: `This account uses ${provider} login. Please sign in with that provider.` });
     }
 
     const match = await bcrypt.compare(password, user.password);

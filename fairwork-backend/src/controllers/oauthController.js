@@ -131,9 +131,7 @@ exports.handleGoogleCallback = async (req, res) => {
     if (user) {
       if (!user.googleId) {
         user.googleId = profile.sub;
-        if (user.authProvider === "local") {
-          // Linked Google login to local account seamlessly
-        }
+        if (!user.isEmailVerified) user.isEmailVerified = true;
         await user.save();
       }
 
@@ -173,7 +171,7 @@ exports.handleGoogleCallback = async (req, res) => {
         expiresAt: new Date(Date.now() + 300000), // 5 min window to choose role
       });
 
-      return res.redirect(`${clientUrl}/auth/select-role?code=${exchangeCode}`);
+      return res.redirect(`${clientUrl}/auth/callback?code=${exchangeCode}`);
     }
 
     // Create User with Role
@@ -316,6 +314,7 @@ exports.handleGithubCallback = async (req, res) => {
       if (!user.githubId) {
         user.githubId = githubId;
         if (!user.githubUrl && ghUser.html_url) user.githubUrl = ghUser.html_url;
+        if (!user.isEmailVerified) user.isEmailVerified = true;
         await user.save();
       }
 
@@ -356,7 +355,7 @@ exports.handleGithubCallback = async (req, res) => {
         expiresAt: new Date(Date.now() + 300000),
       });
 
-      return res.redirect(`${clientUrl}/auth/select-role?code=${exchangeCode}`);
+      return res.redirect(`${clientUrl}/auth/callback?code=${exchangeCode}`);
     }
 
     // Create User with Role
@@ -411,10 +410,18 @@ exports.exchangeOAuthCode = async (req, res) => {
     }
 
     if (record.pendingOAuth) {
+      // Issue a signed, short-lived JWT containing the verified profile.
+      // This prevents account takeover — the frontend cannot fabricate or
+      // tamper with the profile payload sent to completeOAuthRoleSelection.
+      const roleSelectionToken = jwt.sign(
+        { profile: record.pendingOAuth, purpose: "oauth_role_selection" },
+        process.env.JWT_SECRET,
+        { expiresIn: "5m" }
+      );
+
       return res.json({
         pendingRoleSelection: true,
-        code: record.code, // Returned for final role binding if needed
-        profile: record.pendingOAuth,
+        roleSelectionToken,
       });
     }
 
@@ -457,11 +464,25 @@ exports.exchangeOAuthCode = async (req, res) => {
 
 exports.completeOAuthRoleSelection = async (req, res) => {
   try {
-    const { profile, role } = req.body;
-    if (!profile || typeof profile !== "object" || !["client", "freelancer"].includes(role)) {
-      return res.status(400).json({ message: "Valid profile and role ('client' or 'freelancer') are required" });
+    const { roleSelectionToken, role } = req.body;
+    if (!roleSelectionToken || typeof roleSelectionToken !== "string" || !["client", "freelancer"].includes(role)) {
+      return res.status(400).json({ message: "Valid role selection token and role ('client' or 'freelancer') are required" });
     }
 
+    // Verify the signed token — this is the ONLY way to prove the profile
+    // was issued by our server during a legitimate OAuth exchange.
+    let payload;
+    try {
+      payload = jwt.verify(roleSelectionToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(400).json({ message: "Role selection session has expired. Please sign in again." });
+    }
+
+    if (!payload || payload.purpose !== "oauth_role_selection" || !payload.profile) {
+      return res.status(400).json({ message: "Invalid role selection token" });
+    }
+
+    const profile = payload.profile;
     const email = (profile.email || "").toLowerCase().trim();
     if (!email) return res.status(400).json({ message: "Profile email is required" });
 
@@ -469,6 +490,7 @@ exports.completeOAuthRoleSelection = async (req, res) => {
     if (user) {
       if (profile.googleId && !user.googleId) user.googleId = profile.googleId;
       if (profile.githubId && !user.githubId) user.githubId = profile.githubId;
+      if (!user.isEmailVerified) user.isEmailVerified = true;
       await user.save();
     } else {
       user = await User.create({
@@ -476,7 +498,7 @@ exports.completeOAuthRoleSelection = async (req, res) => {
         lastName: profile.lastName || "",
         email,
         role,
-        authProvider: profile.authProvider || "local",
+        authProvider: profile.authProvider,
         googleId: profile.googleId || undefined,
         githubId: profile.githubId || undefined,
         avatarUrl: profile.avatarUrl || "",

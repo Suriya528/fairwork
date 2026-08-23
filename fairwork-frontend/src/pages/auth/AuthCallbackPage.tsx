@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import { exchangeOAuthCode } from "@/services/authApi"
@@ -9,8 +9,13 @@ export function AuthCallbackPage() {
   const navigate = useNavigate()
   const { loginSession } = useAuth()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  // Prevent React 18 StrictMode double-mount from consuming the one-time code twice
+  const hasExchanged = useRef(false)
 
   useEffect(() => {
+    if (hasExchanged.current) return
+    hasExchanged.current = true
+
     const code = searchParams.get("code")
     const error = searchParams.get("error")
 
@@ -37,7 +42,7 @@ export function AuthCallbackPage() {
         if (!isMounted) return
         if (res.pendingRoleSelection) {
           navigate("/auth/select-role", {
-            state: { profile: res.profile, code: res.tempCode },
+            state: { roleSelectionToken: res.roleSelectionToken, profile: res.profile },
             replace: true,
           })
         } else {
@@ -54,7 +59,8 @@ export function AuthCallbackPage() {
     return () => {
       isMounted = false
     }
-  }, [searchParams, navigate, loginSession])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">

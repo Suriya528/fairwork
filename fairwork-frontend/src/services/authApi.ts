@@ -292,9 +292,21 @@ export interface WalletNonceResponse { nonce: string; domain: { name: string; ve
 export async function getWalletNonce(token: string): Promise<WalletNonceResponse> { return apiFetch<WalletNonceResponse>("/auth/wallet/nonce", { method: "POST", token }); }
 export async function verifyWallet(walletAddress: string, nonce: string, signature: string, token: string): Promise<AuthUser> { const data = await apiFetch<BackendUser>("/auth/wallet/verify", { method: "POST", token, body: { walletAddress, nonce, signature } }); return toAuthUser(data); }
 
+/** OAuth profile shape returned from the signed roleSelectionToken exchange. */
+export interface OAuthProfile {
+  email: string
+  firstName?: string
+  lastName?: string
+  avatarUrl?: string
+  authProvider: "google" | "github"
+  googleId?: string
+  githubId?: string
+  githubUrl?: string
+}
+
 export async function exchangeOAuthCode(code: string): Promise<
   | { pendingRoleSelection: false; session: AuthSession }
-  | { pendingRoleSelection: true; tempCode: string; profile: any }
+  | { pendingRoleSelection: true; roleSelectionToken: string; profile: OAuthProfile }
 > {
   const data = await apiFetch<any>("/auth/oauth/exchange", {
     method: "POST",
@@ -302,10 +314,19 @@ export async function exchangeOAuthCode(code: string): Promise<
   })
 
   if (data.pendingRoleSelection) {
+    // The profile is embedded inside the signed JWT — we decode it
+    // client-side purely for display (the welcome message). The backend
+    // will verify the full JWT when the role is submitted.
+    let profile: OAuthProfile = { email: "", authProvider: "google" }
+    try {
+      const payload = JSON.parse(atob(data.roleSelectionToken.split(".")[1]))
+      if (payload?.profile) profile = payload.profile
+    } catch { /* display fallback is fine */ }
+
     return {
       pendingRoleSelection: true,
-      tempCode: data.code || code,
-      profile: data.profile,
+      roleSelectionToken: data.roleSelectionToken,
+      profile,
     }
   }
 
@@ -316,12 +337,12 @@ export async function exchangeOAuthCode(code: string): Promise<
 }
 
 export async function completeOAuthRoleSelection(
-  profile: any,
+  roleSelectionToken: string,
   role: "client" | "freelancer",
 ): Promise<AuthSession> {
   const data = await apiFetch<BackendAuthResponse>("/auth/oauth/select-role", {
     method: "POST",
-    body: { profile, role },
+    body: { roleSelectionToken, role },
   })
   return { user: toAuthUser(data.user), token: data.token }
 }
