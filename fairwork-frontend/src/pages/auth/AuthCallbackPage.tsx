@@ -54,11 +54,8 @@ export function AuthCallbackPage() {
       return
     }
 
-    let isMounted = true
-
     exchangeOAuthCode(code)
       .then((res) => {
-        if (!isMounted) return
         if (res.pendingRoleSelection) {
           navigate("/auth/select-role", {
             state: { roleSelectionToken: res.roleSelectionToken, profile: res.profile },
@@ -70,14 +67,8 @@ export function AuthCallbackPage() {
         }
       })
       .catch((err: Error) => {
-        if (isMounted) {
-          setErrorMsg(err.message || "Failed to complete social login exchange.")
-        }
+        setErrorMsg(err.message || "Failed to complete social login exchange.")
       })
-
-    return () => {
-      isMounted = false
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
