@@ -39,6 +39,24 @@ export function AiAssistantDrawer() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom()
+    }
+  }, [messages, isOpen])
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
+
   // Strict Production Guard: Restrict AI Assistant to authenticated internal workspace pages only.
   // Never show on public landing (/), auth routes (/login, /register, /forgot-password),
   // OAuth callback & role selection screens (/auth/*), or unauthenticated sessions.
@@ -54,16 +72,6 @@ export function AiAssistantDrawer() {
     return null
   }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
-  useEffect(() => {
-    if (isOpen) {
-      scrollToBottom()
-    }
-  }, [messages, isOpen])
-
   // Cleanup active streams on unmount or drawer close
   const handleClose = () => {
     if (abortControllerRef.current) {
@@ -73,14 +81,6 @@ export function AiAssistantDrawer() {
     setIsStreaming(false)
     setIsOpen(false)
   }
-
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-    }
-  }, [])
 
   const handleSend = async (queryText?: string) => {
     const text = queryText || input
