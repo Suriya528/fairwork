@@ -357,4 +357,4 @@ npx tsc --noEmit
 
 - **Status**: Production Architecture Candidate (`v2.0.0-rc`)
 - **License**: MIT License
-- **Author**: Suriya & FairWork Architecture Team
+- **Author**: Suriya E & Vignesh V 
