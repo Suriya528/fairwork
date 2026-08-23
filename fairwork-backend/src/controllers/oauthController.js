@@ -39,7 +39,7 @@ exports.initiateGoogleAuth = async (req, res) => {
     const { role, action } = req.query;
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${getClientUrl()}/login?error=OAUTH_CONFIG_MISSING`);
+      return res.redirect(`${getClientUrl()}/auth/callback?error=OAUTH_CONFIG_MISSING`);
     }
 
     const stateNonce = crypto.randomBytes(32).toString("hex");
@@ -70,7 +70,7 @@ exports.initiateGoogleAuth = async (req, res) => {
     res.redirect(googleAuthUrl);
   } catch (err) {
     console.error("Google auth init error:", err);
-    res.redirect(`${getClientUrl()}/login?error=OAUTH_INIT_FAILED`);
+    res.redirect(`${getClientUrl()}/auth/callback?error=OAUTH_INIT_FAILED`);
   }
 };
 
@@ -79,7 +79,7 @@ exports.handleGoogleCallback = async (req, res) => {
   try {
     const { code, state, error: providerError } = req.query;
     if (providerError || !code || !state) {
-      return res.redirect(`${clientUrl}/login?error=OAUTH_DENIED`);
+      return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_DENIED`);
     }
 
     const cookies = parseCookies(req.headers.cookie);
@@ -92,11 +92,11 @@ exports.handleGoogleCallback = async (req, res) => {
     try {
       stateData = jwt.verify(state, process.env.JWT_SECRET);
     } catch {
-      return res.redirect(`${clientUrl}/login?error=INVALID_OAUTH_STATE`);
+      return res.redirect(`${clientUrl}/auth/callback?error=INVALID_OAUTH_STATE`);
     }
 
     if (!cookieData.nonce || cookieData.nonce !== stateData.nonce || !cookieData.codeVerifier) {
-      return res.redirect(`${clientUrl}/login?error=OAUTH_STATE_MISMATCH`);
+      return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_STATE_MISMATCH`);
     }
 
     res.clearCookie("oauth_state");
@@ -113,7 +113,7 @@ exports.handleGoogleCallback = async (req, res) => {
 
     const accessToken = tokenRes.data?.access_token;
     if (!accessToken) {
-      return res.redirect(`${clientUrl}/login?error=TOKEN_EXCHANGE_FAILED`);
+      return res.redirect(`${clientUrl}/auth/callback?error=TOKEN_EXCHANGE_FAILED`);
     }
 
     const userinfoRes = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -122,7 +122,7 @@ exports.handleGoogleCallback = async (req, res) => {
 
     const profile = userinfoRes.data;
     if (!profile || !profile.email || !profile.email_verified) {
-      return res.redirect(`${clientUrl}/login?error=EMAIL_NOT_VERIFIED`);
+      return res.redirect(`${clientUrl}/auth/callback?error=EMAIL_NOT_VERIFIED`);
     }
 
     const email = profile.email.toLowerCase().trim();
@@ -136,7 +136,7 @@ exports.handleGoogleCallback = async (req, res) => {
       }
 
       if (user.isSuspended && user.role !== "admin") {
-        return res.redirect(`${clientUrl}/login?error=ACCOUNT_SUSPENDED`);
+        return res.redirect(`${clientUrl}/auth/callback?error=ACCOUNT_SUSPENDED`);
       }
 
       const exchangeCode = crypto.randomBytes(32).toString("hex");
@@ -205,7 +205,7 @@ exports.handleGoogleCallback = async (req, res) => {
     return res.redirect(`${clientUrl}/auth/callback?code=${exchangeCode}`);
   } catch (err) {
     console.error("Google OAuth callback error:", err?.response?.data || err.message);
-    return res.redirect(`${clientUrl}/login?error=OAUTH_PROVIDER_ERROR`);
+    return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_PROVIDER_ERROR`);
   }
 };
 
@@ -217,7 +217,7 @@ exports.initiateGithubAuth = async (req, res) => {
     const { role, action } = req.query;
     const clientId = process.env.GITHUB_CLIENT_ID;
     if (!clientId) {
-      return res.redirect(`${getClientUrl()}/login?error=OAUTH_CONFIG_MISSING`);
+      return res.redirect(`${getClientUrl()}/auth/callback?error=OAUTH_CONFIG_MISSING`);
     }
 
     const stateNonce = crypto.randomBytes(32).toString("hex");
@@ -241,7 +241,7 @@ exports.initiateGithubAuth = async (req, res) => {
     res.redirect(githubAuthUrl);
   } catch (err) {
     console.error("GitHub auth init error:", err);
-    res.redirect(`${getClientUrl()}/login?error=OAUTH_INIT_FAILED`);
+    res.redirect(`${getClientUrl()}/auth/callback?error=OAUTH_INIT_FAILED`);
   }
 };
 
@@ -250,7 +250,7 @@ exports.handleGithubCallback = async (req, res) => {
   try {
     const { code, state, error: providerError } = req.query;
     if (providerError || !code || !state) {
-      return res.redirect(`${clientUrl}/login?error=OAUTH_DENIED`);
+      return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_DENIED`);
     }
 
     const cookies = parseCookies(req.headers.cookie);
@@ -263,11 +263,11 @@ exports.handleGithubCallback = async (req, res) => {
     try {
       stateData = jwt.verify(state, process.env.JWT_SECRET);
     } catch {
-      return res.redirect(`${clientUrl}/login?error=INVALID_OAUTH_STATE`);
+      return res.redirect(`${clientUrl}/auth/callback?error=INVALID_OAUTH_STATE`);
     }
 
     if (!cookieData.nonce || cookieData.nonce !== stateData.nonce) {
-      return res.redirect(`${clientUrl}/login?error=OAUTH_STATE_MISMATCH`);
+      return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_STATE_MISMATCH`);
     }
 
     res.clearCookie("oauth_state");
@@ -286,7 +286,7 @@ exports.handleGithubCallback = async (req, res) => {
 
     const accessToken = tokenRes.data?.access_token;
     if (!accessToken) {
-      return res.redirect(`${clientUrl}/login?error=TOKEN_EXCHANGE_FAILED`);
+      return res.redirect(`${clientUrl}/auth/callback?error=TOKEN_EXCHANGE_FAILED`);
     }
 
     // Fetch user profile
@@ -303,7 +303,7 @@ exports.handleGithubCallback = async (req, res) => {
     const primaryVerifiedEmailObj = emails.find((e) => e.primary && e.verified);
 
     if (!primaryVerifiedEmailObj || !primaryVerifiedEmailObj.email) {
-      return res.redirect(`${clientUrl}/login?error=EMAIL_NOT_VERIFIED`);
+      return res.redirect(`${clientUrl}/auth/callback?error=EMAIL_NOT_VERIFIED`);
     }
 
     const email = primaryVerifiedEmailObj.email.toLowerCase().trim();
@@ -319,7 +319,7 @@ exports.handleGithubCallback = async (req, res) => {
       }
 
       if (user.isSuspended && user.role !== "admin") {
-        return res.redirect(`${clientUrl}/login?error=ACCOUNT_SUSPENDED`);
+        return res.redirect(`${clientUrl}/auth/callback?error=ACCOUNT_SUSPENDED`);
       }
 
       const exchangeCode = crypto.randomBytes(32).toString("hex");
@@ -390,7 +390,7 @@ exports.handleGithubCallback = async (req, res) => {
     return res.redirect(`${clientUrl}/auth/callback?code=${exchangeCode}`);
   } catch (err) {
     console.error("GitHub OAuth callback error:", err?.response?.data || err.message);
-    return res.redirect(`${clientUrl}/login?error=OAUTH_PROVIDER_ERROR`);
+    return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_PROVIDER_ERROR`);
   }
 };
 

@@ -4,6 +4,28 @@ import { useAuth } from "@/context/AuthContext"
 import { exchangeOAuthCode } from "@/services/authApi"
 import { Spinner } from "@/components/ui/Spinner"
 
+/** Maps backend error codes to user-friendly messages. */
+const ERROR_MESSAGES: Record<string, string> = {
+  OAUTH_CONFIG_MISSING:
+    "Social login is not configured on this server. Please contact the site administrator.",
+  OAUTH_INIT_FAILED:
+    "Unable to start the social login process. Please try again.",
+  OAUTH_DENIED:
+    "Social authentication was cancelled or denied by the provider.",
+  INVALID_OAUTH_STATE:
+    "The authentication session expired or was tampered with. Please try signing in again.",
+  OAUTH_STATE_MISMATCH:
+    "Security validation failed (state mismatch). Please clear your cookies and try again.",
+  TOKEN_EXCHANGE_FAILED:
+    "Unable to verify your identity with the provider. This usually means the server's OAuth credentials are misconfigured.",
+  EMAIL_NOT_VERIFIED:
+    "Your email address is not verified on your social provider account. Please verify it and try again.",
+  ACCOUNT_SUSPENDED:
+    "Your FairWork account is currently suspended. Please contact support for assistance.",
+  OAUTH_PROVIDER_ERROR:
+    "The authentication provider returned an error. This usually means the server's OAuth client secret is missing or invalid.",
+}
+
 export function AuthCallbackPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -20,13 +42,10 @@ export function AuthCallbackPage() {
     const error = searchParams.get("error")
 
     if (error) {
-      if (error === "ACCOUNT_SUSPENDED") {
-        setErrorMsg("Your FairWork account is currently suspended. Please contact support.")
-      } else if (error === "EMAIL_NOT_VERIFIED") {
-        setErrorMsg("Your email address is not verified on your social provider account.")
-      } else {
-        setErrorMsg("Social authentication failed or was cancelled. Please try again.")
-      }
+      setErrorMsg(
+        ERROR_MESSAGES[error] ??
+          "Social authentication failed or was cancelled. Please try again.",
+      )
       return
     }
 
