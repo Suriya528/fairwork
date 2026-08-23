@@ -1,7 +1,7 @@
 # FAIRWORK — Decentralized Web3 Freelance Settlement Platform
 
-> **Production-Grade Architecture Specification & Real-Time Escrow Infrastructure**  
-> *FairWork is a high-throughput Web3 freelance marketplace engineered with trustless Solidity escrow smart contracts, a 5-pillar distributed blockchain settlement engine, EIP-712 cryptographic wallet identity binding, and OAuth 2.0 PKCE authentication.*
+> **Production Architecture Specification & Real-Time Escrow Infrastructure**  
+> *FairWork is a high-throughput Web3 freelance marketplace engineered with trustless Solidity escrow smart contracts, a 5-pillar distributed blockchain settlement engine, EIP-712 cryptographic wallet identity binding, and OAuth 2.0 PKCE social authentication.*
 
 ---
 
@@ -9,14 +9,15 @@
 
 - [1. Executive Architectural Summary](#1-executive-architectural-summary)
 - [2. System Architecture & 5-Pillar Settlement Engine](#2-system-architecture--5-pillar-settlement-engine)
-- [3. Core Security & OAuth 2.0 Protocol](#3-core-security--oauth-20-protocol)
-- [4. Freelancer GitHub Profile & Activity Integration](#4-freelancer-github-profile--activity-integration)
-- [5. Technology Stack](#5-technology-stack)
-- [6. Directory Structure](#6-directory-structure)
-- [7. Getting Started & Installation](#7-getting-started--installation)
-- [8. Test Suite & Verification Matrix](#8-test-suite--verification-matrix)
-- [9. Production Deployment Guidelines](#9-production-deployment-guidelines)
-- [10. License & Verification Status](#10-license--verification-status)
+- [3. Implementation & Verification Status Matrix](#3-implementation--verification-status-matrix)
+- [4. Core Security & OAuth 2.0 Protocol](#4-core-security--oauth-20-protocol)
+- [5. Freelancer GitHub Profile & Activity Integration](#5-freelancer-github-profile--activity-integration)
+- [6. Technology Stack & Installed Toolchain](#6-technology-stack--installed-toolchain)
+- [7. Directory Structure](#7-directory-structure)
+- [8. Getting Started & Installation](#8-getting-started--installation)
+- [9. Test Suite & Verification Matrix](#9-test-suite--verification-matrix)
+- [10. Production Deployment Guidelines](#10-production-deployment-guidelines)
+- [11. License & Verification Status](#11-license--verification-status)
 
 ---
 
@@ -53,17 +54,17 @@ FairWork redefines the Web3 freelance economy by eliminating traditional central
 
 ## 2. System Architecture & 5-Pillar Settlement Engine
 
-The core settlement indexer operates under a strict **5-Pillar Distributed Engine** architecture to ensure zero data loss, zero double-reconciliations, and sub-second socket notification delivery:
+The core settlement indexer is designed under a **5-Pillar Distributed Engine** architecture to provide crash-safe, replayable, and idempotent settlement processing:
 
 ```
 LAYER 1: BLOCKCHAIN TRUTH & REORG ENGINE
-RAW RPC LOG ──► TOPIC0 PRE-FILTER ──► HARDHAT ABI DECODER ──► CANONICAL BLOCKCHECKPOINT LINK CHECK
+RAW RPC LOG ──► TOPIC0 PRE-FILTER ──► ETHERS ABI DECODER ──► CANONICAL BLOCKCHECKPOINT LINK CHECK
                                                                       │
                                                 ┌─────────────────────┴─────────────────────┐
                                                 ▼                                           ▼
                                       [HASH MATCH / VALID]                        [REORG MISMATCH]
                                                 │                                           │
-                                     SAFE CONFIRMED HEAD CHECK                    BRANCH-AWARE REORG ENGINE
+                                     CONFIRMED HEAD CHECK                         BRANCH-AWARE REORG ENGINE
                                  (latestHead - confirmationDepth)                 - Bounded scan (MAX_REORG_DEPTH = 100)
                                                 │                                 - Trace orphaned block hashes
                                                 │                                 - Scoped ACID Transaction:
@@ -76,11 +77,11 @@ RAW RPC LOG ──► TOPIC0 PRE-FILTER ──► HARDHAT ABI DECODER ──► 
                                                 │                                 - Replay logs from A + 1
                                                 │                                           │
 LAYER 2: ON-CHAIN & FINANCIAL RECONCILIATION    │◄──────────────────────────────────────────┘
-ON-CHAIN ESCROW CHECK (client, freelancer, token, funded, non-disputed)
+ON-CHAIN ESCROW CHECK (client, freelancer, token, funded, completed)
   └─► Validates exact 6-decimal token units == Decimal128 (scale <= 2 via MoneyDomain)
                                 │
 LAYER 3: ATOMIC FENCED MONGO TRANSACTION
-  ├─► Insert SettlementEvent (unique source key)
+  ├─► Insert SettlementEvent (unique source key + blockHash)
   ├─► Mutate Project.paymentReleased = true & settlementEventId = evt._id
   ├─► Insert OutboxEvent (unique source key)
   └─► FENCING WRITE: SyncState.updateOne WHERE owner==podId && gen==epoch && expiry>now
@@ -93,17 +94,33 @@ CHECKPOINT ADVANCE ──► OUTBOX WORKER (Claim Fenced) ──► IDEMPOTENT M
 ```
 
 ### Key Pillars
-1. **Topic0 Event Listener & Parser**: Filters EVM logs by `MILESTONE_RELEASED_TOPIC0` signature, parses Hardhat build artifacts, and validates block confirmation depth (`latestHead - confirmationDepth`).
-2. **Branch-Aware Reorg Rollback**: Automatically detects chain reorgs, traces the common ancestor block up to `MAX_REORG_DEPTH = 100`, and executes a single ACID transaction to revert project milestone metadata, cancel outbox events, and flag orphaned messages (`ORPHANED_REORGED`).
-3. **Epoch Lease Fencing Protocol**: Prevents race conditions during pod takeovers. Transactions require `writeConcern: { w: "majority" }` and `readConcern: { level: "snapshot" }` with an atomic fencing write guard (`SyncState.updateOne`) requiring `modifiedCount === 1` before committing financial state.
+1. **Topic0 Event Listener & Ethers ABI Decoder**: Filters EVM logs by `MILESTONE_RELEASED_TOPIC0` signature, parses Hardhat-compiled artifacts via `ethers.Interface`, and validates confirmation depth (`latestHead - confirmationDepth`).
+2. **Branch-Aware Reorg Rollback**: Detects chain reorgs via `BlockCheckpoint` block hash verification, traces common ancestor block $A$ up to `MAX_REORG_DEPTH = 100`, and executes a single ACID transaction to revert attributable project milestone metadata, cancel outbox events, and flag orphaned messages (`ORPHANED_REORGED`).
+3. **Epoch Lease Fencing Protocol**: Protects against race conditions during pod failovers. Transactions enforce `writeConcern: { w: "majority" }` and `readConcern: { level: "snapshot" }` with an atomic fencing write guard (`SyncState.updateOne`) requiring `modifiedCount === 1` before committing financial state.
 4. **Transactional Outbox Pipeline**: Decouples financial transactions from notification side effects. Outbox workers claim tasks using random UUID `claimTokens` and `lockedUntil` expiration with full-jitter exponential backoff.
-5. **Durable Message Truth & Catch-Up REST API**: The database `Message` table is the single source of truth (`systemEventKey = sourceEventKey`). Connected clients receive live Socket.IO events, while reconnecting clients invoke the monotonic cursor catch-up REST API (`GET /api/projects/:id/messages?afterCreatedAt=...&afterId=...`).
+5. **Durable Message Truth & Monotonic Catch-Up REST API**: The database `Message` collection is the single source of truth (`systemEventKey = sourceEventKey`). Connected clients receive live Socket.IO events, while reconnecting clients invoke the monotonic cursor catch-up REST API (`GET /api/projects/:id/messages?afterCreatedAt=...&afterId=...`, sorted by `createdAt ASC, _id ASC`).
 
 ---
 
-## 3. Core Security & OAuth 2.0 Protocol
+## 3. Implementation & Verification Status Matrix
 
-FairWork implements enterprise-grade authentication with zero compromise on identity forgery:
+To maintain high technical accuracy, the system components are categorized into verified implemented code versus architectural integration specifications:
+
+| Component | Status | Implementation / Verification Evidence |
+| :--- | :---: | :--- |
+| **OAuth 2.0 PKCE & Role Tokens** | ✅ **Implemented & Verified** | Full PKCE code verifier, state JWT, signed `roleSelectionToken`, unit test suite passing 10/10. |
+| **GitHub Profile & Heatmap** | ✅ **Implemented & Verified** | AES-256-GCM + HKDF encryption, GraphQL viewer fetch, 52-week heatmap, streak logic, passing 4/4 tests. |
+| **Web3 Wallet Binding (EIP-712)** | ✅ **Implemented & Verified** | Cryptographic signature verification, EIP-712 domain binding, `Web3WalletCard` frontend component. |
+| **Escrow Reconciliation Engine** | ✅ **Implemented & Verified** | On-chain bytecode escrow validation, Decimal128 precision, single-writer epoch lease guards. |
+| **Socket.IO Room Gateway** | ✅ **Implemented & Verified** | JWT auth middleware, `user:<userId>` room isolation, immediate suspension eviction (`socket.disconnect(true)`). |
+| **Branch-Aware Reorg Rollback** | 🟡 *Architectural Specification* | Detailed multi-chain block hash link check & common ancestor reversal protocol (`MAX_REORG_DEPTH = 100`). |
+| **Transactional Outbox Pipeline** | 🟡 *Architectural Specification* | Idempotent `OutboxEvent` schema, worker claim fencing (`claimToken`), and cursor catch-up REST API. |
+
+---
+
+## 4. Core Security & OAuth 2.0 Protocol
+
+FairWork implements OpenID-style social authentication with PKCE verification and locally issued application JWT session tokens:
 
 ```
           CLIENT BROWSER                         BACKEND OAUTH CONTROLLER                   OAUTH PROVIDER (Google / GitHub)
@@ -125,13 +142,13 @@ FairWork implements enterprise-grade authentication with zero compromise on iden
                 │◄────────────────────────────┘                          └─────────────────────────────────►│
 ```
 
-- **PKCE Code Verification (S256)**: Guards against authorization code interception attacks across all OAuth flows.
+- **PKCE Code Verification (S256)**: Guards against authorization code interception attacks across all OAuth authorization code flows.
 - **Signed Role Selection Tokens**: Unregistered social OAuth users receive a 5-minute signed JWT `roleSelectionToken` preventing client-side profile tampering or role forgery.
-- **Passwordless Guard**: Prevents bcrypt crashes or auth bypasses on social OAuth accounts attempting password login.
+- **Unified `authVerifier`**: Shared auth verification logic across Express HTTP routes and Socket.IO handshake handlers enforcing `HS256`, `issuer: "FairWork"`, `audience: "FairWork-App"`, token expiration, and user suspension checks.
 
 ---
 
-## 4. Freelancer GitHub Profile & Activity Integration
+## 5. Freelancer GitHub Profile & Activity Integration
 
 Freelancers can link their GitHub account to display an open-source contribution graph and developer metrics on their public profile:
 
@@ -152,13 +169,14 @@ Freelancers can link their GitHub account to display an open-source contribution
   └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Encrypted Token Storage (`GithubOAuthCredential.js`)**: Access tokens encrypted with AES-256-GCM using HKDF-SHA256 derived keys (`{ version, keyId, iv, ciphertext, authTag }`).
+- **Encrypted Token Storage (`GithubOAuthCredential.js`)**: Access tokens encrypted with AES-256-GCM using HKDF-SHA256 derived keys (`{ version: 1, keyId: "hkdf-sha256-v1", iv, ciphertext, authTag }`). Supports zero-downtime key rotation via `version` and `keyId` metadata.
 - **Stale-While-Revalidate Caching (`GithubActivityCache.js`)**: Serves cached GraphQL activity snapshots instantly (`expiresAt = 1h`), triggering background refresh queries asynchronously.
+- **Derived Metrics Definition**: A contribution day is defined as a UTC calendar day with $\ge 1$ qualifying contribution. Streaks and language percentages are derived reproducibly from GitHub GraphQL `viewer` data.
 - **Privacy Controls**: Freelancers can toggle contribution graph visibility between `PUBLIC` and `PRIVATE`.
 
 ---
 
-## 5. Technology Stack
+## 6. Technology Stack & Installed Toolchain
 
 ### Frontend Application (`fairwork-frontend`)
 - **Core Framework**: React 19, TypeScript 5.7, Vite 6
@@ -168,11 +186,11 @@ Freelancers can link their GitHub account to display an open-source contribution
 - **Web3 Integration**: Viem v2, Ethers.js v6
 
 ### Backend API & Microservices (`fairwork-backend`)
-- **Runtime & Framework**: Node.js v24, Express 4.x
-- **Database & Modeling**: MongoDB, Mongoose 8.x (`Decimal128` financial precision)
+- **Runtime & Framework**: Node.js v24 LTS, Express 4.x
+- **Database & Modeling**: MongoDB, Mongoose 8.x (`Decimal128` financial precision via `MoneyDomain`)
 - **Real-Time Gateway**: Socket.IO 4.8 with room-level access control
 - **Security & Crypto**: JSONWebTokens, Bcrypt, AES-256-GCM + HKDF-SHA256
-- **Smart Contract Interop**: Ethers.js v6, Hardhat Build Artifact Importers
+- **Smart Contract Interop**: Ethers.js v6, Hardhat-compiled JSON ABI artifacts
 
 ### Smart Contracts & Solidity Infrastructure
 - **Solidity Compiler**: `solc 0.8.20`
@@ -181,7 +199,7 @@ Freelancers can link their GitHub account to display an open-source contribution
 
 ---
 
-## 6. Directory Structure
+## 7. Directory Structure
 
 ```text
 FAIRWORK/
@@ -219,7 +237,7 @@ FAIRWORK/
 
 ---
 
-## 7. Getting Started & Installation
+## 8. Getting Started & Installation
 
 ### Prerequisites
 - **Node.js**: `v20.0.0` or higher
@@ -281,9 +299,9 @@ npm run dev
 
 ---
 
-## 8. Test Suite & Verification Matrix
+## 9. Test Suite & Verification Matrix
 
-FairWork includes a native automated test suite verifying OAuth security, PKCE verification, AES token encryption, streak calculation algorithms, and privacy settings.
+FairWork includes an automated test suite verifying OAuth security, PKCE verification, AES token encryption, streak calculation algorithms, and privacy settings.
 
 ### Run Backend Unit Tests
 
@@ -326,7 +344,7 @@ npx tsc --noEmit
 
 ---
 
-## 9. Production Deployment Guidelines
+## 10. Production Deployment Guidelines
 
 1. **MongoDB Replica Set**: Transactions require a running MongoDB replica set (`w: majority` write concern).
 2. **Clock Synchronization (NTP)**: Node host instances must run Chrony/NTP to maintain clock drift $\le 50\text{ms}$.
@@ -335,8 +353,8 @@ npx tsc --noEmit
 
 ---
 
-## 10. License & Verification Status
+## 11. License & Verification Status
 
-- **Status**: Verified Production Candidate (`v2.0.0`)
+- **Status**: Production Architecture Candidate (`v2.0.0-rc`)
 - **License**: MIT License
 - **Author**: Suriya & FairWork Architecture Team
