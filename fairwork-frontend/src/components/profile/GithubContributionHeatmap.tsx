@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from "react"
 import {
-  Github,
-  Flame,
-  Calendar,
-  ExternalLink,
-  Star,
-  GitFork,
-  Code2,
-  Lock,
-  RefreshCw,
-  Award,
-} from "lucide-react"
+  FiGithub,
+  FiFlame,
+  FiCalendar,
+  FiExternalLink,
+  FiStar,
+  FiGitBranch,
+  FiCode,
+  FiLock,
+  FiRefreshCw,
+  FiAward,
+} from "react-icons/fi"
 import { getGithubActivity, GithubActivityDTO } from "../../services/userApi"
 import { useAuth } from "../../context/AuthContext"
 
@@ -82,7 +82,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
     return (
       <div className="bg-slate-900/60 border border-dashed border-slate-800 rounded-2xl p-8 text-center backdrop-blur-xl">
         <div className="w-14 h-14 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-purple-400">
-          <Github className="w-7 h-7" />
+          <FiGithub className="w-7 h-7" />
         </div>
         <h3 className="text-lg font-semibold text-slate-100 mb-1">Connect GitHub Profile</h3>
         <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
@@ -92,7 +92,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
           href={`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/github/connect`}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-purple-600/20"
         >
-          <Github className="w-4 h-4" />
+          <FiGithub className="w-4 h-4" />
           Connect GitHub Account
         </a>
       </div>
@@ -103,7 +103,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
     return (
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 text-center backdrop-blur-xl">
         <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-          <Lock className="w-6 h-6" />
+          <FiLock className="w-6 h-6" />
         </div>
         <h4 className="text-base font-medium text-slate-200 mb-1">GitHub Activity Private</h4>
         <p className="text-xs text-slate-400">This freelancer has set their GitHub contribution graph to private mode.</p>
@@ -142,7 +142,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
               className="w-11 h-11 rounded-xl border border-slate-700 object-cover"
             />
             <div className="absolute -bottom-1 -right-1 bg-slate-950 p-0.5 rounded-full">
-              <Github className="w-4 h-4 text-purple-400" />
+              <FiGithub className="w-4 h-4 text-purple-400" />
             </div>
           </div>
           <div>
@@ -150,7 +150,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
               <h3 className="text-base font-semibold text-slate-100">{identity.username}</h3>
               {identity.visibility === "PRIVATE" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <Lock className="w-2.5 h-2.5" /> Private Mode
+                  <FiLock className="w-2.5 h-2.5" /> Private Mode
                 </span>
               )}
             </div>
@@ -166,7 +166,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl border border-slate-700/80 transition-all"
           >
             <span>View on GitHub</span>
-            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+            <FiExternalLink className="w-3.5 h-3.5 text-slate-400" />
           </a>
         </div>
       </div>
@@ -175,7 +175,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            <Calendar className="w-5 h-5" />
+            <FiCalendar className="w-5 h-5" />
           </div>
           <div>
             <div className="text-lg font-bold text-slate-100">{activity.totalContributionsYear.toLocaleString()}</div>
@@ -185,7 +185,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
 
         <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
-            <Flame className="w-5 h-5" />
+            <FiFlame className="w-5 h-5" />
           </div>
           <div>
             <div className="text-lg font-bold text-slate-100">{activity.currentStreak} Days</div>
@@ -195,7 +195,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
 
         <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Award className="w-5 h-5" />
+            <FiAward className="w-5 h-5" />
           </div>
           <div>
             <div className="text-lg font-bold text-slate-100">{activity.longestStreak} Days</div>
@@ -205,7 +205,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
 
         <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <Code2 className="w-5 h-5" />
+            <FiCode className="w-5 h-5" />
           </div>
           <div>
             <div className="text-lg font-bold text-slate-100">{topLangs[0]?.name || "N/A"}</div>
@@ -218,7 +218,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
       <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-purple-400" />
+            <FiCalendar className="w-3.5 h-3.5 text-purple-400" />
             52-Week Contribution Activity
           </span>
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
@@ -269,7 +269,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
         {topLangs.length > 0 && (
           <div className="bg-slate-800/30 border border-slate-800/80 rounded-xl p-4 space-y-3">
             <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Code2 className="w-3.5 h-3.5 text-purple-400" />
+              <FiCode className="w-3.5 h-3.5 text-purple-400" />
               Top Languages Distribution
             </h4>
             {/* Multi-segmented Progress Bar */}
@@ -300,7 +300,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
         {repos.length > 0 && (
           <div className="bg-slate-800/30 border border-slate-800/80 rounded-xl p-4 space-y-3">
             <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Github className="w-3.5 h-3.5 text-purple-400" />
+              <FiGithub className="w-3.5 h-3.5 text-purple-400" />
               Featured Public Repositories
             </h4>
             <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-800">
@@ -315,14 +315,14 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-200 group-hover:text-purple-400 transition-colors flex items-center gap-1">
                       {repo.name}
-                      <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-purple-400" />
+                      <FiExternalLink className="w-3 h-3 text-slate-500 group-hover:text-purple-400" />
                     </span>
                     <div className="flex items-center gap-2 text-[11px] text-slate-400">
                       <span className="flex items-center gap-0.5">
-                        <Star className="w-3 h-3 text-amber-400" /> {repo.stars}
+                        <FiStar className="w-3 h-3 text-amber-400" /> {repo.stars}
                       </span>
                       <span className="flex items-center gap-0.5">
-                        <GitFork className="w-3 h-3 text-slate-400" /> {repo.forks}
+                        <FiGitBranch className="w-3 h-3 text-slate-400" /> {repo.forks}
                       </span>
                     </div>
                   </div>
