@@ -822,6 +822,115 @@ export function SettingsPage() {
           </CardFooter>
         </Card>
 
+        {/* Connected Accounts & GitHub Developer Integration Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FiGithub className="text-purple-400" /> Connected Accounts &amp; Developer Verification
+              </CardTitle>
+              {user?.githubIdentity ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                  <FiCheck className="h-3.5 w-3.5" /> Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/15 border border-slate-500/30 px-2.5 py-0.5 text-xs font-semibold text-slate-400">
+                  Not Linked
+                </span>
+              )}
+            </div>
+            <CardDescription>
+              Link your GitHub account to showcase open-source contribution heatmaps, commit activity streaks, and language stats on your freelancer profile.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {user?.githubIdentity ? (
+              <div className="p-4 rounded-xl bg-secondary/30 border border-border/80 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={user.githubIdentity.avatarUrl || "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"}
+                      alt={user.githubIdentity.username}
+                      className="w-10 h-10 rounded-xl border border-border object-cover"
+                    />
+                    <div>
+                      <div className="font-semibold text-sm text-foreground">@{user.githubIdentity.username}</div>
+                      <div className="text-xs text-muted">
+                        Linked on {user.githubIdentity.connectedAt ? new Date(user.githubIdentity.connectedAt).toLocaleDateString() : "Active Session"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs text-danger hover:bg-danger/10 border-danger/30"
+                    onClick={async () => {
+                      if (!token) return
+                      if (confirm("Disconnect your GitHub account? Activity metrics will no longer be visible on your profile.")) {
+                        try {
+                          await (await import("@/services/userApi")).disconnectGithub(token)
+                          window.location.reload()
+                        } catch (err: any) {
+                          alert(err.message || "Failed to disconnect")
+                        }
+                      }
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+
+                <div className="pt-3 border-t border-border/60 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-medium text-foreground">Contribution Heatmap Visibility</div>
+                    <div className="text-[11px] text-muted">
+                      {user.githubIdentity.visibility === "PUBLIC"
+                        ? "Visible to all clients and visitors on your public profile"
+                        : "Private mode — only visible to you when logged in"}
+                    </div>
+                  </div>
+
+                  <select
+                    value={user.githubIdentity.visibility}
+                    onChange={async (e) => {
+                      if (!token) return
+                      const newVis = e.target.value as "PUBLIC" | "PRIVATE"
+                      try {
+                        await (await import("@/services/userApi")).updateGithubVisibility(newVis, token)
+                        window.location.reload()
+                      } catch (err: any) {
+                        alert(err.message || "Failed to update visibility")
+                      }
+                    }}
+                    className="rounded-xl border border-border/80 bg-surface px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                  >
+                    <option value="PUBLIC">Public (Recommended)</option>
+                    <option value="PRIVATE">Private (Owner Only)</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-secondary/20 border border-dashed border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="space-y-1 text-center sm:text-left">
+                  <div className="text-xs font-semibold text-foreground">GitHub Developer Profile Unlinked</div>
+                  <div className="text-xs text-muted">
+                    Connecting your GitHub account grants read-only access to your public contribution activity graph.
+                  </div>
+                </div>
+
+                <a
+                  href={`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/github/connect`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-purple-600/20 shrink-0"
+                >
+                  <FiGithub className="h-4 w-4" />
+                  Connect GitHub Account
+                </a>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Web3 Wallet Security Card */}
         <Web3WalletCard
           title="Connected Web3 Wallet &amp; EIP-712 Ownership Verification"

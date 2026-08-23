@@ -76,6 +76,7 @@ function createServerApp(config = {}) {
   app.use("/api/admin", require("./routes/admin"));
   app.use("/api/ai", require("./routes/ai"));
   app.use("/api/users", require("./routes/users"));
+  app.use("/api/users", require("./routes/githubConnect"));
   app.use("/api/search", require("./routes/search"));
 
   app.get("/", (req, res) => res.json({ message: "FairWork API running" }));

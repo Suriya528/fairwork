@@ -33,6 +33,15 @@ const userStatsSchema = new mongoose.Schema({
   ratingCounts: { type: ratingCountsSchema, default: () => ({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }) },
 }, { _id: false });
 
+const githubIdentitySchema = new mongoose.Schema({
+  githubUserId: { type: String, default: undefined },
+  username: { type: String, default: "" },
+  avatarUrl: { type: String, default: "" },
+  profileUrl: { type: String, default: "" },
+  connectedAt: { type: Date, default: undefined },
+  visibility: { type: String, enum: ["PUBLIC", "PRIVATE"], default: "PUBLIC" },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, default: "" },
@@ -74,6 +83,7 @@ const userSchema = new mongoose.Schema({
   notificationPreferences: { type: notificationPreferencesSchema, default: () => ({}) },
   reputationScore: { type: Number, default: 0 },
   totalReviews: { type: Number, default: 0 },
+  githubIdentity: { type: githubIdentitySchema, default: null },
   isSuspended: { type: Boolean, default: false },
   suspendedAt: { type: Date },
   suspendedReason: { type: String, default: "" },

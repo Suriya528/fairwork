@@ -120,3 +120,67 @@ export async function updatePreferences(
     },
   )
 }
+
+export interface GithubIdentityDTO {
+  githubUserId: string
+  username: string
+  avatarUrl: string
+  profileUrl: string
+  connectedAt?: string
+  visibility: "PUBLIC" | "PRIVATE"
+}
+
+export interface GithubContributionDay {
+  contributionCount: number
+  date: string
+  color: string
+}
+
+export interface GithubContributionWeek {
+  contributionDays: GithubContributionDay[]
+}
+
+export interface GithubActivityDTO {
+  identity: GithubIdentityDTO
+  activity: {
+    contributionCalendar: {
+      totalContributions: number
+      weeks: GithubContributionWeek[]
+    }
+    topLanguages: Array<{ name: string; color: string; percentage: number }>
+    topRepositories: Array<{
+      name: string
+      description: string
+      stars: number
+      forks: number
+      url: string
+      language?: string
+    }>
+    longestStreak: number
+    currentStreak: number
+    totalContributionsYear: number
+  }
+}
+
+export async function getGithubActivity(userId: string, token?: string): Promise<GithubActivityDTO> {
+  return apiFetch<GithubActivityDTO>(`/users/${userId}/github-activity`, { token })
+}
+
+export async function disconnectGithub(token: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/users/github/disconnect", {
+    method: "DELETE",
+    token,
+  })
+}
+
+export async function updateGithubVisibility(
+  visibility: "PUBLIC" | "PRIVATE",
+  token: string,
+): Promise<{ message: string; githubIdentity: GithubIdentityDTO }> {
+  return apiFetch<{ message: string; githubIdentity: GithubIdentityDTO }>("/users/github/visibility", {
+    method: "PATCH",
+    token,
+    body: { visibility },
+  })
+}
+

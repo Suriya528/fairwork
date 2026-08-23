@@ -32,6 +32,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 import { getPublicProfile, updateProfile, type UserProfileDTO } from "@/services/userApi"
+import { GithubContributionHeatmap } from "@/components/profile/GithubContributionHeatmap"
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { getReleasedAmount } from "@/lib/financial"
@@ -520,6 +521,9 @@ export function ProfilePage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* GitHub Open-Source Contribution Activity Heatmap */}
+            <GithubContributionHeatmap targetUserId={targetUserId || ""} isOwner={!isPublicView} />
 
             {/* Interactive Portfolio Showcase Grid */}
             <Card>
