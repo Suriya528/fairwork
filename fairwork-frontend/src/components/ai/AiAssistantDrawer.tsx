@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import { useLocation } from "react-router-dom"
 import { FiCpu, FiX, FiSend, FiZap, FiRefreshCw } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -21,7 +22,8 @@ const QUICK_CHIPS = [
 ]
 
 export function AiAssistantDrawer() {
-  const { token, user } = useAuth()
+  const { status, token, user } = useAuth()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -36,6 +38,21 @@ export function AiAssistantDrawer() {
   const [isStreaming, setIsStreaming] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Strict Production Guard: Restrict AI Assistant to authenticated internal workspace pages only.
+  // Never show on public landing (/), auth routes (/login, /register, /forgot-password),
+  // OAuth callback & role selection screens (/auth/*), or unauthenticated sessions.
+  const pathname = location.pathname.toLowerCase()
+  const isExcludedRoute =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/auth/")
+
+  if (status !== "authenticated" || !user || isExcludedRoute) {
+    return null
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
