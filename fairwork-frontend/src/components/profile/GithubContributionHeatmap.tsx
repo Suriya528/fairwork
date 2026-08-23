@@ -11,7 +11,7 @@ import {
   FiRefreshCw,
   FiAward,
 } from "react-icons/fi"
-import { getGithubActivity, GithubActivityDTO } from "../../services/userApi"
+import { getGithubActivity, type GithubActivityDTO } from "../../services/userApi"
 import { useAuth } from "../../context/AuthContext"
 
 interface Props {
