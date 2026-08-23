@@ -146,7 +146,7 @@ router.get("/github/connect/callback", async (req, res) => {
         scopes: ["read:user"],
         updatedAt: new Date(),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     // Update User githubIdentity

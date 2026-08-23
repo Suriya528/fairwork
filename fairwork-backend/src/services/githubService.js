@@ -52,6 +52,10 @@ function calculateStreaks(weeks = []) {
 
   days.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  if (days.length === 0) {
+    return { totalContributionsYear: 0, longestStreak: 0, currentStreak: 0, days: [] };
+  }
+
   let totalContributionsYear = 0;
   let longestStreak = 0;
   let currentStreak = 0;
@@ -213,7 +217,7 @@ async function refreshGithubActivity(githubUserId, accessToken) {
         retentionExpiresAt,
         lastError: null,
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     return doc;
