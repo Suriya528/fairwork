@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -88,6 +89,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [hasMetaMask, setHasMetaMask] = useState<boolean>(() => Boolean(getInjectedProvider()?.isMetaMask))
 
   const verifiedWalletAddress = user?.walletAddress ? user.walletAddress.toLowerCase() : null
+  const verifiedWalletAddressRef = useRef(verifiedWalletAddress)
+  verifiedWalletAddressRef.current = verifiedWalletAddress
+
   const isCorrectNetwork = chainId === TARGET_CHAIN_ID
   const isVerified = Boolean(
     verifiedWalletAddress &&
@@ -132,11 +136,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return false
   }, [checkProviderState, clearError])
 
-  // Auto-detect existing connected accounts & Listen for wallet changes
+  // EIP-6963 & ethereum#initialized late-injection listener
+  useEffect(() => {
+    const handleInitialized = () => {
+      checkProviderState()
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("ethereum#initialized", handleInitialized)
+      window.addEventListener("eip6963:announceProvider", handleInitialized as EventListener)
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("ethereum#initialized", handleInitialized)
+        window.removeEventListener("eip6963:announceProvider", handleInitialized as EventListener)
+      }
+    }
+  }, [checkProviderState])
+
+  // Stable event handlers for accountsChanged and chainChanged
+  const activeProviderRef = useRef<any>(null)
+
   useEffect(() => {
     const provider = getInjectedProvider()
     if (!provider || typeof provider.request !== "function") return
 
+    activeProviderRef.current = provider
     setIsProviderAvailable(true)
     setHasMetaMask(Boolean(provider.isMetaMask))
 
@@ -146,12 +172,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         .then((res: unknown) => {
           const accounts = res as string[]
           if (accounts && accounts.length > 0) {
-            setConnectedAccount(accounts[0].toLowerCase())
-            setWalletState(
-              verifiedWalletAddress && accounts[0].toLowerCase() === verifiedWalletAddress
-                ? "VERIFIED"
-                : "CONNECTED",
-            )
+            const acc = accounts[0].toLowerCase()
+            setConnectedAccount(acc)
+            const vAddr = verifiedWalletAddressRef.current
+            setWalletState(vAddr && acc === vAddr ? "VERIFIED" : "CONNECTED")
           }
         })
         .catch(() => {})
@@ -174,11 +198,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (accounts && accounts.length > 0) {
         const newAcc = accounts[0].toLowerCase()
         setConnectedAccount(newAcc)
-        setWalletState(
-          verifiedWalletAddress && newAcc === verifiedWalletAddress
-            ? "VERIFIED"
-            : "CONNECTED",
-        )
+        const vAddr = verifiedWalletAddressRef.current
+        setWalletState(vAddr && newAcc === vAddr ? "VERIFIED" : "CONNECTED")
       } else {
         setConnectedAccount(null)
         setWalletState("DISCONNECTED")
@@ -193,7 +214,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setErrorMessage("Please switch your Web3 wallet to the Sepolia test network.")
       } else {
         setErrorState((prev) => (prev === "WRONG_NETWORK" ? null : prev))
-        if (errorState === "WRONG_NETWORK") setErrorMessage("")
       }
     }
 
@@ -203,12 +223,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
 
     return () => {
-      if (provider.removeListener) {
-        provider.removeListener("accountsChanged", handleAccountsChanged)
-        provider.removeListener("chainChanged", handleChainChanged)
+      try {
+        if (provider.removeListener) {
+          provider.removeListener("accountsChanged", handleAccountsChanged)
+          provider.removeListener("chainChanged", handleChainChanged)
+        }
+      } catch {
+        // Ignore unmount cleanup errors on custom providers
       }
     }
-  }, [verifiedWalletAddress, errorState])
+  }, [])
 
   // Sync walletState with user.walletAddress
   useEffect(() => {

@@ -38,6 +38,8 @@ import { NotFoundPage } from "@/pages/NotFoundPage"
 import { LoginPage } from "@/pages/auth/LoginPage"
 import { RegisterPage } from "@/pages/auth/RegisterPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
+import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage"
+import { SelectRolePage } from "@/pages/auth/SelectRolePage"
 
 function RoleHome() {
   const { user } = useAuth()
@@ -55,15 +57,11 @@ function PublicHome() {
 }
 
 /**
- * Public & Authenticated Help Center Route Handler.
- * Unauthenticated visitors see the Help Center inside the public marketplace shell.
- * Authenticated users see the Help Center inside the AppLayout application shell.
+ * Standalone Help Center route handler.
+ * Unauthenticated visitors see the Help Center wrapped with LandingHeader & LandingFooter.
+ * Authenticated users in AppLayout see HelpCenterPage directly inside the app shell.
  */
-function HelpRouteHandler() {
-  const { status } = useAuth()
-  if (status === "authenticated") {
-    return <HelpCenterPage />
-  }
+function PublicHelpCenter() {
   return (
     <div className="min-h-screen bg-base text-foreground flex flex-col justify-between">
       <LandingHeader />
@@ -96,14 +94,14 @@ export function App() {
                 {/* Public landing page — visible to unauthenticated visitors */}
                 <Route index element={<PublicHome />} />
 
-                {/* Public Help Center route — accessible to logged-out and logged-in visitors */}
-                <Route path="help" element={<HelpRouteHandler />} />
-
                 {/* Auth routes render standalone */}
                 <Route path="login" element={<LoginPage />} />
                 <Route path="register" element={<RegisterPage />} />
                 <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="auth/callback" element={<AuthCallbackPage />} />
+                <Route path="auth/select-role" element={<SelectRolePage />} />
 
+                {/* Protected Application shell for authenticated users */}
                 <Route
                   element={
                     <ProtectedRoute>
@@ -128,11 +126,15 @@ export function App() {
                   <Route path="settings" element={<RouteErrorBoundary featureName="Settings"><SettingsPage /></RouteErrorBoundary>} />
                   <Route path="notifications" element={<RouteErrorBoundary featureName="Notifications"><NotificationsPage /></RouteErrorBoundary>} />
                   <Route path="transactions" element={<RouteErrorBoundary featureName="Transactions"><TransactionsPage /></RouteErrorBoundary>} />
+                  <Route path="help" element={<RouteErrorBoundary featureName="Help Center"><HelpCenterPage /></RouteErrorBoundary>} />
                   <Route path="chat" element={<RouteErrorBoundary featureName="Chat"><ChatPage /></RouteErrorBoundary>} />
                   <Route path="admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
                   <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>
+
+                {/* Standalone Public Help Center route for logged-out visitors */}
+                <Route path="help" element={<PublicHelpCenter />} />
               </Routes>
             </WalletProvider>
           </AuthProvider>

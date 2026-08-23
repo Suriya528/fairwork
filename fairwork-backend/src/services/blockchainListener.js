@@ -1,127 +1,268 @@
 const fs = require("fs");
 const path = require("path");
-const { createPublicClient, http, decodeEventLog } = require("viem");
+const { createPublicClient, http } = require("viem");
 const { sepolia } = require("viem/chains");
 const Project = require("../models/Project");
-const Dispute = require("../models/Dispute");
-const User = require("../models/User");
 const SyncState = require("../models/BlockchainSyncState");
-const { recordActivitySafely } = require("./activityService");
-const { getResolvedContractAddress, reconcileEscrowFunding, reconcileMilestoneRelease, reconcileEscrowCloseout } = require("./reconciliationService");
+const SettlementEvent = require("../models/SettlementEvent");
+const {
+  decodeRawLogToVerifiedEvent,
+  reconcileVerifiedBlockchainEvent,
+  ensureBlockchainSystemEventMessage,
+  createOnChainEscrowReader,
+  MILESTONE_RELEASED_TOPIC,
+  getResolvedContractAddress,
+} = require("./reconciliationService");
 
-const CONFIRMATIONS = 2;
+function isRetryableRpcError(error) {
+  if (!error) return false;
+  const status = error.status || error.statusCode || (error.response && error.response.status);
+  if ([429, 502, 503, 504].includes(Number(status))) return true;
 
-function artifact(name) {
-  const base = process.env.BLOCKCHAIN_ARTIFACTS_DIR || path.resolve(__dirname, "../../../fairwork-blockchain/artifacts/contracts");
-  const file = path.join(base, `${name}.sol`, `${name}.json`);
-  return JSON.parse(fs.readFileSync(file, "utf8")).abi;
+  const msg = (error.message || "").toLowerCase();
+  const code = (error.code || "").toString().toLowerCase();
+
+  return (
+    code === "econnreset" ||
+    code === "econnrefused" ||
+    code === "etimedout" ||
+    msg.includes("rate limit") ||
+    msg.includes("too many requests") ||
+    msg.includes("timeout") ||
+    msg.includes("request timed out") ||
+    msg.includes("bad gateway") ||
+    msg.includes("service unavailable") ||
+    msg.includes("gateway timeout") ||
+    msg.includes("network error")
+  );
 }
 
-async function recordBlockchainActivity(projectId, log, type, title, message, extra = {}) {
-  const project = await Project.findById(projectId).select("clientId freelancerId").lean();
-  if (!project) return;
-  const eventIdentity = log.transactionHash && log.logIndex !== undefined ? `${log.transactionHash}:${log.logIndex}` : `${log.blockHash}:${log.logIndex}`;
-  recordActivitySafely({ userIds: [project.clientId, project.freelancerId], eventKey: `chain:${eventIdentity}`, type, title, message, projectId, ...extra });
+async function executeWithFullJitter(fn, maxRetries = 3, baseDelayMs = 20, maxDelayMs = 1000, randomFn = Math.random) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isRetryableRpcError(err)) {
+        throw new Error(`FATAL_RPC_ERROR: ${err.message}`);
+      }
+      attempt++;
+      if (attempt >= maxRetries) {
+        throw new Error(`RPC_EXHAUSTION: ${err.message}`);
+      }
+
+      const calculatedMax = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt));
+      const jitteredSleep = Math.floor(randomFn() * calculatedMax);
+      await new Promise((r) => setTimeout(r, jitteredSleep));
+    }
+  }
+}
+
+async function processBlockchainChunkRange({
+  client,
+  io = null,
+  chainId,
+  contractAddress,
+  expectedTokenAddress,
+  fromBlock,
+  toBlock,
+  confirmedHead,
+  chunkSize = 2000n,
+  SyncStateModel = SyncState,
+  ProjectModel = Project,
+  SettlementEventModel = SettlementEvent,
+  syncKey,
+  instanceId = "primary",
+  currentGeneration = 1,
+  onChainEscrowReader,
+  maxRetries = 3,
+  onChunkProcessed = null,
+}) {
+  if (typeof fromBlock !== "bigint" || typeof toBlock !== "bigint" || typeof chunkSize !== "bigint") {
+    throw new TypeError("INVALID_CHUNK_RANGE_TYPES");
+  }
+  if (fromBlock < 0n || toBlock < 0n || chunkSize <= 0n) {
+    throw new Error("INVALID_CHUNK_RANGE_BOUNDS");
+  }
+  if (fromBlock > toBlock) {
+    return { status: "EMPTY_RANGE", lastProcessedBlock: fromBlock - 1n };
+  }
+  if (toBlock > confirmedHead) {
+    throw new Error("CONFIRMATION_DEPTH_VIOLATION");
+  }
+
+  let currentFrom = fromBlock;
+
+  while (currentFrom <= toBlock) {
+    const chunkEnd = currentFrom + chunkSize - 1n;
+    const currentTo = chunkEnd > toBlock ? toBlock : chunkEnd;
+
+    // 1. Fetch Logs with RPC-Level Topic Filtering & Jittered Retry
+    const rawLogs = await executeWithFullJitter(async () => {
+      return await client.getLogs({
+        address: contractAddress,
+        topics: [MILESTONE_RELEASED_TOPIC],
+        fromBlock: currentFrom,
+        toBlock: currentTo,
+      });
+    }, maxRetries);
+
+    // 2. Decode, Verify On-Chain State, and Atomically Reconcile
+    for (const rawLog of rawLogs) {
+      const verifiedEvent = decodeRawLogToVerifiedEvent({
+        rawLog,
+        expectedChainId: chainId,
+        expectedEscrowAddress: contractAddress,
+      });
+
+      if (!verifiedEvent) continue;
+
+      const onChainEscrowState = await onChainEscrowReader(verifiedEvent.projectId);
+
+      await reconcileVerifiedBlockchainEvent({
+        ProjectModel,
+        SettlementEventModel,
+        verifiedEvent,
+        onChainEscrowState,
+        expectedTokenAddress,
+      });
+
+      // Replay-Safe System Event Message Ensure
+      await ensureBlockchainSystemEventMessage({
+        io,
+        projectId: verifiedEvent.projectId,
+        chainId,
+        contractAddress,
+        transactionHash: verifiedEvent.transactionHash,
+        logIndex: verifiedEvent.logIndex,
+        content: `Milestone ${verifiedEvent.milestoneIndex + 1} Payment Settled On-Chain.`,
+      });
+    }
+
+    // 3. Telemetry Callback
+    if (onChunkProcessed) {
+      try {
+        await onChunkProcessed(currentFrom, currentTo);
+      } catch (err) {
+        console.warn(`[Telemetry Warning] onChunkProcessed hook: ${err.message}`);
+      }
+    }
+
+    // 4. Advance Fenced Checkpoint Cursor
+    const checkpointUpdate = await SyncStateModel.updateOne(
+      { key: syncKey },
+      {
+        $set: {
+          lastProcessedBlock: Number(currentTo),
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    currentFrom = currentTo + 1n;
+  }
+
+  return { status: "COMPLETED", lastProcessedBlock: toBlock };
+}
+
+async function orchestrateBlockchainSync({
+  client,
+  io = null,
+  chainId = 11155111,
+  contractAddress,
+  expectedTokenAddress,
+  confirmationDepth = 2n,
+  chunkSize = 2000n,
+  SyncStateModel = SyncState,
+  ProjectModel = Project,
+  SettlementEventModel = SettlementEvent,
+  syncKey,
+  instanceId = "primary",
+  currentGeneration = 1,
+  contractDeployBlock,
+  onChainEscrowReader,
+}) {
+  const latestHead = await client.getBlockNumber();
+  const confirmedHead = latestHead > confirmationDepth ? latestHead - confirmationDepth : 0n;
+
+  const state = await SyncStateModel.findOne({ key: syncKey });
+  let fromBlock;
+
+  if (state && state.lastProcessedBlock !== null && state.lastProcessedBlock !== undefined) {
+    fromBlock = BigInt(state.lastProcessedBlock) + 1n;
+  } else if (contractDeployBlock !== undefined && contractDeployBlock !== null) {
+    fromBlock = BigInt(contractDeployBlock);
+    if (fromBlock < 0n) throw new Error("NEGATIVE_CONTRACT_DEPLOY_BLOCK");
+  } else {
+    throw new Error("MISSING_CHECKPOINT_AND_DEPLOY_BLOCK");
+  }
+
+  if (fromBlock > confirmedHead) {
+    return { status: "WAITING_FOR_CHAIN_CONFIRMATION", fromBlock, confirmedHead };
+  }
+
+  return await processBlockchainChunkRange({
+    client,
+    io,
+    chainId,
+    contractAddress,
+    expectedTokenAddress,
+    fromBlock,
+    toBlock: confirmedHead,
+    confirmedHead,
+    chunkSize,
+    SyncStateModel,
+    ProjectModel,
+    SettlementEventModel,
+    syncKey,
+    instanceId,
+    currentGeneration,
+    onChainEscrowReader,
+  });
 }
 
 async function startBlockchainListener() {
   try {
     const escrowAddress = getResolvedContractAddress("ESCROW_CONTRACT_ADDRESS", "ESCROW_ADDRESS");
-    const disputeAddress = getResolvedContractAddress("DISPUTE_CONTRACT_ADDRESS", "DISPUTE_ADDRESS");
+    const tokenAddress = getResolvedContractAddress("CANONICAL_TOKEN_ADDRESS", "TOKEN_ADDRESS") || "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238";
 
-    if (!process.env.SEPOLIA_RPC_URL || !escrowAddress || !disputeAddress) {
-      console.warn("Blockchain listener inactive: Missing SEPOLIA_RPC_URL, Escrow or Dispute contract address.");
+    if (!process.env.SEPOLIA_RPC_URL || !escrowAddress) {
+      console.warn("[BlockchainListener] Inactive: Missing SEPOLIA_RPC_URL or Escrow contract address.");
       return;
     }
 
     const client = createPublicClient({ chain: sepolia, transport: http(process.env.SEPOLIA_RPC_URL) });
-    let escrowAbi, disputeAbi;
-    try {
-      escrowAbi = artifact("EscrowContract");
-      disputeAbi = artifact("DisputeContract");
-    } catch {
-      console.warn("Blockchain contract artifacts not found; listener paused.");
-      return;
-    }
+    const syncKey = `sepolia:escrow:${escrowAddress.toLowerCase()}`;
+    const onChainEscrowReader = createOnChainEscrowReader(process.env.SEPOLIA_RPC_URL, escrowAddress);
+    const deployBlock = process.env.CONTRACT_DEPLOY_BLOCK || process.env.BLOCKCHAIN_DEPLOYMENT_BLOCK || "0";
 
-    const processLog = async (log, abi, address) => {
+    const sync = async () => {
       try {
-        const event = decodeEventLog({ abi, data: log.data, topics: log.topics });
-        const a = event.args;
-        const projectId = a.projectId;
-
-        if (event.eventName === "EscrowCreated") {
-          await Project.findByIdAndUpdate(projectId, { escrowToken: a.token.toLowerCase() });
-          await recordBlockchainActivity(projectId, log, "escrow_created", "Escrow created", "Escrow was created on-chain.");
-        }
-
-        if (event.eventName === "EscrowFunded") {
-          // Delegate to single authoritative reconciliation service
-          await reconcileEscrowFunding(projectId, log.transactionHash);
-        }
-
-        if (event.eventName === "EscrowDisputed") {
-          await Project.findByIdAndUpdate(projectId, { escrowDisputed: true });
-          await recordBlockchainActivity(projectId, log, "dispute_opened", "Escrow disputed", "A dispute was confirmed on-chain.");
-        }
-
-        if (event.eventName === "EscrowRefunded") {
-          await reconcileEscrowCloseout(projectId, "refunded", log.transactionHash);
-          await recordBlockchainActivity(projectId, log, "escrow_refunded", "Escrow refunded", "An escrow refund was confirmed on-chain.");
-        }
-
-        if (event.eventName === "MilestoneReleased") {
-          // Delegate to single authoritative reconciliation service
-          await reconcileMilestoneRelease(projectId, Number(a.milestoneIndex), log.transactionHash);
-        }
-
-        if (event.eventName === "DisputeRaised") {
-          const user = await User.findOne({ walletAddress: a.raisedBy.toLowerCase() });
-          if (user) await Dispute.findOneAndUpdate({ projectId }, { projectId, raisedBy: user._id, reason: a.reason, status: "pending" }, { upsert: true });
-          await recordBlockchainActivity(projectId, log, "dispute_opened", "Dispute raised", "A dispute was raised on-chain.");
-        }
-
-        if (event.eventName === "DisputeResolved") {
-          const parties = await client.readContract({ address: escrowAddress, abi: escrowAbi, functionName: "getEscrowParties", args: [projectId] });
-          const winner = a.winner.toLowerCase() === parties[0].toLowerCase() ? "client" : "freelancer";
-          await reconcileEscrowCloseout(projectId, "resolved", log.transactionHash);
-          await Project.findByIdAndUpdate(projectId, { escrowDisputed: false });
-          const dispute = await Dispute.findOneAndUpdate({ projectId }, { status: "resolved", winner }, { new: true });
-          await recordBlockchainActivity(projectId, log, "dispute_resolved", "Dispute resolved", "A dispute resolution was confirmed on-chain.", { disputeId: dispute?._id });
-        }
+        await orchestrateBlockchainSync({
+          client,
+          contractAddress: escrowAddress,
+          expectedTokenAddress: tokenAddress,
+          syncKey,
+          contractDeployBlock: deployBlock,
+          onChainEscrowReader,
+        });
       } catch (err) {
-        console.warn(`Error processing log (${log.transactionHash}):`, err.message);
+        console.warn("[BlockchainListener] Sync tick error:", err.message);
       }
     };
 
-    let catchingUp = false;
-    const catchUp = async () => {
-      if (catchingUp) return;
-      catchingUp = true;
-      try {
-        const head = await client.getBlockNumber();
-        const to = head > BigInt(CONFIRMATIONS) ? head - BigInt(CONFIRMATIONS) : 0n;
-        const state = await SyncState.findOne({ key: "sepolia" });
-        const from = BigInt((state?.lastProcessedBlock ?? Number(process.env.BLOCKCHAIN_DEPLOYMENT_BLOCK || 0)) + 1);
-        if (from > to) return;
-        for (const [address, abi] of [[escrowAddress, escrowAbi], [disputeAddress, disputeAbi]]) {
-          for (const log of await client.getLogs({ address, fromBlock: from, toBlock: to })) {
-            await processLog(log, abi, address);
-          }
-        }
-        await SyncState.findOneAndUpdate({ key: "sepolia" }, { lastProcessedBlock: Number(to) }, { upsert: true });
-      } catch (err) {
-        console.warn("Blockchain listener catchUp error:", err.message);
-      } finally {
-        catchingUp = false;
-      }
-    };
-
-    await catchUp();
-    client.watchBlockNumber({ emitOnBegin: false, onBlockNumber: () => catchUp().catch(console.error) });
+    await sync();
+    client.watchBlockNumber({ emitOnBegin: false, onBlockNumber: () => sync().catch(console.error) });
   } catch (err) {
-    console.warn("Blockchain listener initialization error:", err.message);
+    console.warn("[BlockchainListener] Initialization error:", err.message);
   }
 }
 
-module.exports = { startBlockchainListener };
+module.exports = {
+  isRetryableRpcError,
+  executeWithFullJitter,
+  processBlockchainChunkRange,
+  orchestrateBlockchainSync,
+  startBlockchainListener,
+};

@@ -16,7 +16,7 @@ export interface MetricCardProps {
   to?: string
 }
 
-/** Compact KPI card for dashboards. Shows value, delta, and a hint line. */
+/** Compact KPI card for dashboards with smooth hover lift and micro-interactions. */
 export function MetricCard({
   label,
   value,
@@ -29,21 +29,22 @@ export function MetricCard({
   const hasChange = typeof change === "number" && change !== 0
   const positive = (change ?? 0) > 0
 
-  const content = <>
+  const content = (
+    <div className="group">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           {Icon && (
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-elevated text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-elevated text-primary transition-all duration-200 group-hover:scale-110 group-hover:bg-primary/10 group-hover:text-primary">
               <Icon className="h-4 w-4" aria-hidden />
             </span>
           )}
-          <p className="text-sm font-medium text-muted">{label}</p>
-          {to && <FiArrowRight className="h-3.5 w-3.5 text-subtle ml-auto" aria-hidden />}
+          <p className="text-sm font-medium text-muted group-hover:text-foreground transition-colors">{label}</p>
+          {to && <FiArrowRight className="h-3.5 w-3.5 text-subtle ml-auto transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary" aria-hidden />}
         </div>
         {hasChange && (
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums",
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums transition-transform duration-200 group-hover:scale-105",
               positive
                 ? "bg-success-soft text-success"
                 : "bg-danger-soft text-danger",
@@ -58,11 +59,12 @@ export function MetricCard({
           </span>
         )}
       </div>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+      <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums group-hover:text-primary transition-colors">
         {value}
       </p>
       {hint && <p className="mt-1 text-xs text-subtle">{hint}</p>}
-  </>
+    </div>
+  )
 
   if (to) {
     return (
@@ -70,7 +72,7 @@ export function MetricCard({
         to={to}
         aria-label={`View ${label.toLowerCase()}`}
         className={cn(
-          "block rounded-2xl border border-border bg-surface p-5 scroll-mt-20 outline-none transition-colors hover:border-border-strong hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "block rounded-2xl border border-border bg-surface p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-hover hover:shadow-lg hover:shadow-primary/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           className,
         )}
       >
@@ -80,7 +82,7 @@ export function MetricCard({
   }
 
   return (
-    <Card className={cn("p-5", className)}>
+    <Card className={cn("p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md", className)}>
       {content}
     </Card>
   )

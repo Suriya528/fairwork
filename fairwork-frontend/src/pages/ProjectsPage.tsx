@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   FiChevronDown,
   FiFilter,
@@ -77,12 +77,13 @@ function SortControl({ sort, onChange }: { sort: SortKey; onChange: (sort: SortK
 
 export function ProjectsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, token } = useAuth()
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("")
+  const [search, setSearch] = useState(searchParams.get("search") || "")
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "")
   const [sort, setSort] = useState<SortKey>("newest")
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
@@ -91,6 +92,14 @@ export function ProjectsPage() {
       return "grid"
     }
   })
+
+  // Sync search state if URL parameter updates
+  useEffect(() => {
+    const s = searchParams.get("search")
+    if (s !== null) setSearch(s)
+    const c = searchParams.get("category")
+    if (c !== null) setSelectedCategory(c)
+  }, [searchParams])
 
   useEffect(() => {
     try {

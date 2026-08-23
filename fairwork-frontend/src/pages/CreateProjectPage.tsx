@@ -14,6 +14,7 @@ import { createProject } from "@/services/projectsApi"
 import { PROJECT_CATEGORIES } from "@/data/categories"
 import { formatDateTime, formatDeadlineCountdown } from "@/lib/format"
 import { AiProjectGeneratorModal } from "@/components/ai/AiProjectGeneratorModal"
+import { VerificationRequiredModal } from "@/components/auth/VerificationRequiredModal"
 
 interface Draft {
   id: string
@@ -30,7 +31,7 @@ const draft = (): Draft => ({
 })
 
 export function CreateProjectPage() {
-  const { token } = useAuth()
+  const { user, token } = useAuth()
   const { currency, formatAmount } = useCurrency()
   const navigate = useNavigate()
 
@@ -57,6 +58,7 @@ export function CreateProjectPage() {
   const [saving, setSaving] = useState(false)
 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false)
 
   const handleApplyAiScope = (scope: {
     title: string
@@ -115,6 +117,12 @@ export function CreateProjectPage() {
     )
 
   const submit = async () => {
+    if (!user?.isEmailVerified) {
+      setVerificationModalOpen(true)
+      setError("Email verification required before creating a project. Please update and verify your email in Settings.")
+      return
+    }
+
     const value = Number(budget)
     if (
       !token ||
@@ -452,6 +460,12 @@ export function CreateProjectPage() {
           </CardFooter>
         </Card>
       </div>
+
+      <VerificationRequiredModal
+        open={verificationModalOpen}
+        onClose={() => setVerificationModalOpen(false)}
+        actionName="create a project"
+      />
     </div>
   )
 }

@@ -40,6 +40,7 @@ import { formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { ApiError } from "@/services/apiClient"
+import { VerificationRequiredModal } from "@/components/auth/VerificationRequiredModal"
 import {
   getProjectById,
   getDisplayCategory,
@@ -525,6 +526,8 @@ export function ProjectDetailPage() {
   const [contractBusy, setContractBusy] = useState(false)
   const [contractError, setContractError] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false)
+  const [verificationActionName, setVerificationActionName] = useState("fund escrow")
 
   const formatDDMMYYYY = (dateInput?: string | Date | null): string => {
     if (!dateInput) return "____________________________________________"
@@ -738,6 +741,13 @@ export function ProjectDetailPage() {
   const handleMilestoneSubmit = async (milestoneId: string, notes: string, files: File[] = []) => {
     if (!token || !project) return
     setActionError("")
+    if (!user?.isEmailVerified) {
+      setVerificationActionName("submit milestone deliverables")
+      setVerificationModalOpen(true)
+      const msg = "Email verification required. Please update and verify your email address in Settings before submitting deliverables."
+      setActionError(msg)
+      throw new ApiError(msg)
+    }
     try {
       if (files && files.length > 0) {
         for (const file of files) {
@@ -757,6 +767,12 @@ export function ProjectDetailPage() {
   const handleMilestoneRevisionRequest = async (milestoneId: string, notes: string) => {
     if (!token || !project) return
     setActionError("")
+    if (!user?.isEmailVerified) {
+      setVerificationActionName("request milestone revisions")
+      setVerificationModalOpen(true)
+      setActionError("Email verification required. Please update and verify your email address in Settings before requesting revisions.")
+      return
+    }
     try {
       const updated = await requestMilestoneRevision(project.id, milestoneId, notes, token)
       setProject(updated)
@@ -768,6 +784,12 @@ export function ProjectDetailPage() {
   const handleMilestoneApprove = async (milestoneId: string) => {
     if (!token || !project) return
     setActionError("")
+    if (!user?.isEmailVerified) {
+      setVerificationActionName("approve milestones")
+      setVerificationModalOpen(true)
+      setActionError("Email verification required. Please update and verify your email address in Settings before approving milestones.")
+      return
+    }
     try {
       const updated = await approveMilestone(project.id, milestoneId, token)
       setProject(updated)
@@ -779,6 +801,12 @@ export function ProjectDetailPage() {
   const fund = async () => {
     if (!token || !project) return
     setActionError("")
+    if (!user?.isEmailVerified) {
+      setVerificationActionName("fund escrow")
+      setVerificationModalOpen(true)
+      setActionError("Email verification required. Please update and verify your email address in Settings before funding escrow.")
+      return
+    }
     setActionState("Funding escrow...")
     try {
       if (!user?.walletAddress) {
@@ -808,6 +836,12 @@ export function ProjectDetailPage() {
   const dispute = async () => {
     if (!token || !project) return
     setActionError("")
+    if (!user?.isEmailVerified) {
+      setVerificationActionName("raise a dispute")
+      setVerificationModalOpen(true)
+      setActionError("Email verification required. Please update and verify your email address in Settings before raising a dispute.")
+      return
+    }
     setActionState("Raising dispute...")
     try {
       if (user?.walletAddress) {
@@ -1581,6 +1615,12 @@ export function ProjectDetailPage() {
           void loadApplications()
           void loadProject()
         }}
+      />
+
+      <VerificationRequiredModal
+        open={verificationModalOpen}
+        onClose={() => setVerificationModalOpen(false)}
+        actionName={verificationActionName}
       />
     </div>
   )

@@ -9,4 +9,7 @@ const reviewSchema = new mongoose.Schema({
   blockchainTxn: { type: String, default: "" },
 }, { timestamps: true });
 
+// Database-level compound unique index to prevent duplicate reviews
+reviewSchema.index({ projectId: 1, reviewerId: 1 }, { unique: true });
+
 module.exports = mongoose.model("Review", reviewSchema);

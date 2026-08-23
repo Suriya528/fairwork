@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar"
 import { Topbar } from "./Topbar"
 import { MobileNav } from "./MobileNav"
 import { DisputeSummaryProvider } from "@/context/DisputeSummaryContext"
+import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner"
 
 /**
  * Root application shell: fixed sidebar (desktop), sticky topbar,
@@ -20,6 +21,7 @@ export function AppLayout() {
 
         <div className="lg:pl-64">
           <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
+          <EmailVerificationBanner />
           <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
             <Outlet />
           </main>

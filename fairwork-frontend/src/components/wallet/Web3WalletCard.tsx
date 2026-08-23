@@ -1,8 +1,6 @@
-import { useState } from "react"
 import {
   FiAlertTriangle,
   FiCheckCircle,
-  FiCopy,
   FiDownload,
   FiExternalLink,
   FiLock,
@@ -40,14 +38,6 @@ export function Web3WalletCard({
     disconnect,
     clearError,
   } = useWallet()
-
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = (address: string) => {
-    void navigator.clipboard.writeText(address)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const activeAddress = connectedAccount || verifiedWalletAddress
 
@@ -147,15 +137,6 @@ export function Web3WalletCard({
             {activeAddress ? (
               <div className="flex items-center gap-2">
                 <WalletAddress address={activeAddress} chars={8} className="text-sm font-mono font-bold text-foreground" />
-                <button
-                  type="button"
-                  onClick={() => handleCopy(activeAddress)}
-                  className="rounded p-1 text-subtle hover:bg-elevated hover:text-foreground transition-colors"
-                  title="Copy wallet address"
-                >
-                  <FiCopy className="h-3.5 w-3.5" />
-                </button>
-                {copied && <span className="text-[10px] text-success font-medium">Copied!</span>}
                 <a
                   href={`https://sepolia.etherscan.io/address/${activeAddress}`}
                   target="_blank"

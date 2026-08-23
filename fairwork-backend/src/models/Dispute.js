@@ -12,4 +12,6 @@ const disputeSchema = new mongoose.Schema({
   blockchainTxn: { type: String, default: "" },
 }, { timestamps: true });
 
+disputeSchema.index({ projectId: 1, status: 1 });
+
 module.exports = mongoose.model("Dispute", disputeSchema);

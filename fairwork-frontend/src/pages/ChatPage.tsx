@@ -83,7 +83,19 @@ export function ChatPage() {
     const socket = connectChat(token)
     socketRef.current = socket
 
-    socket.emit("join_project", selected)
+    const joinSelectedRoom = () => {
+      socket.emit("join_project", selected)
+    }
+
+    joinSelectedRoom()
+
+    socket.on("connect", () => {
+      joinSelectedRoom()
+    })
+
+    socket.on("app_error", (errData: { code: string; message: string }) => {
+      setError(`[${errData.code}] ${errData.message}`)
+    })
 
     socket.on("receive_message", (raw) => {
       const message = toApiMessage(raw)

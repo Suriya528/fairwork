@@ -1,5 +1,6 @@
 import { FiGithub } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
+import { API_URL } from "@/services/apiClient"
 
 /** Google "G" mark — inline so we avoid an external asset dependency. */
 function GoogleIcon() {
@@ -28,23 +29,39 @@ function GoogleIcon() {
 interface SocialAuthProps {
   /** Verb shown in the buttons, e.g. "Sign in" or "Sign up". */
   action: string
+  /** Pre-selected user role on registration page if applicable. */
+  role?: "client" | "freelancer"
 }
 
-/**
- * Dummy OAuth entry points + divider. Wire each handler to your provider
- * (e.g. redirect to /api/auth/oauth/github) when the backend is ready.
- */
-export function SocialAuth({ action }: SocialAuthProps) {
+export function SocialAuth({ action, role }: SocialAuthProps) {
+  const baseUrl = API_URL.replace(/\/$/, "")
+
+  const handleGoogleClick = () => {
+    const roleParam = role ? `&role=${encodeURIComponent(role)}` : ""
+    window.location.href = `${baseUrl}/auth/google?action=${encodeURIComponent(action)}${roleParam}`
+  }
+
+  const handleGithubClick = () => {
+    const roleParam = role ? `&role=${encodeURIComponent(role)}` : ""
+    window.location.href = `${baseUrl}/auth/github?action=${encodeURIComponent(action)}${roleParam}`
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="secondary" type="button" leftIcon={<GoogleIcon />}>
+        <Button
+          variant="secondary"
+          type="button"
+          leftIcon={<GoogleIcon />}
+          onClick={handleGoogleClick}
+        >
           Google
         </Button>
         <Button
           variant="secondary"
           type="button"
           leftIcon={<FiGithub className="h-4 w-4" />}
+          onClick={handleGithubClick}
         >
           GitHub
         </Button>

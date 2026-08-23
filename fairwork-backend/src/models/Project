@@ -65,4 +65,8 @@ const projectSchema = new mongoose.Schema({
   deadlineMode: { type: String, enum: ["duration", "exact"], default: "duration" },
 }, { timestamps: true });
 
+projectSchema.index({ clientId: 1, status: 1 });
+projectSchema.index({ freelancerId: 1, status: 1 });
+projectSchema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Project", projectSchema);

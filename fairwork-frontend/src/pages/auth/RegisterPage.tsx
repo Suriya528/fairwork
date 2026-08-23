@@ -119,7 +119,7 @@ export function RegisterPage() {
       }
     >
       <div className="flex flex-col gap-5">
-        <SocialAuth action="sign up" />
+        <SocialAuth action="sign up" role={role || undefined} />
 
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4.5">
           {/* Role Selection Product Cards */}

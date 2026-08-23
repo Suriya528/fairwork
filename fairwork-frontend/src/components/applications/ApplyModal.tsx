@@ -23,7 +23,7 @@ export function ApplyModal({
   onClose,
   onSuccess,
 }: ApplyModalProps) {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const { currency, convertAmount, formatAmount } = useCurrency()
   const [proposalText, setProposalText] = useState("")
   const [proposedAmount, setProposedAmount] = useState(String(convertAmount(projectBudget)))
@@ -37,6 +37,11 @@ export function ApplyModal({
     e.preventDefault()
     if (!token) return
     setError("")
+
+    if (!user?.isEmailVerified) {
+      setError("Email verification required before submitting proposals. Please update and verify your email address in Settings.")
+      return
+    }
 
     if (!proposalText.trim()) {
       setError("Please describe your proposal and approach.")

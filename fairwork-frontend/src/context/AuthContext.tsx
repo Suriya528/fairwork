@@ -4,8 +4,8 @@ import {
   useContext,
   useEffect,
   useState,
+  type ReactNode,
 } from "react"
-import type { ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   clearStoredSession,
@@ -13,6 +13,7 @@ import {
   getStoredSession,
   login as apiLogin,
   register as apiRegister,
+  updateWallet as apiUpdateWallet,
   storeSession,
   updateStoredSession,
 } from "@/services/authApi"
@@ -30,6 +31,7 @@ interface AuthContextValue {
   token: string | null
   status: AuthStatus
   login: (payload: LoginPayload) => Promise<AuthSession>
+  loginSession: (session: AuthSession, remember?: boolean) => void
   register: (payload: RegisterPayload) => Promise<AuthSession>
   logout: () => void
   updateWallet: (walletAddress: string) => Promise<void>
@@ -37,22 +39,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-/**
- * Centralized session state. Wraps authApi's network/storage functions
- * with React lifecycle: restores a session on refresh (verified against
- * GET /me, not just trusted from storage), and exposes login/register/
- * logout with the exact same call signatures LoginPage/RegisterPage
- * already used — so those pages only needed a one-line import swap.
- */
-/**
- * login()/register() responses only include { id, firstName, lastName,
- * email, role } — avatarUrl/bio/reputationScore/totalReviews only come
- * from GET /me. Without this, a freshly-logged-in user would show an
- * empty avatar and zero rating until their next page refresh (which is
- * the only other path that calls getMe). Falls back to the lean session
- * on failure so a flaky enrichment call doesn't fail an otherwise-
- * successful login.
- */
 async function enrichSession(session: AuthSession): Promise<AuthSession> {
   try {
     const fullUser = await getMe(session.token)
@@ -79,9 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Verify against the backend rather than trusting storage blindly —
-        // this is what makes an expired/invalidated JWT get caught here
-        // instead of silently "working" until some later call 401s.
         const freshUser = await getMe(stored.token)
         if (cancelled) return
         setUser(freshUser)
@@ -117,14 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   )
 
+  const loginSession = useCallback(
+    (session: AuthSession, remember = true) => {
+      applySession(session, remember)
+    },
+    [applySession],
+  )
+
   const register = useCallback(
     async (payload: RegisterPayload) => {
       const session = await apiRegister(payload)
       const enrichedSession = await enrichSession(session)
-      // Registering establishes an active session immediately (matches
-      // existing behavior: RegisterPage already navigated to "/" right
-      // after success). Defaulting to remembered — there's no "remember
-      // me" checkbox on the register form to read instead.
       applySession(enrichedSession, true)
       return enrichedSession
     },
@@ -139,15 +125,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate("/login")
   }, [navigate])
 
-  const updateWallet = useCallback(async (walletAddress: string) => {
-    if (!token || !user) throw new Error("You must be signed in to update your wallet.")
-    const updated = { ...user, walletAddress }
-    setUser(updated)
-    updateStoredSession({ user: updated, token })
-  }, [token, user])
+  const updateWallet = useCallback(
+    async (walletAddress: string) => {
+      if (!token) return
+      const updatedUser = await apiUpdateWallet(walletAddress, token)
+      setUser(updatedUser)
+      if (user) {
+        const stored = getStoredSession()
+        if (stored) {
+          updateStoredSession({ ...stored, user: updatedUser })
+        }
+      }
+    },
+    [token, user],
+  )
 
   return (
-    <AuthContext.Provider value={{ user, token, status, login, register, logout, updateWallet }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        status,
+        login,
+        loginSession,
+        register,
+        logout,
+        updateWallet,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

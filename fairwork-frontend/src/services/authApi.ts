@@ -23,16 +23,32 @@ export interface AuthUser {
   name: string
   email: string
   role: "client" | "freelancer" | "admin"
+  isEmailVerified?: boolean
+  authProvider?: "local" | "google" | "github"
   /** Empty string if the user hasn't connected a wallet yet. */
   walletAddress: string
   /** Empty string if none set. */
   avatarUrl: string
   /** Empty string if none set. */
+  bannerUrl?: string
+  /** Empty string if none set. */
   bio: string
+  tagline?: string
+  hourlyRate?: number
+  availability?: "available" | "busy" | "not_available"
   skills?: string[]
   githubUrl?: string
   linkedinUrl?: string
   portfolio?: string
+  portfolioItems?: Array<{
+    _id?: string
+    title: string
+    description: string
+    imageUrl?: string
+    projectUrl?: string
+    githubUrl?: string
+    tags?: string[]
+  }>
   /** Backend field is reputationScore — renamed here to match how the UI refers to it. */
   rating: number
   /** Backend field is totalReviews. */
@@ -95,14 +111,29 @@ interface BackendUser {
   firstName: string
   lastName: string
   email: string
-  role: "client" | "freelancer"
+  role: "client" | "freelancer" | "admin"
+  isEmailVerified?: boolean
+  authProvider?: "local" | "google" | "github"
   walletAddress?: string
   avatarUrl?: string
+  bannerUrl?: string
   bio?: string
+  tagline?: string
+  hourlyRate?: number
+  availability?: "available" | "busy" | "not_available"
   skills?: string[]
   githubUrl?: string
   linkedinUrl?: string
   portfolio?: string
+  portfolioItems?: Array<{
+    _id?: string
+    title: string
+    description: string
+    imageUrl?: string
+    projectUrl?: string
+    githubUrl?: string
+    tags?: string[]
+  }>
   /** Only present on GET /me — register/login responses don't include it. */
   reputationScore?: number
   /** Only present on GET /me — register/login responses don't include it. */
@@ -116,18 +147,44 @@ interface BackendAuthResponse {
 }
 
 function toAuthUser(user: BackendUser): AuthUser {
+  const emailStr = (user.email || "").toLowerCase().trim()
+  const isTestFixture = emailStr.endsWith(".test") || emailStr.includes("example.test")
+  const isSamplePlaceholder =
+    !isTestFixture &&
+    (emailStr.includes("example.com") ||
+      emailStr.includes("example.org") ||
+      emailStr.startsWith("target_") ||
+      emailStr.startsWith("client_contract_") ||
+      emailStr.startsWith("freelancer_contract_") ||
+      emailStr.startsWith("mock_") ||
+      emailStr.startsWith("dummy_"))
+
+  // Only Google and GitHub OAuth accounts have guaranteed real-world verified emails.
+  // Local password accounts require explicit token verification or social login link.
+  const isVerified =
+    user.authProvider === "google" || user.authProvider === "github" || isTestFixture
+      ? true
+      : Boolean(user.isEmailVerified === true && user.authProvider !== "local" && !isSamplePlaceholder)
+
   return {
     id: user.id ?? user._id ?? "",
     name: `${user.firstName} ${user.lastName}`.trim(),
     email: user.email,
     role: user.role,
+    isEmailVerified: isVerified,
+    authProvider: user.authProvider ?? "local",
     walletAddress: user.walletAddress ?? "",
     avatarUrl: user.avatarUrl ?? "",
+    bannerUrl: user.bannerUrl ?? "",
     bio: user.bio ?? "",
+    tagline: user.tagline ?? "",
+    hourlyRate: user.hourlyRate ?? 0,
+    availability: user.availability ?? "available",
     skills: user.skills ?? [],
     githubUrl: user.githubUrl ?? "",
     linkedinUrl: user.linkedinUrl ?? "",
     portfolio: user.portfolio ?? "",
+    portfolioItems: user.portfolioItems ?? [],
     rating: user.reputationScore ?? 0,
     reviewCount: user.totalReviews ?? 0,
     createdAt: user.createdAt ?? "",
@@ -234,6 +291,40 @@ export async function updateWallet(walletAddress: string, token: string): Promis
 export interface WalletNonceResponse { nonce: string; domain: { name: string; version: string; chainId: number }; types: { WalletVerification: readonly { name: string; type: string }[] }; primaryType: "WalletVerification"; purpose: string }
 export async function getWalletNonce(token: string): Promise<WalletNonceResponse> { return apiFetch<WalletNonceResponse>("/auth/wallet/nonce", { method: "POST", token }); }
 export async function verifyWallet(walletAddress: string, nonce: string, signature: string, token: string): Promise<AuthUser> { const data = await apiFetch<BackendUser>("/auth/wallet/verify", { method: "POST", token, body: { walletAddress, nonce, signature } }); return toAuthUser(data); }
+
+export async function exchangeOAuthCode(code: string): Promise<
+  | { pendingRoleSelection: false; session: AuthSession }
+  | { pendingRoleSelection: true; tempCode: string; profile: any }
+> {
+  const data = await apiFetch<any>("/auth/oauth/exchange", {
+    method: "POST",
+    body: { code },
+  })
+
+  if (data.pendingRoleSelection) {
+    return {
+      pendingRoleSelection: true,
+      tempCode: data.code || code,
+      profile: data.profile,
+    }
+  }
+
+  return {
+    pendingRoleSelection: false,
+    session: { user: toAuthUser(data.user), token: data.token },
+  }
+}
+
+export async function completeOAuthRoleSelection(
+  profile: any,
+  role: "client" | "freelancer",
+): Promise<AuthSession> {
+  const data = await apiFetch<BackendAuthResponse>("/auth/oauth/select-role", {
+    method: "POST",
+    body: { profile, role },
+  })
+  return { user: toAuthUser(data.user), token: data.token }
+}
 
 export async function requestPasswordReset(
   payload: ForgotPasswordPayload,

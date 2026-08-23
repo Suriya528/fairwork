@@ -16,18 +16,30 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Invalid registration details" });
     }
 
-    const existing = await User.findOne({ email });
+    const cleanEmail = email.toLowerCase().trim();
+    const existing = await User.findOne({ email: cleanEmail });
     if (existing) return res.status(409).json({ message: "Email already exists" });
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ firstName, lastName, email, password: hashed, role });
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email: cleanEmail,
+      password: hashed,
+      role,
+      authProvider: "local",
+      isEmailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
+    });
 
     const token = jwt.sign({ id: user._id, role: user.role, sessionId: crypto.randomUUID() }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.status(201).json({ token, user: { id: user._id, firstName, lastName, email, role } });
+    res.status(201).json({ token, user: { id: user._id, firstName, lastName, email: cleanEmail, role } });
   } catch (err) {
-    // The pre-check above improves the common case; the unique index remains
-    // the authoritative guard for concurrent registrations.
     if (err?.code === 11000) return res.status(409).json({ message: "Email already exists" });
     if (err?.name === "ValidationError") return res.status(400).json({ message: "Invalid registration details" });
     console.error("Registration failed:", err);
@@ -38,9 +50,15 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
-    const user = await User.findOne({ email });
+    const cleanEmail = String(email).toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    if (user.authProvider === "local" && !user.password) {
+      return res.status(400).json({ message: "Please log in using your Google or GitHub account." });
+    }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
@@ -57,7 +75,7 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign({ id: user._id, role: user.role, sessionId: crypto.randomUUID() }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.json({ token, user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email, role: user.role } });
+    res.json({ token, user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: cleanEmail, role: user.role } });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -67,6 +85,61 @@ exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ message: "Verification token is required" });
+    }
+
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired verification token" });
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Email verified successfully", isEmailVerified: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Email address is required" });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      return res.json({ message: "If account exists, verification email has been sent." });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: "Email is already verified" });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.emailVerificationToken = token;
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await user.save();
+
+    res.json({ message: "Verification email resent successfully." });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -92,9 +165,6 @@ exports.verifyWallet = async (req, res) => {
     const claimed = walletAddress.toLowerCase();
     const recovered = await verifyWalletSignature(claimed, nonce, signature);
     if (recovered !== claimed) return res.status(400).json({ message: "Invalid wallet signature" });
-    // Consume the verified nonce atomically. A concurrent replay can find the
-    // record before either request deletes it, so the deletion result itself
-    // is the single-use authority rather than the earlier read.
     const consumed = await WalletNonce.findOneAndDelete({ _id: record._id, userId: req.user.id, sessionId: req.user.sessionId, nonce });
     if (!consumed) return res.status(400).json({ message: "Wallet verification nonce is expired or invalid" });
     const user = await User.findByIdAndUpdate(req.user.id, { walletAddress: claimed }, { new: true, runValidators: true }).select("-password");

@@ -1,13 +1,20 @@
 const { uploadToCloudinary } = require("../services/cloudinaryUpload");
 
 /**
- * Standard File Upload Handler
+ * Standard File & Image Upload Handler with Transcoding Type Support
  */
 exports.uploadFile = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    const result = await uploadToCloudinary(req.file);
+    const uploadType = req.query.type || req.body.type || "file";
+
+    // SVG Stored XSS Protection: Disallow SVG for avatar & banner uploads
+    if (["avatar", "banner"].includes(uploadType) && req.file.mimetype.includes("svg")) {
+      return res.status(400).json({ message: "SVG image files are strictly prohibited for profile media." });
+    }
+
+    const result = await uploadToCloudinary(req.file, uploadType, req.user ? req.user.id : null);
 
     res.json({
       url: result.secure_url,

@@ -153,7 +153,7 @@ test.describe("Profile, Workroom Chat & Settings Production E2E Suite", () => {
 
     // Update settings
     await page.goto("/settings")
-    await expect(page.getByRole("heading", { name: "Profile Information" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Profile & Professional Reputation Information" })).toBeVisible()
     await page.getByRole("button", { name: "Save Profile Changes" }).click()
     await expect(page.getByText("Profile information saved successfully!")).toBeVisible()
 

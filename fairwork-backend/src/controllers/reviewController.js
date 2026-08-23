@@ -18,13 +18,20 @@ exports.submitReview = async (req, res) => {
 
     const reviews = await Review.find({ revieweeId });
     const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    const score = Math.min(5, Math.max(1, Math.round(rating || 5)));
+    const incField = `stats.ratingCounts.${score}`;
+
     await User.findByIdAndUpdate(revieweeId, {
       reputationScore: Math.round(avg * 10) / 10,
       totalReviews: reviews.length,
+      $inc: { [incField]: 1 },
     });
 
     res.status(201).json(review);
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Already reviewed" });
+    }
     res.status(500).json({ message: err.message });
   }
 };
