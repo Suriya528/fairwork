@@ -36,4 +36,6 @@ function requireAdmin(req, res, next) {
 }
 
 module.exports = authenticate;
+module.exports.authenticate = authenticate;
+module.exports.authenticateToken = authenticate;
 module.exports.requireAdmin = requireAdmin;
