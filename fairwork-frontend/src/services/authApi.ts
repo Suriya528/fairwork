@@ -319,7 +319,16 @@ export async function exchangeOAuthCode(code: string): Promise<
     // will verify the full JWT when the role is submitted.
     let profile: OAuthProfile = { email: "", authProvider: "google" }
     try {
-      const payload = JSON.parse(atob(data.roleSelectionToken.split(".")[1]))
+      const base64Url = (data.roleSelectionToken || "").split(".")[1] || ""
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=")
+      const jsonPayload = decodeURIComponent(
+        atob(padded)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      )
+      const payload = JSON.parse(jsonPayload)
       if (payload?.profile) profile = payload.profile
     } catch { /* display fallback is fine */ }
 
