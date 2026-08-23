@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import {
   FiGithub,
-  FiFlame,
+  FiZap,
   FiCalendar,
   FiExternalLink,
   FiStar,
@@ -185,7 +185,7 @@ export const GithubContributionHeatmap: React.FC<Props> = ({ targetUserId, isOwn
 
         <div className="bg-slate-800/40 border border-slate-800 rounded-xl p-3.5 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
-            <FiFlame className="w-5 h-5" />
+            <FiZap className="w-5 h-5" />
           </div>
           <div>
             <div className="text-lg font-bold text-slate-100">{activity.currentStreak} Days</div>
