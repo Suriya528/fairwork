@@ -17,7 +17,7 @@ const BlockchainSyncState = require("../src/models/BlockchainSyncState");
 const Message = require("../src/models/Message");
 const BlockCheckpoint = require("../src/models/BlockCheckpoint");
 
-test("Integration Verification Gate Suite", async (t) => {
+test("Integration-Gate Logic Suite", async (t) => {
 
   await t.test("Gate 1: Fail-fast Startup Validator (Staging Invariants)", async () => {
     // Missing required config should throw
