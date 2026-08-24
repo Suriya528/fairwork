@@ -12,7 +12,13 @@ function parseCookies(cookieHeader) {
   if (!cookieHeader) return list;
   cookieHeader.split(";").forEach((cookie) => {
     const parts = cookie.split("=");
-    list[parts.shift().trim()] = decodeURIComponent(parts.join("="));
+    const key = parts.shift().trim();
+    const val = parts.join("=");
+    try {
+      list[key] = decodeURIComponent(val);
+    } catch {
+      list[key] = val;
+    }
   });
   return list;
 }
@@ -52,9 +58,10 @@ exports.initiateGoogleAuth = async (req, res) => {
       { expiresIn: "5m" }
     );
 
-    res.cookie("oauth_state", JSON.stringify({ nonce: stateNonce, codeVerifier }), {
+    res.cookie("oauth_state_google", JSON.stringify({ nonce: stateNonce, codeVerifier }), {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       maxAge: 300000, // 5 mins
     });
 
@@ -85,7 +92,7 @@ exports.handleGoogleCallback = async (req, res) => {
     const cookies = parseCookies(req.headers.cookie);
     let cookieData = {};
     try {
-      cookieData = JSON.parse(cookies.oauth_state || "{}");
+      cookieData = JSON.parse(cookies.oauth_state_google || "{}");
     } catch {}
 
     let stateData;
@@ -99,7 +106,7 @@ exports.handleGoogleCallback = async (req, res) => {
       return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_STATE_MISMATCH`);
     }
 
-    res.clearCookie("oauth_state");
+    res.clearCookie("oauth_state_google");
 
     const redirectUri = `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/google/callback`;
     const tokenRes = await axios.post("https://oauth2.googleapis.com/token", {
@@ -221,15 +228,19 @@ exports.initiateGithubAuth = async (req, res) => {
     }
 
     const stateNonce = crypto.randomBytes(32).toString("hex");
+    const codeVerifier = crypto.randomBytes(32).toString("hex");
+    const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+
     const stateToken = jwt.sign(
       { role: ["client", "freelancer"].includes(role) ? role : null, action, nonce: stateNonce },
       process.env.JWT_SECRET,
       { expiresIn: "5m" }
     );
 
-    res.cookie("oauth_state", JSON.stringify({ nonce: stateNonce }), {
+    res.cookie("oauth_state_github", JSON.stringify({ nonce: stateNonce, codeVerifier }), {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       maxAge: 300000,
     });
 
@@ -256,7 +267,7 @@ exports.handleGithubCallback = async (req, res) => {
     const cookies = parseCookies(req.headers.cookie);
     let cookieData = {};
     try {
-      cookieData = JSON.parse(cookies.oauth_state || "{}");
+      cookieData = JSON.parse(cookies.oauth_state_github || "{}");
     } catch {}
 
     let stateData;
@@ -266,11 +277,11 @@ exports.handleGithubCallback = async (req, res) => {
       return res.redirect(`${clientUrl}/auth/callback?error=INVALID_OAUTH_STATE`);
     }
 
-    if (!cookieData.nonce || cookieData.nonce !== stateData.nonce) {
+    if (!cookieData.nonce || cookieData.nonce !== stateData.nonce || !cookieData.codeVerifier) {
       return res.redirect(`${clientUrl}/auth/callback?error=OAUTH_STATE_MISMATCH`);
     }
 
-    res.clearCookie("oauth_state");
+    res.clearCookie("oauth_state_github");
 
     const redirectUri = `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/github/callback`;
     const tokenRes = await axios.post(
@@ -439,9 +450,16 @@ exports.exchangeOAuthCode = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role, sessionId: crypto.randomUUID() }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+        algorithm: "HS256",
+        ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
+        ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
+      }
+    );
 
     res.json({
       token,
@@ -488,6 +506,12 @@ exports.completeOAuthRoleSelection = async (req, res) => {
 
     let user = await User.findOne({ email });
     if (user) {
+      if (user.isSuspended && user.role !== "admin") {
+        return res.status(403).json({
+          message: `Account is suspended. ${user.suspendedReason ? "Reason: " + user.suspendedReason : "Contact support."}`,
+          code: "ACCOUNT_SUSPENDED",
+        });
+      }
       if (profile.googleId && !user.googleId) user.googleId = profile.googleId;
       if (profile.githubId && !user.githubId) user.githubId = profile.githubId;
       if (!user.isEmailVerified) user.isEmailVerified = true;
@@ -515,9 +539,16 @@ exports.completeOAuthRoleSelection = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role, sessionId: crypto.randomUUID() }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+        algorithm: "HS256",
+        ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
+        ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
+      }
+    );
 
     res.json({
       token,

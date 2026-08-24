@@ -54,6 +54,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [status, setStatus] = useState<AuthStatus>("loading")
 
+  const logout = useCallback(() => {
+    clearStoredSession()
+    setUser(null)
+    setToken(null)
+    setStatus("unauthenticated")
+    navigate("/login")
+  }, [navigate])
+
+  // Cross-tab session sync and 401 unauthorized interceptor
+  useEffect(() => {
+    function handleStorageChange(e: StorageEvent) {
+      if (e.key === "fairwork_auth_session") {
+        if (!e.newValue) {
+          // Logged out in another tab
+          setUser(null)
+          setToken(null)
+          setStatus("unauthenticated")
+          navigate("/login")
+        } else {
+          // Logged in or session updated in another tab
+          try {
+            const parsed = JSON.parse(e.newValue) as AuthSession
+            if (parsed?.token && parsed?.user) {
+              setUser(parsed.user)
+              setToken(parsed.token)
+              setStatus("authenticated")
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+
+    function handleUnauthorized() {
+      logout()
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("unauthorized_access", handleUnauthorized)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("unauthorized_access", handleUnauthorized)
+    }
+  }, [logout, navigate])
+
   useEffect(() => {
     let cancelled = false
 
@@ -116,14 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [applySession],
   )
-
-  const logout = useCallback(() => {
-    clearStoredSession()
-    setUser(null)
-    setToken(null)
-    setStatus("unauthenticated")
-    navigate("/login")
-  }, [navigate])
 
   const updateWallet = useCallback(
     async (walletAddress: string) => {

@@ -36,7 +36,16 @@ exports.register = async (req, res) => {
       emailVerificationExpires: verificationExpires,
     });
 
-    const token = jwt.sign({ id: user._id, role: user.role, sessionId: crypto.randomUUID() }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(
+        { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "7d",
+          algorithm: "HS256",
+          ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
+          ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
+        }
+      );
 
     res.status(201).json({ token, user: { id: user._id, firstName, lastName, email: cleanEmail, role } });
   } catch (err) {
@@ -74,7 +83,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role, sessionId: crypto.randomUUID() }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(
+        { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "7d",
+          algorithm: "HS256",
+          ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
+          ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
+        }
+      );
 
     res.json({ token, user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: cleanEmail, role: user.role } });
   } catch (err) {

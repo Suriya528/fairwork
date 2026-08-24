@@ -15,7 +15,7 @@ const CLIENT_ALLOWED_MESSAGE_TYPES = new Set(["TEXT", "FILE"]);
 
 async function isUserActiveAndAuthorized(userId) {
   if (!userId || !mongoose.isValidObjectId(userId)) return null;
-  const user = await User.findById(userId).select("role isSuspended");
+  const user = await User.findById(userId).select("role isSuspended email authProvider isEmailVerified");
   if (!user || user.isSuspended) return null;
   return user;
 }
@@ -49,11 +49,22 @@ function createServerApp(config = {}) {
       }
       return callback(null, false);
     },
-    credentials: false,
+    credentials: true,
   };
 
   app.use(cors(corsOptions));
   app.use(express.json());
+
+  // Health and Readiness Check Endpoints
+  app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+  app.get("/readyz", (req, res) => {
+    const ready = mongoose.connection.readyState === 1;
+    res.status(ready ? 200 : 503).json({
+      ready,
+      database: ready ? "connected" : "disconnected",
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // Protected REST Test Endpoint
   app.use("/api/protected", expressAuthMiddleware(config), (req, res) => {
@@ -81,12 +92,37 @@ function createServerApp(config = {}) {
 
   app.get("/", (req, res) => res.json({ message: "FairWork API running" }));
 
+  // Global 404 Handler for undefined API routes
+  app.use((req, res) => {
+    res.status(404).json({ code: "NOT_FOUND", message: `Cannot ${req.method} ${req.originalUrl}` });
+  });
+
+  // Global Express Error Handler
+  app.use((err, req, res, next) => {
+    console.error("Unhandled API error:", err);
+    res.status(err.statusCode || err.status || 500).json({
+      code: err.code || "INTERNAL_SERVER_ERROR",
+      message: isProd ? "Internal server error" : err.message,
+    });
+  });
+
   // Socket Gateway Configuration
   const io = new Server(httpServer, { cors: corsOptions });
 
   io.use(socketAuthMiddleware(config));
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
+    // Validate connection and join user-specific room
+    const userId = socket.user?.id;
+    const freshUser = await isUserActiveAndAuthorized(userId);
+    if (!freshUser) {
+      socket.emit("app_error", { code: "ACCOUNT_SUSPENDED_OR_INACTIVE" });
+      return socket.disconnect(true);
+    }
+
+    // Join canonical user notification room
+    socket.join(`user:${userId}`);
+
     socket.on("join_project", async (projectId) => {
       try {
         if (!projectId || !mongoose.isValidObjectId(projectId)) {
@@ -96,14 +132,13 @@ function createServerApp(config = {}) {
         const project = await Project.findById(projectId).select("clientId freelancerId status");
         if (!project) return socket.emit("app_error", { code: "NOT_FOUND" });
 
-        const userId = socket.user.id;
-        const freshUser = await isUserActiveAndAuthorized(userId);
-        if (!freshUser) {
+        const userCheck = await isUserActiveAndAuthorized(userId);
+        if (!userCheck) {
           return socket.emit("app_error", { code: "ACCOUNT_SUSPENDED_OR_INACTIVE" });
         }
 
         const isParticipant = String(project.clientId) === userId || (project.freelancerId && String(project.freelancerId) === userId);
-        const isAdmin = freshUser.role === "admin";
+        const isAdmin = userCheck.role === "admin";
 
         if (!isParticipant && !isAdmin) {
           return socket.emit("app_error", { code: "UNAUTHORIZED_ROOM" });
@@ -137,13 +172,12 @@ function createServerApp(config = {}) {
         const project = await Project.findById(data.projectId).select("clientId freelancerId status");
         if (!project) return socket.emit("app_error", { code: "NOT_FOUND" });
 
-        const userId = socket.user.id;
-        const freshUser = await isUserActiveAndAuthorized(userId);
-        if (!freshUser) {
+        const activeUser = await isUserActiveAndAuthorized(userId);
+        if (!activeUser) {
           return socket.emit("app_error", { code: "ACCOUNT_SUSPENDED_OR_INACTIVE" });
         }
 
-        const emailStr = (freshUser.email || "").toLowerCase().trim();
+        const emailStr = (activeUser.email || "").toLowerCase().trim();
         const isTestFixture = emailStr.endsWith(".test") || emailStr.includes("example.test");
         const isSamplePlaceholder =
           !isTestFixture &&
@@ -156,9 +190,9 @@ function createServerApp(config = {}) {
             emailStr.startsWith("dummy_"));
 
         const isVerified =
-          freshUser.authProvider === "google" || freshUser.authProvider === "github" || isTestFixture
+          activeUser.authProvider === "google" || activeUser.authProvider === "github" || isTestFixture
             ? true
-            : Boolean(freshUser.isEmailVerified === true && freshUser.authProvider !== "local" && !isSamplePlaceholder);
+            : Boolean(activeUser.isEmailVerified === true && activeUser.authProvider !== "local" && !isSamplePlaceholder);
 
         if (!isVerified) {
           return socket.emit("app_error", {
@@ -168,7 +202,7 @@ function createServerApp(config = {}) {
         }
 
         const isParticipant = String(project.clientId) === userId || (project.freelancerId && String(project.freelancerId) === userId);
-        const isAdmin = freshUser.role === "admin";
+        const isAdmin = activeUser.role === "admin";
 
         const canSend = isParticipant || (isAdmin && project.status === "DISPUTED");
         if (!canSend) {
@@ -215,6 +249,7 @@ function createServerApp(config = {}) {
 // Global process initialization when run directly
 if (require.main === module) {
   const { app, httpServer } = createServerApp();
+  
   mongoose
     .connect(process.env.MONGO_URI)
     .then(() => {
@@ -224,7 +259,24 @@ if (require.main === module) {
         console.log(`Server running on port ${process.env.PORT || 5000}`)
       );
     })
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      console.error("Fatal MongoDB connection error:", err.message);
+      process.exit(1);
+    });
+
+  // Graceful shutdown handling
+  const gracefulShutdown = (signal) => {
+    console.log(`Received ${signal}. Shutting down gracefully...`);
+    httpServer.close(async () => {
+      console.log("HTTP server closed.");
+      await mongoose.connection.close();
+      console.log("MongoDB connection closed.");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 }
 
 module.exports = { createServerApp, isUserActiveAndAuthorized };

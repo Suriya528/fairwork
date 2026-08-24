@@ -123,17 +123,55 @@ exports.getProject = async (req, res) => {
   }
 };
 
+const { transitionStatus } = require("../services/projectStateMachine");
+
 exports.assignFreelancer = async (req, res) => {
   try {
     const { freelancerId } = req.body;
-    const current = await Project.findById(req.params.id);
-    if (!current) return res.status(404).json({ message: "Project not found" });
-    if (String(current.clientId) !== String(req.user.id)) return res.status(403).json({ message: "Only the project client can assign a freelancer" });
-    if (current.freelancerId) return res.status(409).json({ message: "A freelancer is already assigned" });
     const freelancer = await User.findById(freelancerId);
-    if (!freelancer || freelancer.role !== "freelancer") return res.status(400).json({ message: "Invalid freelancer" });
-    const project = await Project.findByIdAndUpdate(req.params.id, { freelancerId, status: "in_progress" }, { new: true });
-    recordActivitySafely({ userIds: [current.clientId, freelancer._id], eventKey: `freelancer-assigned:${project._id}`, actorId: req.user.id, type: "freelancer_assigned", title: "Freelancer assigned", message: `A freelancer was assigned to “${project.title}”.`, projectId: project._id });
+    if (!freelancer || freelancer.role !== "freelancer") {
+      return res.status(400).json({ message: "Invalid freelancer" });
+    }
+
+    // Atomic CAS transition: open -> in_progress with freelancerId guard
+    const project = await Project.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        clientId: req.user.id,
+        status: "open",
+        freelancerId: { $in: [null, undefined] },
+      },
+      {
+        $set: {
+          freelancerId: freelancer._id,
+          freelancerWalletAddress: freelancer.walletAddress || undefined,
+          status: "in_progress",
+        },
+      },
+      { new: true }
+    );
+
+    if (!project) {
+      const existing = await Project.findById(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Project not found" });
+      if (String(existing.clientId) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Only the project client can assign a freelancer" });
+      }
+      if (existing.freelancerId) {
+        return res.status(409).json({ message: "A freelancer is already assigned" });
+      }
+      return res.status(409).json({ message: "Project status conflict" });
+    }
+
+    recordActivitySafely({
+      userIds: [project.clientId, freelancer._id],
+      eventKey: `freelancer-assigned:${project._id}`,
+      actorId: req.user.id,
+      type: "freelancer_assigned",
+      title: "Freelancer assigned",
+      message: `A freelancer was assigned to “${project.title}”.`,
+      projectId: project._id,
+    });
     res.json(project);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -142,14 +180,31 @@ exports.assignFreelancer = async (req, res) => {
 
 exports.completeProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(
-      req.params.id,
-      { status: "completed" },
-      { new: true }
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    // Ownership check: only client owner can mark project complete
+    if (String(project.clientId) !== String(req.user.id)) {
+      return res.status(403).json({ message: "Only the project client owner can complete the project" });
+    }
+
+    // Settlement state eligibility check: all milestones must be settled
+    const allSettled = project.milestones.length > 0 && project.milestones.every(
+      (m) => m.paymentReleased === true && m.settlementEventId != null
     );
-    res.json(project);
+
+    if (!allSettled) {
+      return res.status(409).json({
+        message: "Cannot complete project: all milestones must have confirmed released settlement events.",
+        code: "UNSETTLED_MILESTONES_REMAIN",
+      });
+    }
+
+    // Atomic CAS transition: in_progress -> completed
+    const updated = await transitionStatus(project._id, "in_progress", "completed", { clientId: req.user.id });
+    res.json(updated);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({ message: err.message });
   }
 };
 

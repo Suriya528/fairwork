@@ -1,92 +1,72 @@
+const fs = require("fs");
+const path = require("path");
 const mongoose = require("mongoose");
 const { decodeEventLog, parseUnits, keccak256, toHex, createPublicClient, http } = require("viem");
 const { sepolia } = require("viem/chains");
+
 const SettlementEvent = require("../models/SettlementEvent");
+const OutboxEvent = require("../models/OutboxEvent");
+const QuarantineEvent = require("../models/QuarantineEvent");
 const Message = require("../models/Message");
-const Project = require("../models/Project");
+const Project = require("../models/Project.js");
+const { validateFence } = require("./leaseManager");
 
 const FINANCIAL_INVARIANTS = {
   MIN_TRANSACTION_CENTS: 1n,
-  MAX_TRANSACTION_CENTS: 100_000_000n, // $1,000,000.00 USD documented platform ceiling
+  MAX_TRANSACTION_CENTS: 100_000_000n, // $1,000,000.00 USD
   MAX_DECIMALS: 2,
   CANONICAL_TOKEN_DECIMALS: 6,
 };
 
-const ESCROW_ABI = [
-  {
-    type: "event",
-    name: "MilestoneReleased",
-    inputs: [
-      { type: "string", name: "projectId", indexed: true },
-      { type: "uint256", name: "milestoneIndex", indexed: true },
-      { type: "address", name: "freelancer", indexed: true },
-      { type: "uint256", name: "amount", indexed: false },
-    ],
-  },
-  {
-    type: "event",
-    name: "EscrowFunded",
-    inputs: [
-      { type: "string", name: "projectId", indexed: true },
-      { type: "address", name: "client", indexed: true },
-      { type: "uint256", name: "amount", indexed: false },
-    ],
-  },
-  {
-    type: "event",
-    name: "EscrowCreated",
-    inputs: [
-      { type: "string", name: "projectId", indexed: true },
-      { type: "address", name: "client", indexed: true },
-      { type: "address", name: "freelancer", indexed: true },
-      { type: "address", name: "token", indexed: false },
-      { type: "uint256", name: "totalAmount", indexed: false },
-    ],
-  },
-  {
-    type: "event",
-    name: "EscrowDisputed",
-    inputs: [{ type: "string", name: "projectId", indexed: true }],
-  },
-  {
-    type: "event",
-    name: "EscrowRefunded",
-    inputs: [
-      { type: "string", name: "projectId", indexed: true },
-      { type: "address", name: "client", indexed: true },
-      { type: "uint256", name: "amount", indexed: false },
-    ],
-  },
-  {
-    type: "function",
-    name: "escrows",
-    stateMutability: "view",
-    inputs: [{ type: "string", name: "projectId" }],
-    outputs: [
-      { type: "address", name: "client" },
-      { type: "address", name: "freelancer" },
-      { type: "address", name: "token" },
-      { type: "uint256", name: "totalBudget" },
-      { type: "bool", name: "funded" },
-      { type: "bool", name: "completed" },
-    ],
-  },
-  {
-    type: "function",
-    name: "getEscrowParties",
-    stateMutability: "view",
-    inputs: [{ type: "string", name: "projectId" }],
-    outputs: [
-      { type: "address", name: "client" },
-      { type: "address", name: "freelancer" },
-      { type: "bool", name: "isFunded" },
-      { type: "bool", name: "isDisputed" },
-      { type: "bool", name: "isCompleted" },
-    ],
-  },
-];
+// Load Escrow ABI dynamically with fallback
+let ESCROW_ABI = [];
+try {
+  const abiPath = path.join(__dirname, "../abi/EscrowContract.abi.json");
+  if (fs.existsSync(abiPath)) {
+    ESCROW_ABI = JSON.parse(fs.readFileSync(abiPath, "utf-8"));
+  }
+} catch {
+  // Fallback ABI inline
+}
 
-// Calculate MilestoneReleased Topic0 hash using keccak256
+if (!ESCROW_ABI.length) {
+  ESCROW_ABI = [
+    {
+      type: "event",
+      name: "MilestoneReleased",
+      inputs: [
+        { type: "string", name: "projectId", indexed: true },
+        { type: "uint256", name: "milestoneIndex", indexed: true },
+        { type: "address", name: "freelancer", indexed: true },
+        { type: "uint256", name: "amount", indexed: false },
+      ],
+    },
+    {
+      type: "event",
+      name: "EscrowFunded",
+      inputs: [
+        { type: "string", name: "projectId", indexed: true },
+        { type: "address", name: "client", indexed: true },
+        { type: "uint256", name: "amount", indexed: false },
+      ],
+    },
+    {
+      type: "function",
+      name: "escrows",
+      stateMutability: "view",
+      inputs: [{ type: "string", name: "projectId" }],
+      outputs: [
+        { type: "address", name: "client" },
+        { type: "address", name: "freelancer" },
+        { type: "address", name: "token" },
+        { type: "uint256", name: "totalBudget" },
+        { type: "bool", name: "funded" },
+        { type: "bool", name: "completed" },
+      ],
+    },
+  ];
+}
+
 const MILESTONE_RELEASED_TOPIC = keccak256(toHex("MilestoneReleased(string,uint256,address,uint256)"));
 
 function isValidEthAddress(address) {
@@ -118,39 +98,6 @@ function buildBlockchainEventKey({ chainId, contractAddress, transactionHash, lo
   return `EVENT:${assertNonNegativeSafeInteger(chainId, "chainId")}:${contractAddress.toLowerCase()}:${transactionHash.toLowerCase()}:${assertNonNegativeSafeInteger(logIndex, "logIndex")}`;
 }
 
-function businessAmountToTokenUnits(rawAmount, verifiedTokenAddress, expectedTokenAddress, verifiedDecimals) {
-  if (typeof rawAmount !== "string" && typeof rawAmount !== "number") {
-    throw new TypeError("INVALID_MONETARY_TYPE_STRING_REQUIRED");
-  }
-  const strAmount = String(rawAmount).trim();
-  if (!isValidEthAddress(verifiedTokenAddress) || !isValidEthAddress(expectedTokenAddress)) {
-    throw new Error("INVALID_TOKEN_ADDRESS_FORMAT");
-  }
-  if (verifiedTokenAddress.toLowerCase() !== expectedTokenAddress.toLowerCase()) {
-    throw new Error("TOKEN_ADDRESS_MISMATCH");
-  }
-  if (typeof verifiedDecimals !== "number" || verifiedDecimals <= 0 || !Number.isInteger(verifiedDecimals)) {
-    throw new TypeError("INVALID_TOKEN_DECIMALS");
-  }
-
-  if (!/^([1-9]\d*|0)(\.\d{1,2})?$/.test(strAmount)) {
-    throw new Error("NON_CANONICAL_MONETARY_STRING");
-  }
-
-  const [wholeStr, fracStr = ""] = strAmount.split(".");
-  const normalizedFrac = fracStr.padEnd(FINANCIAL_INVARIANTS.MAX_DECIMALS, "0").slice(0, FINANCIAL_INVARIANTS.MAX_DECIMALS);
-  const totalCents = BigInt(wholeStr) * 100n + BigInt(normalizedFrac);
-
-  if (totalCents < FINANCIAL_INVARIANTS.MIN_TRANSACTION_CENTS) {
-    throw new Error("AMOUNT_BELOW_MINIMUM");
-  }
-  if (totalCents > FINANCIAL_INVARIANTS.MAX_TRANSACTION_CENTS) {
-    throw new Error("AMOUNT_EXCEEDS_MAXIMUM");
-  }
-
-  return parseUnits(strAmount, verifiedDecimals);
-}
-
 function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAddress }) {
   if (!rawLog || !Array.isArray(rawLog.topics) || rawLog.data === undefined) {
     throw new Error("MALFORMED_RAW_LOG_PAYLOAD");
@@ -172,6 +119,7 @@ function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAd
 
   const logIndex = assertNonNegativeSafeInteger(rawLog.logIndex, "logIndex");
   const blockNumber = assertNonNegativeSafeInteger(rawLog.blockNumber, "blockNumber");
+  const blockHash = rawLog.blockHash ? rawLog.blockHash.toLowerCase() : "0x" + "0".repeat(64);
 
   const parsed = decodeEventLog({
     abi: ESCROW_ABI,
@@ -201,6 +149,7 @@ function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAd
     transactionHash: transactionHash.toLowerCase(),
     logIndex,
     blockNumber,
+    blockHash,
     eventName: "MilestoneReleased",
     projectId: String(rawProjId),
     milestoneIndex,
@@ -209,33 +158,19 @@ function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAd
   };
 }
 
-function createOnChainEscrowReader(rpcUrl, escrowAddress) {
-  const client = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
-  return async function readOnChainEscrow(projectId) {
-    const data = await client.readContract({
-      address: escrowAddress,
-      abi: ESCROW_ABI,
-      functionName: "escrows",
-      args: [projectId],
-    });
-    return {
-      client: data[0],
-      freelancer: data[1],
-      token: data[2],
-      totalBudget: BigInt(data[3].toString()),
-      funded: Boolean(data[4]),
-      completed: Boolean(data[5]),
-    };
-  };
-}
-
+/**
+ * Main financial settlement reconciliation entry point.
+ */
 async function reconcileVerifiedBlockchainEvent({
   ProjectModel = Project,
   SettlementEventModel = SettlementEvent,
+  OutboxEventModel = OutboxEvent,
+  QuarantineEventModel = QuarantineEvent,
   verifiedEvent,
   onChainEscrowState,
   expectedTokenAddress,
   tokenDecimals = FINANCIAL_INVARIANTS.CANONICAL_TOKEN_DECIMALS,
+  fenceState = null,
   session: externalSession = null,
 }) {
   const {
@@ -244,6 +179,7 @@ async function reconcileVerifiedBlockchainEvent({
     transactionHash,
     logIndex,
     blockNumber,
+    blockHash,
     eventName,
     projectId,
     milestoneIndex,
@@ -251,25 +187,35 @@ async function reconcileVerifiedBlockchainEvent({
     onChainAmountUnits,
   } = verifiedEvent;
 
-  // 1. Mandatory On-Chain State Assertions (ZERO FALLBACK)
+  // 1. Mandatory On-Chain State Assertions
   if (!onChainEscrowState || typeof onChainEscrowState !== "object") {
+    await QuarantineEventModel.create({
+      category: "SECURITY_VALIDATION_FAILURE",
+      sourceEventKey: buildBlockchainEventKey({ chainId, contractAddress, transactionHash, logIndex }),
+      chainId,
+      contractAddress,
+      blockNumber,
+      transactionHash,
+      logIndex,
+      rawEventData: verifiedEvent,
+      errorMessage: "MISSING_ON_CHAIN_ESCROW_STATE",
+    });
     throw new Error("MISSING_ON_CHAIN_ESCROW_STATE");
   }
+
   if (!onChainEscrowState.funded) {
     throw new Error("ON_CHAIN_ESCROW_NOT_FUNDED");
   }
-  if (!isValidEthAddress(onChainEscrowState.token)) {
-    throw new Error("INVALID_ON_CHAIN_TOKEN_ADDRESS");
-  }
+
   if (onChainEscrowState.token.toLowerCase() !== expectedTokenAddress.toLowerCase()) {
     throw new Error("ON_CHAIN_TOKEN_ADDRESS_MISMATCH");
   }
-  if (!isValidEthAddress(onChainEscrowState.freelancer)) {
-    throw new Error("INVALID_ON_CHAIN_FREELANCER_ADDRESS");
-  }
+
   if (onChainEscrowState.freelancer.toLowerCase() !== freelancerAddress.toLowerCase()) {
     throw new Error("ON_CHAIN_BENEFICIARY_MISMATCH");
   }
+
+  const sourceEventKey = buildBlockchainEventKey({ chainId, contractAddress, transactionHash, logIndex });
 
   const useSession = externalSession || (mongoose.connection.readyState === 1 && typeof mongoose.connection.startSession === "function" ? await mongoose.startSession() : null);
   const isSelfManaged = useSession && !externalSession;
@@ -278,19 +224,9 @@ async function reconcileVerifiedBlockchainEvent({
   }
 
   try {
-    // 2. Event Ledger Deduplication Check
-    const findQuery = SettlementEventModel.findOne({
-      chainId,
-      contractAddress,
-      transactionHash,
-      logIndex,
-    });
-    if (useSession) findQuery.session(useSession);
-    const existingEvent = await findQuery;
-
-    if (existingEvent) {
-      if (isSelfManaged && useSession.inTransaction?.()) await useSession.abortTransaction();
-      return "ALREADY_PROCESSED";
+    // 2. Validate generation fence if fenceState provided
+    if (fenceState) {
+      await validateFence(fenceState.syncKey, fenceState.podId, fenceState.currentGeneration, useSession);
     }
 
     // 3. Project Validation
@@ -303,54 +239,46 @@ async function reconcileVerifiedBlockchainEvent({
       throw new Error("DB_BENEFICIARY_MISMATCH");
     }
 
+    if (project.clientWalletAddress && onChainEscrowState.client && onChainEscrowState.client.toLowerCase() !== project.clientWalletAddress.toLowerCase()) {
+      throw new Error("DB_CLIENT_BENEFICIARY_MISMATCH");
+    }
+
     const milestone = project.milestones && project.milestones[milestoneIndex];
     if (!milestone) throw new Error("MILESTONE_INDEX_OUT_OF_BOUNDS");
 
-    const expectedUnits = businessAmountToTokenUnits(
-      milestone.amount.toString(),
-      onChainEscrowState.token,
-      expectedTokenAddress,
-      tokenDecimals
-    );
-
-    if (onChainAmountUnits !== expectedUnits) {
-      throw new Error("EVENT_AMOUNT_MISMATCH");
-    }
-
-    if (onChainEscrowState.totalBudget !== undefined && onChainEscrowState.totalBudget !== null) {
-      const expectedTotalBudgetUnits = businessAmountToTokenUnits(
-        project.budget.toString(),
-        onChainEscrowState.token,
-        expectedTokenAddress,
-        tokenDecimals
-      );
-      if (BigInt(onChainEscrowState.totalBudget.toString()) !== expectedTotalBudgetUnits) {
-        throw new Error("ON_CHAIN_BUDGET_MISMATCH");
+    // Reconcile against locked settlement expectedMilestoneUnits
+    const expectedUnitsStr = project.settlement?.expectedMilestoneUnits?.[milestoneIndex];
+    if (expectedUnitsStr) {
+      if (onChainAmountUnits.toString() !== expectedUnitsStr) {
+        throw new Error("EVENT_AMOUNT_MISMATCH: " + onChainAmountUnits.toString() + " vs expected " + expectedUnitsStr);
       }
     }
 
-    // 4. Record Immutable Event
+    // 4. Record Immutable Settlement Event
     const createOpts = useSession ? { session: useSession } : {};
-    await SettlementEventModel.create(
+    const [settlementEvent] = await SettlementEventModel.create(
       [
         {
+          sourceEventKey,
           chainId,
           contractAddress,
           transactionHash,
           logIndex,
           blockNumber,
+          blockHash,
           eventName,
           projectId,
           milestoneIndex,
           freelancerAddress,
           tokenAddress: onChainEscrowState.token.toLowerCase(),
           amountUnits: onChainAmountUnits.toString(),
+          status: "ACTIVE",
         },
       ],
       createOpts
     );
 
-    // 5. Mutate Milestone State
+    // 5. Mutate Milestone State (Mandatory modifiedCount === 1 check)
     const updateOpts = useSession ? { session: useSession } : {};
     const updateResult = await ProjectModel.updateOne(
       {
@@ -360,27 +288,30 @@ async function reconcileVerifiedBlockchainEvent({
       {
         $set: {
           [`milestones.${milestoneIndex}.paymentReleased`]: true,
-          [`milestones.${milestoneIndex}.settlementChainId`]: chainId,
-          [`milestones.${milestoneIndex}.settlementContractAddress`]: contractAddress,
-          [`milestones.${milestoneIndex}.settlementTxHash`]: transactionHash,
-          [`milestones.${milestoneIndex}.settlementLogIndex`]: logIndex,
-          [`milestones.${milestoneIndex}.settlementBlockNumber`]: blockNumber,
+          [`milestones.${milestoneIndex}.settlementEventId`]: settlementEvent._id,
         },
       },
       updateOpts
     );
 
-    if (updateResult.modifiedCount === 0) {
-      const reQuery = ProjectModel.findById(projectId);
-      if (useSession) reQuery.session(useSession);
-      const refreshed = await reQuery;
-      const m = refreshed ? refreshed.milestones[milestoneIndex] : null;
-      if (m && m.paymentReleased && m.settlementTxHash === transactionHash && m.settlementLogIndex === logIndex) {
-        if (isSelfManaged && useSession.inTransaction?.()) await useSession.commitTransaction();
-        return "ALREADY_PROCESSED";
-      }
-      throw new Error("INCONSISTENT_SETTLEMENT_STATE");
+    if (updateResult.matchedCount !== 1 || updateResult.modifiedCount !== 1) {
+      throw new Error("SETTLEMENT_PROJECTION_FAILED: Milestone was already released or not found.");
     }
+
+    // 6. Enqueue Outbox Event in same ACID transaction
+    await OutboxEventModel.create(
+      [
+        {
+          sourceEventKey,
+          eventType: "MilestoneReleased",
+          settlementEventId: settlementEvent._id,
+          projectId,
+          content: `Milestone #${milestoneIndex + 1} ("${milestone.title}") payment was released on-chain.`,
+          status: "PENDING",
+        },
+      ],
+      createOpts
+    );
 
     if (isSelfManaged && useSession.inTransaction?.()) await useSession.commitTransaction();
     return "MUTATED";
@@ -388,52 +319,21 @@ async function reconcileVerifiedBlockchainEvent({
     if (isSelfManaged && useSession?.inTransaction?.()) {
       await useSession.abortTransaction();
     }
-    if (err.code === 11000) return "ALREADY_PROCESSED";
+
+    if (err.code === 11000) {
+      const keyPattern = err.keyPattern || {};
+      if (keyPattern.sourceEventKey || (keyPattern.chainId && keyPattern.transactionHash && keyPattern.logIndex)) {
+        return "ALREADY_PROCESSED";
+      }
+      throw new Error("UNEXPECTED_DUPLICATE_KEY: " + JSON.stringify(keyPattern));
+    }
     throw err;
   } finally {
     if (isSelfManaged && useSession) await useSession.endSession();
   }
 }
 
-async function ensureBlockchainSystemEventMessage({
-  io = null,
-  projectId,
-  chainId,
-  contractAddress,
-  transactionHash,
-  logIndex,
-  content,
-}) {
-  const eventKey = buildBlockchainEventKey({
-    chainId,
-    contractAddress,
-    transactionHash,
-    logIndex,
-  });
-
-  try {
-    const message = await Message.create({
-      projectId,
-      senderId: null,
-      content,
-      type: "SYSTEM_EVENT",
-      systemEventKey: eventKey,
-    });
-
-    if (io) {
-      io.to(`project:${projectId}`).emit("receive_message", message);
-    }
-    return { message, isDuplicate: false };
-  } catch (err) {
-    if (err.code === 11000) {
-      const existing = await Message.findOne({ projectId, systemEventKey: eventKey });
-      return { message: existing, isDuplicate: true };
-    }
-    throw err;
-  }
-}
-
-// Backward-compatible wrappers for existing project reconciliation controllers
+// Backward-compatible export helper
 function getResolvedContractAddress(canonicalKey, legacyAliasKey) {
   const canonical = process.env[canonicalKey];
   const alias = process.env[legacyAliasKey];
@@ -444,64 +344,13 @@ function getResolvedContractAddress(canonicalKey, legacyAliasKey) {
   return resolved ? resolved.toLowerCase() : null;
 }
 
-async function reconcileEscrowFunding(projectId, txnHash) {
-  const project = await Project.findById(projectId);
-  if (!project) throw new Error("Project not found");
-  project.escrowFunded = true;
-  if (txnHash) project.escrowTxnHash = txnHash;
-  await project.save();
-  return project;
-}
-
-async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash) {
-  const project = await Project.findById(projectId);
-  if (!project) throw new Error("Project not found");
-  const index = Number(milestoneIndex);
-  if (project.milestones && project.milestones[index]) {
-    project.milestones[index].paymentReleased = true;
-    project.milestones[index].status = "completed";
-  }
-  const allReleased = project.milestones && project.milestones.every((m) => m.paymentReleased);
-  if (allReleased) {
-    project.escrowCompleted = true;
-    project.status = "completed";
-  }
-  await project.save();
-  return project;
-}
-
-async function reconcileEscrowCloseout(projectId, reason = "refunded", txnHash = null) {
-  const project = await Project.findById(projectId);
-  if (!project) throw new Error("Project not found");
-  project.escrowCompleted = true;
-  project.status = reason === "refunded" ? "refunded" : "completed";
-  if (project.milestones) {
-    project.milestones.forEach((m) => {
-      if (!m.paymentReleased) {
-        m.paymentReleased = true;
-        m.status = "completed";
-      }
-    });
-  }
-  await project.save();
-  return project;
-}
-
 module.exports = {
-  FINANCIAL_INVARIANTS,
-  ESCROW_ABI,
-  MILESTONE_RELEASED_TOPIC,
+  reconcileVerifiedBlockchainEvent,
+  decodeRawLogToVerifiedEvent,
+  buildBlockchainEventKey,
   isValidEthAddress,
   isValidTxHash,
   assertNonNegativeSafeInteger,
-  buildBlockchainEventKey,
-  businessAmountToTokenUnits,
-  decodeRawLogToVerifiedEvent,
-  createOnChainEscrowReader,
-  reconcileVerifiedBlockchainEvent,
-  ensureBlockchainSystemEventMessage,
   getResolvedContractAddress,
-  reconcileEscrowFunding,
-  reconcileMilestoneRelease,
-  reconcileEscrowCloseout,
+  FINANCIAL_INVARIANTS,
 };

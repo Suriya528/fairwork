@@ -65,7 +65,7 @@ test("OAuth Suite: initiateGoogleAuth generates PKCE challenge and signed state 
   await oauthController.initiateGoogleAuth(req, res);
 
   assert.equal(res.cookiesSet.length, 1);
-  assert.equal(res.cookiesSet[0].name, "oauth_state");
+  assert.equal(res.cookiesSet[0].name, "oauth_state_google");
   const cookieData = JSON.parse(res.cookiesSet[0].val);
   assert.ok(cookieData.nonce);
   assert.ok(cookieData.codeVerifier);
@@ -87,7 +87,7 @@ test("OAuth Suite: initiateGithubAuth constructs authorization URL with state to
   await oauthController.initiateGithubAuth(req, res);
 
   assert.equal(res.cookiesSet.length, 1);
-  assert.equal(res.cookiesSet[0].name, "oauth_state");
+  assert.equal(res.cookiesSet[0].name, "oauth_state_github");
   const cookieData = JSON.parse(res.cookiesSet[0].val);
   assert.ok(cookieData.nonce);
 
@@ -104,7 +104,7 @@ test("OAuth Suite: initiateGithubAuth constructs authorization URL with state to
 test("OAuth Suite: handleGoogleCallback rejects invalid/tampered state token", async () => {
   const { req, res } = createMockReqRes({
     query: { code: "some_code", state: "invalid.tampered.jwt" },
-    headers: { cookie: 'oauth_state={"nonce":"123","codeVerifier":"456"}' },
+    headers: { cookie: 'oauth_state_google={"nonce":"123","codeVerifier":"456"}' },
   });
 
   await oauthController.handleGoogleCallback(req, res);
@@ -118,7 +118,7 @@ test("OAuth Suite: handleGoogleCallback rejects state nonce mismatch", async () 
 
   const { req, res } = createMockReqRes({
     query: { code: "some_code", state: stateToken },
-    headers: { cookie: `oauth_state=${cookieVal}` },
+    headers: { cookie: `oauth_state_google=${cookieVal}` },
   });
 
   await oauthController.handleGoogleCallback(req, res);
@@ -180,7 +180,7 @@ test("OAuth Suite: handleGoogleCallback handles successful OAuth exchange & exis
 
     const { req, res } = createMockReqRes({
       query: { code: "google_auth_code_123", state: stateToken },
-      headers: { cookie: `oauth_state=${cookieVal}` },
+      headers: { cookie: `oauth_state_google=${cookieVal}` },
     });
 
     await oauthController.handleGoogleCallback(req, res);
@@ -199,8 +199,9 @@ test("OAuth Suite: handleGoogleCallback handles successful OAuth exchange & exis
 
 test("OAuth Suite: handleGithubCallback processes primary verified email & account linking", async () => {
   const nonce = crypto.randomBytes(32).toString("hex");
+  const codeVerifier = crypto.randomBytes(32).toString("hex");
   const stateToken = jwt.sign({ nonce, role: "client" }, process.env.JWT_SECRET);
-  const cookieVal = encodeURIComponent(JSON.stringify({ nonce }));
+  const cookieVal = encodeURIComponent(JSON.stringify({ nonce, codeVerifier }));
 
   const originalPost = axios.post;
   const originalGet = axios.get;
@@ -241,7 +242,7 @@ test("OAuth Suite: handleGithubCallback processes primary verified email & accou
 
     const { req, res } = createMockReqRes({
       query: { code: "github_auth_code_789", state: stateToken },
-      headers: { cookie: `oauth_state=${cookieVal}` },
+      headers: { cookie: `oauth_state_github=${cookieVal}` },
     });
 
     await oauthController.handleGithubCallback(req, res);

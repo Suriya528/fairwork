@@ -11,5 +11,6 @@ const reviewSchema = new mongoose.Schema({
 
 // Database-level compound unique index to prevent duplicate reviews
 reviewSchema.index({ projectId: 1, reviewerId: 1 }, { unique: true });
+reviewSchema.index({ revieweeId: 1 });
 
-module.exports = mongoose.model("Review", reviewSchema);
+module.exports = mongoose.models.Review || mongoose.model("Review", reviewSchema);

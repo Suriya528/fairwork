@@ -23,10 +23,11 @@ interface ApiFetchOptions {
   /** Bearer token for routes behind the backend's `auth` middleware. */
   token?: string
   body?: unknown
+  signal?: AbortSignal
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { method = "GET", token, body } = options
+  const { method = "GET", token, body, signal } = options
 
   let res: Response
   try {
@@ -37,8 +38,12 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body !== undefined ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined,
+      signal,
     })
-  } catch {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw err
+    }
     throw new ApiError("Can't reach the server. Check your connection and try again.")
   }
 
@@ -50,6 +55,11 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      // Global 401 interceptor signal
+      window.dispatchEvent(new CustomEvent("unauthorized_access"))
+    }
+
     const message =
       data && typeof data === "object" && "message" in data && typeof (data as Record<string, unknown>).message === "string"
         ? (data as { message: string }).message
