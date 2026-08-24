@@ -20,7 +20,7 @@ function assertSettlementSnapshotMutable(project) {
  * Creates or updates an unfrozen settlement snapshot on a Project.
  * Uses atomic CAS predicate { _id: projectId, "settlement.fundingLockedAt": null }.
  */
-async function createSettlementSnapshot(projectId, { tokenAddress, tokenDecimals = 6, fxRate = "1.000000", fxRateSource = "DETERMINISTIC_USD_USDC_1:1" }, session = null) {
+async function createSettlementSnapshot(projectId, { tokenAddress, tokenDecimals = 6 }, session = null) {
   if (!tokenAddress || !/^0x[a-f0-9]{40}$/i.test(tokenAddress)) {
     throw new Error("INVALID_TOKEN_ADDRESS_FORMAT");
   }
@@ -57,10 +57,6 @@ async function createSettlementSnapshot(projectId, { tokenAddress, tokenDecimals
   const snapshotData = {
     tokenAddress: tokenAddress.toLowerCase(),
     tokenDecimals,
-    fxRate,
-    fxRateSource,
-    fxRateTimestamp: new Date(),
-    fxRoundingPolicy: "EXACT",
     expectedTotalUnits,
     expectedMilestoneUnits,
     fundingLockedAt: null,
