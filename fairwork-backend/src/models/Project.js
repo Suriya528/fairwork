@@ -86,16 +86,21 @@ projectSchema.index({ status: 1, createdAt: -1 });
 projectSchema.pre("save", function(next) {
   if (this.isModified("settlement") && !this.isNew) {
     if (this.settlement?.fundingLockedAt) {
-      return next(new Error("SETTLEMENT_SNAPSHOT_IMMUTABLE: Cannot modify locked settlement snapshot"));
+      const err = new Error("SETTLEMENT_SNAPSHOT_IMMUTABLE: Cannot modify locked settlement snapshot");
+      if (typeof next === "function") return next(err);
+      throw err;
     }
   }
-  next();
+  if (typeof next === "function") next();
 });
 
 // Pre-update hooks for updateOne, findOneAndUpdate, updateMany query operations
 function checkQuerySettlementImmutability(next) {
   const update = this.getUpdate();
-  if (!update) return next();
+  if (!update) {
+    if (typeof next === "function") next();
+    return;
+  }
 
   const isMutatingSettlement =
     (update.$set && (update.$set.settlement || Object.keys(update.$set).some((k) => k.startsWith("settlement.")))) ||
@@ -113,7 +118,7 @@ function checkQuerySettlementImmutability(next) {
     this.where({ "settlement.fundingLockedAt": null });
   }
 
-  next();
+  if (typeof next === "function") next();
 }
 
 projectSchema.pre("updateOne", checkQuerySettlementImmutability);
