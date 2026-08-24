@@ -1,17 +1,25 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { verifyAuthToken } = require("../utils/authVerifier");
 
 async function authenticate(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1] || req.query.token;
-  if (!token) return res.status(401).json({ message: "No token provided" });
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "No authorization header provided", code: "AUTHENTICATION_REQUIRED" });
+    }
 
-    // Strict Enforcement: Block suspended users immediately across all protected API routes
-    const dbUser = await User.findById(decoded.id).select("isSuspended suspendedReason role").lean();
-    if (dbUser && dbUser.isSuspended && dbUser.role !== "admin") {
+    const claims = verifyAuthToken(authHeader);
+
+    // DB lookup for current state — authorization is always derived from DB
+    const dbUser = await User.findById(claims.id).select("isSuspended suspendedReason role email authProvider isEmailVerified").lean();
+    
+    // Deleted-user guard
+    if (!dbUser) {
+      return res.status(401).json({ message: "Account no longer exists", code: "ACCOUNT_DELETED" });
+    }
+
+    // Suspension check (admins exempt)
+    if (dbUser.isSuspended && dbUser.role !== "admin") {
       return res.status(403).json({
         message: `Account is suspended. ${dbUser.suspendedReason ? "Reason: " + dbUser.suspendedReason : "Contact support for assistance."}`,
         code: "ACCOUNT_SUSPENDED",
@@ -20,13 +28,19 @@ async function authenticate(req, res, next) {
       });
     }
 
-    if (dbUser) {
-      req.user.role = dbUser.role;
-    }
+    // Merge token claims with current DB role
+    req.user = {
+      id: claims.id,
+      role: dbUser.role,  // Always from DB, never from token
+      exp: claims.exp,
+    };
 
     next();
   } catch (err) {
-    res.status(401).json({ message: "Invalid token" });
+    const message = err.message === "AUTHENTICATION_REQUIRED" ? "No token provided" :
+                    err.message === "TOKEN_MISSING_EXPIRATION_CLAIM" ? "Token missing expiration" :
+                    "Invalid or expired token";
+    res.status(401).json({ message, code: err.message || "UNAUTHORIZED" });
   }
 }
 

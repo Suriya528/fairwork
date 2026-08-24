@@ -30,5 +30,6 @@ router.get("/analytics", admin.analytics);
 router.get("/audit-logs", admin.auditLogs);
 router.get("/system", admin.system);
 router.get("/integrity", admin.integrity);
+router.post("/quarantine/:id/replay", admin.replayQuarantineEvent);
 
 module.exports = router;

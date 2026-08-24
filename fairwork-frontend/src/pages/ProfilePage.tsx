@@ -36,6 +36,7 @@ import { GithubContributionHeatmap } from "@/components/profile/GithubContributi
 import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { getReleasedAmount } from "@/lib/financial"
+import { sanitizeUrl } from "@/lib/sanitizeUrl"
 
 type ProfileTab = "overview" | "history" | "reviews"
 
@@ -399,7 +400,7 @@ export function ProfilePage() {
               <div className="flex items-center gap-4 pt-2 border-t border-border/40">
                 {displayUser.portfolio && (
                   <a
-                    href={displayUser.portfolio}
+                    href={sanitizeUrl(displayUser.portfolio)}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
                     className="flex items-center gap-1 text-xs text-primary-400 hover:underline font-medium"
@@ -409,7 +410,7 @@ export function ProfilePage() {
                 )}
                 {displayUser.githubUrl && (
                   <a
-                    href={displayUser.githubUrl}
+                    href={sanitizeUrl(displayUser.githubUrl)}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
                     className="flex items-center gap-1 text-xs text-muted hover:text-foreground"
@@ -419,7 +420,7 @@ export function ProfilePage() {
                 )}
                 {displayUser.linkedinUrl && (
                   <a
-                    href={displayUser.linkedinUrl}
+                    href={sanitizeUrl(displayUser.linkedinUrl)}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
                     className="flex items-center gap-1 text-xs text-muted hover:text-foreground"
@@ -574,7 +575,7 @@ export function ProfilePage() {
                         <div className="flex items-center gap-3 pt-3 mt-3 border-t border-border/40">
                           {item.projectUrl && (
                             <a
-                              href={item.projectUrl}
+                              href={sanitizeUrl(item.projectUrl)}
                               target="_blank"
                               rel="noopener noreferrer nofollow"
                               className="flex items-center gap-1 text-xs text-primary-400 hover:underline"
@@ -584,7 +585,7 @@ export function ProfilePage() {
                           )}
                           {item.githubUrl && (
                             <a
-                              href={item.githubUrl}
+                              href={sanitizeUrl(item.githubUrl)}
                               target="_blank"
                               rel="noopener noreferrer nofollow"
                               className="flex items-center gap-1 text-xs text-muted hover:text-foreground"
@@ -634,7 +635,7 @@ export function ProfilePage() {
                         </span>
                         {item.etherscanUrl && (
                           <a
-                            href={item.etherscanUrl}
+                            href={sanitizeUrl(item.etherscanUrl)}
                             target="_blank"
                             rel="noopener noreferrer nofollow"
                             className="inline-flex items-center gap-1 text-xs text-primary-400 hover:underline font-mono bg-primary-500/10 border border-primary-500/30 px-2.5 py-1 rounded-lg"

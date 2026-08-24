@@ -18,9 +18,10 @@ const {
   completeOAuthRoleSelection,
 } = require("../controllers/oauthController");
 const auth = require("../middleware/auth");
+const { authRateLimiter, registerRateLimiter } = require("../middleware/authRateLimiter");
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", registerRateLimiter, register);
+router.post("/login", authRateLimiter, login);
 router.get("/me", auth, getMe);
 router.get("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerificationEmail);

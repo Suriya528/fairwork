@@ -143,9 +143,14 @@ exports.users = async (req, res) => {
       filter.$or = [{ walletAddress: { $exists: false } }, { walletAddress: null }, { walletAddress: "" }];
     }
 
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
     if (req.query.query && typeof req.query.query === "string" && req.query.query.trim()) {
       const q = req.query.query.trim();
-      const regex = new RegExp(q, "i");
+      const escaped = escapeRegex(q);
+      const regex = new RegExp(escaped, "i");
       filter.$or = [
         { firstName: regex },
         { lastName: regex },
@@ -884,3 +889,64 @@ exports.integrity = async (_req, res) => {
     res.status(500).json({ message: "Unable to run data integrity scan" });
   }
 };
+
+exports.replayQuarantineEvent = async (req, res) => {
+  const QuarantineEvent = require("../models/QuarantineEvent");
+  const { reconcileVerifiedBlockchainEvent } = require("../services/reconciliationService");
+
+  try {
+    const { id } = req.params;
+    const { reason = "Manual administrative replay" } = req.body || {};
+
+    const quarantineEvent = await QuarantineEvent.findById(id);
+    if (!quarantineEvent) {
+      return res.status(404).json({ message: "Quarantine event not found" });
+    }
+
+    if (quarantineEvent.resolved) {
+      return res.status(409).json({
+        message: "Quarantine event has already been resolved",
+        resolvedAt: quarantineEvent.resolvedAt,
+        resolvedBy: quarantineEvent.resolvedBy,
+        replayResult: quarantineEvent.replayResult,
+      });
+    }
+
+    let replayResult = "SUCCESS";
+    if (quarantineEvent.rawEventData) {
+      const outcome = await reconcileVerifiedBlockchainEvent({
+        verifiedEvent: quarantineEvent.rawEventData,
+        onChainEscrowState: quarantineEvent.rawEventData.onChainEscrowState,
+        expectedTokenAddress: process.env.CANONICAL_TOKEN_ADDRESS || quarantineEvent.rawEventData.tokenAddress,
+      });
+      replayResult = outcome;
+    }
+
+    quarantineEvent.resolved = true;
+    quarantineEvent.resolvedBy = req.user.id;
+    quarantineEvent.resolvedAt = new Date();
+    quarantineEvent.replayResult = replayResult;
+    quarantineEvent.resolution = reason;
+    await quarantineEvent.save();
+
+    await logAudit(req, {
+      action: "QUARANTINE_EVENT_REPLAY",
+      targetType: "QuarantineEvent",
+      targetId: id,
+      reason,
+      details: {
+        category: quarantineEvent.category,
+        sourceEventKey: quarantineEvent.sourceEventKey,
+        replayResult,
+      },
+    });
+
+    res.json({
+      message: "Quarantine event replayed successfully",
+      quarantineEvent,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to replay quarantine event" });
+  }
+};
+
