@@ -10,6 +10,7 @@ const Message = require("./models/Message");
 const User = require("./models/User");
 const { socketAuthMiddleware, expressAuthMiddleware } = require("./utils/authVerifier");
 const { isValidEthAddress } = require("./services/reconciliationService");
+const { validateStartupConfig } = require("./utils/configValidator");
 
 const CLIENT_ALLOWED_MESSAGE_TYPES = new Set(["TEXT", "FILE"]);
 
@@ -22,6 +23,11 @@ async function isUserActiveAndAuthorized(userId) {
 
 function createServerApp(config = {}) {
   const isProd = (config.nodeEnv || process.env.NODE_ENV) === "production";
+
+  // Validate environment configuration
+  if (!config.skipConfigValidation) {
+    validateStartupConfig(process.env);
+  }
 
   if (config.canonicalEscrowAddress && !isValidEthAddress(config.canonicalEscrowAddress)) {
     throw new Error("FATAL_STARTUP_INVALID_ESCROW_CONFIG");
