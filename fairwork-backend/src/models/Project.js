@@ -102,15 +102,17 @@ function checkQuerySettlementImmutability(next) {
     return;
   }
 
-  const isMutatingSettlement =
-    (update.$set && (update.$set.settlement || Object.keys(update.$set).some((k) => k.startsWith("settlement.")))) ||
-    (update.$unset && (update.$unset.settlement || Object.keys(update.$unset).some((k) => k.startsWith("settlement.")))) ||
-    (update.$push && Object.keys(update.$push).some((k) => k.startsWith("settlement.")));
+  // Check ALL MongoDB update operators for settlement.* mutations
+  const MUTATION_OPERATORS = ["$set", "$unset", "$push", "$pull", "$pullAll", "$addToSet", "$inc", "$mul", "$min", "$max", "$rename", "$pop", "$bit"];
+  const isMutatingSettlement = MUTATION_OPERATORS.some((op) => {
+    const opPayload = update[op];
+    if (!opPayload || typeof opPayload !== "object") return false;
+    return opPayload.settlement || Object.keys(opPayload).some((k) => k.startsWith("settlement."));
+  }) || (Array.isArray(update) && update.some((stage) => JSON.stringify(stage).includes("settlement")));
 
   // Exception: lockSettlementSnapshot explicitly sets settlement.fundingLockedAt when fundingLockedAt is null
   const isLockingOperation =
     update.$set &&
-    Object.keys(update.$set).length === 1 &&
     update.$set["settlement.fundingLockedAt"] instanceof Date;
 
   if (isMutatingSettlement && !isLockingOperation) {

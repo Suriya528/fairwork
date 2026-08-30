@@ -96,7 +96,7 @@ async function startBlockchainListener(config = {}) {
   }
 
   // Polling loop
-  setInterval(async () => {
+  const pollIntervalId = setInterval(async () => {
     try {
       if (!currentLease) {
         currentLease = await acquireLease(podId, syncKey);
@@ -133,6 +133,134 @@ async function startBlockchainListener(config = {}) {
         return;
       }
 
+      // ── Core Block Processing: fetch new logs and reconcile ──
+      const CHUNK_SIZE = config.chunkSize || 500;
+      const fromBlock = BigInt(currentLease.lastProcessedBlock + 1);
+      const latestBlock = await executeWithFullJitter(() => publicClient.getBlockNumber());
+
+      if (latestBlock < fromBlock) {
+        // No new blocks — just process outbox
+        await pollAndProcessOutboxBatch(podId, 10, config.io);
+        return;
+      }
+
+      const toBlock = latestBlock - fromBlock > BigInt(CHUNK_SIZE)
+        ? fromBlock + BigInt(CHUNK_SIZE) - 1n
+        : latestBlock;
+
+      // Fetch logs from the escrow contract in the block range
+      const logs = await executeWithFullJitter(() =>
+        publicClient.getLogs({
+          address: escrowAddress,
+          fromBlock,
+          toBlock,
+        })
+      );
+
+      let lastBlockNum = Number(toBlock);
+      let lastBlockHash = null;
+
+      // Fetch the block hash for the last block in the range (for reorg detection)
+      const lastBlockData = await executeWithFullJitter(() =>
+        publicClient.getBlock({ blockNumber: toBlock })
+      );
+      lastBlockHash = lastBlockData.hash.toLowerCase();
+
+      // Process each log
+      for (const rawLog of logs) {
+        let verifiedEvent;
+        try {
+          verifiedEvent = decodeRawLogToVerifiedEvent({
+            rawLog,
+            expectedChainId: chainId,
+            expectedEscrowAddress: escrowAddress,
+          });
+        } catch (decodeErr) {
+          // Quarantine malformed events
+          await QuarantineEvent.create({
+            category: "DECODE_FAILURE",
+            errorMessage: decodeErr.message,
+            rawEventData: JSON.stringify(rawLog),
+          });
+          continue;
+        }
+
+        if (!verifiedEvent) continue; // Not a MilestoneReleased event
+
+        // On-chain escrow state read for reconciliation
+        let onChainEscrowState;
+        try {
+          const escrowData = await executeWithFullJitter(() =>
+            publicClient.readContract({
+              address: escrowAddress,
+              abi: [{
+                type: "function", name: "escrows", stateMutability: "view",
+                inputs: [{ type: "string", name: "projectId" }],
+                outputs: [
+                  { type: "address", name: "client" },
+                  { type: "address", name: "freelancer" },
+                  { type: "address", name: "token" },
+                  { type: "uint256", name: "totalBudget" },
+                  { type: "bool", name: "funded" },
+                  { type: "bool", name: "completed" },
+                ],
+              }],
+              functionName: "escrows",
+              args: [verifiedEvent.projectId],
+            })
+          );
+          onChainEscrowState = {
+            client: escrowData[0],
+            freelancer: escrowData[1],
+            token: escrowData[2],
+            totalBudget: escrowData[3],
+            funded: escrowData[4],
+            completed: escrowData[5],
+          };
+        } catch (readErr) {
+          await QuarantineEvent.create({
+            category: "ON_CHAIN_READ_FAILURE",
+            errorMessage: readErr.message,
+            rawEventData: JSON.stringify(verifiedEvent),
+          });
+          continue;
+        }
+
+        // Reconcile event within an ACID transaction with generation fencing
+        try {
+          await reconcileVerifiedBlockchainEvent({
+            verifiedEvent,
+            onChainEscrowState,
+            expectedTokenAddress: tokenAddress,
+            fenceState: {
+              syncKey,
+              podId,
+              currentGeneration: currentLease.leaseGeneration,
+            },
+          });
+        } catch (reconcileErr) {
+          if (reconcileErr.message === "STALE_GENERATION_FENCE_VIOLATION") {
+            console.warn(`[Indexer ${podId}] Fence violation — lease stolen. Stopping.`);
+            currentLease = null;
+            return;
+          }
+          console.error(`[Indexer ${podId}] Reconciliation error for event ${verifiedEvent.transactionHash}:${verifiedEvent.logIndex}:`, reconcileErr.message);
+        }
+      }
+
+      // Record block checkpoint for the last block in the range
+      await BlockCheckpoint.findOneAndUpdate(
+        { chainId, contractAddress: escrowAddress.toLowerCase(), blockNumber: lastBlockNum },
+        { $set: { blockHash: lastBlockHash, parentHash: lastBlockData.parentHash?.toLowerCase() || null } },
+        { upsert: true }
+      );
+
+      // Advance the sync cursor
+      await SyncState.updateOne(
+        { key: syncKey, leaseOwner: podId, leaseGeneration: currentLease.leaseGeneration },
+        { $set: { lastProcessedBlock: lastBlockNum, lastProcessedBlockHash: lastBlockHash } }
+      );
+
       // Run background Outbox Event Worker batch
       await pollAndProcessOutboxBatch(podId, 10, config.io);
 
@@ -149,6 +277,8 @@ async function startBlockchainListener(config = {}) {
       }
     }
   }, 15000);
+
+  return { pollIntervalId, podId, syncKey };
 }
 
 module.exports = {

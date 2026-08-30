@@ -62,7 +62,7 @@ async function createSettlementSnapshot(projectId, { tokenAddress, tokenDecimals
     fundingLockedAt: null,
   };
 
-  const updateOpts = { new: true };
+  const updateOpts = { returnDocument: "after" };
   if (session) updateOpts.session = session;
 
   const updated = await Project.findOneAndUpdate(
@@ -85,7 +85,7 @@ async function createSettlementSnapshot(projectId, { tokenAddress, tokenDecimals
  * Uses atomic CAS predicate { _id: projectId, "settlement.fundingLockedAt": null }.
  */
 async function lockSettlementSnapshot(projectId, session = null) {
-  const updateOpts = { new: true };
+  const updateOpts = { returnDocument: "after" };
   if (session) updateOpts.session = session;
 
   const result = await Project.findOneAndUpdate(

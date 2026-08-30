@@ -38,7 +38,8 @@ exports.raiseDispute = async (req, res) => {
 
     res.status(201).json(dispute);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[DisputeController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -54,7 +55,8 @@ exports.voteDispute = async (req, res) => {
     await dispute.save();
     res.json(dispute);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[DisputeController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -68,13 +70,13 @@ exports.resolveDispute = async (req, res) => {
     const dispute = await Dispute.findByIdAndUpdate(
       req.params.id,
       { status: "resolved", winner },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (dispute) {
       const project = await Project.findByIdAndUpdate(
         dispute.projectId,
         { status: "completed", escrowDisputed: false, escrowCompleted: true },
-        { new: true }
+        { returnDocument: "after" }
       );
       if (project) {
         recordActivitySafely({
@@ -91,7 +93,8 @@ exports.resolveDispute = async (req, res) => {
     }
     res.json(dispute);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[DisputeController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -101,6 +104,7 @@ exports.getDispute = async (req, res) => {
       .populate("raisedBy", "firstName lastName");
     res.json(dispute);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[DisputeController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

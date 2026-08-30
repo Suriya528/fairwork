@@ -1,5 +1,5 @@
 const { recoverTypedDataAddress } = require("viem");
-const DOMAIN = { name: "FairWork", version: "1", chainId: 11155111 };
+const DOMAIN = { name: "FairWork", version: "1", chainId: parseInt(process.env.CHAIN_ID || "11155111", 10) };
 const TYPES = { WalletVerification: [
   { name: "walletAddress", type: "address" }, { name: "nonce", type: "string" }, { name: "purpose", type: "string" },
 ] };

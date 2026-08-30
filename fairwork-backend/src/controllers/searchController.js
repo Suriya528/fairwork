@@ -53,9 +53,9 @@ exports.globalSearch = async (req, res) => {
 
     // 3. Match Web3 Wallets & Escrow Contracts
     const wallets = [];
-    const sepoliaEscrow = "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385";
-    const sepoliaDispute = "0x8ddbfe20695a1ddf8488ab80b443574c28024962";
-    const sepoliaUsdc = "0xf21bdf6737a3009359f9ec1fa515e6d74702f575";
+    const sepoliaEscrow = (process.env.CANONICAL_ESCROW_ADDRESS || process.env.ESCROW_ADDRESS || "").toLowerCase();
+    const sepoliaDispute = (process.env.DISPUTE_CONTRACT_ADDRESS || process.env.DISPUTE_ADDRESS || "").toLowerCase();
+    const sepoliaUsdc = (process.env.CANONICAL_TOKEN_ADDRESS || process.env.USDC_ADDRESS || "").toLowerCase();
 
     if ("fairwork escrow contract".includes(rawQuery.toLowerCase()) || sepoliaEscrow.toLowerCase().includes(rawQuery.toLowerCase())) {
       wallets.push({

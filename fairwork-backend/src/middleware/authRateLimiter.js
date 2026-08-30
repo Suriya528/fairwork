@@ -11,7 +11,80 @@ const AUTH_MAX_ATTEMPTS = 10;
 const REGISTER_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const REGISTER_MAX_ATTEMPTS = 5;
 
-// In-memory store for development
+// ── Redis client (lazy singleton) ──
+let redisClient = null;
+let redisReady = false;
+
+function getRedisClient() {
+  if (redisClient) return redisClient;
+  if (!process.env.REDIS_URL) return null;
+
+  try {
+    const Redis = require("ioredis");
+    redisClient = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      connectTimeout: 3000,
+      lazyConnect: false,
+      enableReadyCheck: true,
+    });
+
+    redisClient.on("ready", () => { redisReady = true; });
+    redisClient.on("error", (err) => {
+      redisReady = false;
+      console.error("Redis rate-limiter error:", err.message);
+    });
+    redisClient.on("close", () => { redisReady = false; });
+
+    return redisClient;
+  } catch (err) {
+    console.error("Failed to initialize Redis for rate limiting:", err.message);
+    return null;
+  }
+}
+
+// ── Redis sliding-window rate check ──
+async function redisRateCheck(key, windowMs, maxAttempts) {
+  const client = getRedisClient();
+  if (!client || !redisReady) return null; // Signal Redis unavailable
+
+  const now = Date.now();
+  const windowStart = now - windowMs;
+
+  // Lua script for atomic sliding window: remove expired, add current, count
+  const luaScript = `
+    redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+    redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
+    local count = redis.call('ZCARD', KEYS[1])
+    redis.call('PEXPIRE', KEYS[1], ARGV[4])
+    return count
+  `;
+
+  try {
+    const count = await client.eval(
+      luaScript,
+      1,
+      `ratelimit:${key}`,
+      String(windowStart),
+      String(now),
+      `${now}:${Math.random().toString(36).slice(2, 8)}`,
+      String(windowMs)
+    );
+
+    if (count > maxAttempts) {
+      // Estimate retry-after from the oldest entry still in window
+      const oldest = await client.zrange(`ratelimit:${key}`, 0, 0, "WITHSCORES");
+      const oldestTs = oldest.length >= 2 ? Number(oldest[1]) : now - windowMs;
+      const retryAfterMs = Math.max(0, oldestTs + windowMs - now);
+      return { limited: true, retryAfterMs };
+    }
+    return { limited: false };
+  } catch (err) {
+    console.error("Redis rate check error:", err.message);
+    return null; // Signal Redis unavailable
+  }
+}
+
+// ── In-memory store for development ──
 const memoryStore = new Map();
 
 function cleanupMemoryStore() {
@@ -42,18 +115,34 @@ function memoryRateCheck(key, windowMs, maxAttempts) {
   return { limited: false };
 }
 
+// ── Unified rate check: Redis in production, in-memory in development ──
+async function rateCheck(key, windowMs, maxAttempts) {
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (isProd) {
+    const redisResult = await redisRateCheck(key, windowMs, maxAttempts);
+    if (redisResult !== null) return redisResult;
+    // Redis unavailable in production → fail closed
+    return null;
+  }
+
+  // Development: in-memory is acceptable
+  return memoryRateCheck(key, windowMs, maxAttempts);
+}
+
 /**
  * Rate limiter for login/password-reset endpoints.
  * Keys by IP + email (if provided).
  */
-function authRateLimiter(req, res, next) {
-  const isProd = process.env.NODE_ENV === "production";
+async function authRateLimiter(req, res, next) {
   const ip = req.ip || req.connection?.remoteAddress || "unknown";
   const email = (req.body?.email || "").toLowerCase().trim();
   const key = `auth:${ip}:${email}`;
 
-  if (isProd && !process.env.REDIS_URL) {
-    // FAIL CLOSED — do not silently fall back to in-memory for auth
+  const result = await rateCheck(key, AUTH_WINDOW_MS, AUTH_MAX_ATTEMPTS);
+
+  if (result === null) {
+    // FAIL CLOSED — Redis unavailable in production
     console.error("CRITICAL: Redis unavailable for auth rate limiting in production");
     return res.status(503).json({
       message: "Service temporarily unavailable. Please try again later.",
@@ -61,7 +150,6 @@ function authRateLimiter(req, res, next) {
     });
   }
 
-  const result = memoryRateCheck(key, AUTH_WINDOW_MS, AUTH_MAX_ATTEMPTS);
   if (result.limited) {
     const retryAfterSeconds = Math.ceil(result.retryAfterMs / 1000);
     res.set("Retry-After", String(retryAfterSeconds));
@@ -77,12 +165,13 @@ function authRateLimiter(req, res, next) {
 /**
  * Rate limiter for registration endpoint.
  */
-function registerRateLimiter(req, res, next) {
-  const isProd = process.env.NODE_ENV === "production";
+async function registerRateLimiter(req, res, next) {
   const ip = req.ip || req.connection?.remoteAddress || "unknown";
   const key = `register:${ip}`;
 
-  if (isProd && !process.env.REDIS_URL) {
+  const result = await rateCheck(key, REGISTER_WINDOW_MS, REGISTER_MAX_ATTEMPTS);
+
+  if (result === null) {
     console.error("CRITICAL: Redis unavailable for auth rate limiting in production");
     return res.status(503).json({
       message: "Service temporarily unavailable. Please try again later.",
@@ -90,7 +179,6 @@ function registerRateLimiter(req, res, next) {
     });
   }
 
-  const result = memoryRateCheck(key, REGISTER_WINDOW_MS, REGISTER_MAX_ATTEMPTS);
   if (result.limited) {
     const retryAfterSeconds = Math.ceil(result.retryAfterMs / 1000);
     res.set("Retry-After", String(retryAfterSeconds));

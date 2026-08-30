@@ -111,8 +111,8 @@ Either party may initiate dispute resolution or contract termination through the
 
     res.status(201).json(contract);
   } catch (err) {
-    console.error("Contract generation error:", err);
-    res.status(500).json({ message: err.message || "Failed to generate contract" });
+    console.error("[ContractController] generateContract error:", err);
+    res.status(500).json({ message: "Failed to generate contract" });
   }
 };
 
@@ -122,7 +122,8 @@ exports.getContract = async (req, res) => {
     if (!contract) return res.status(404).json({ message: "Contract not found" });
     res.json(contract);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ContractController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -154,11 +155,12 @@ exports.signContract = async (req, res) => {
       update.freelancerSignedAt = now;
     }
 
-    await Contract.findByIdAndUpdate(req.params.id, update, { new: true });
+    await Contract.findByIdAndUpdate(req.params.id, update, { returnDocument: "after" });
     const updated = await populateContractQuery(Contract.findById(req.params.id));
 
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ContractController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

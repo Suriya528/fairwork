@@ -44,6 +44,14 @@ function validateStartupConfig(env = process.env) {
     errors.push("EXPECTED_ESCROW_BYTECODE_HASH is missing in staging/production");
   }
 
+  // OAuth Provider Configuration
+  if (isProdOrStaging && !env.GOOGLE_CLIENT_ID) errors.push("GOOGLE_CLIENT_ID is missing in staging/production");
+  if (isProdOrStaging && !env.GOOGLE_CLIENT_SECRET) errors.push("GOOGLE_CLIENT_SECRET is missing in staging/production");
+  if (isProdOrStaging && !env.GITHUB_CLIENT_ID) errors.push("GITHUB_CLIENT_ID is missing in staging/production");
+  if (isProdOrStaging && !env.GITHUB_CLIENT_SECRET) errors.push("GITHUB_CLIENT_SECRET is missing in staging/production");
+  if (isProdOrStaging && !env.BACKEND_URL) errors.push("BACKEND_URL is missing in staging/production");
+  if (isProdOrStaging && !env.CHAIN_ID) errors.push("CHAIN_ID is missing in staging/production");
+
   if (errors.length > 0) {
     const errorMsg = `FATAL_STARTUP_CONFIG_ERROR:\n- ${errors.join("\n- ")}`;
     if (isProdOrStaging) {

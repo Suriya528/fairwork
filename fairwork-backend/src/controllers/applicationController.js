@@ -72,7 +72,8 @@ exports.createApplication = async (req, res) => {
     if (err.code === 11000) {
       return res.status(409).json({ message: "You have already submitted an application for this project" });
     }
-    res.status(500).json({ message: err.message });
+    console.error("[ApplicationController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -89,7 +90,8 @@ exports.getMyApplications = async (req, res) => {
 
     res.json(applications);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ApplicationController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -112,7 +114,8 @@ exports.getProjectApplications = async (req, res) => {
 
     res.json(applications);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ApplicationController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -141,7 +144,7 @@ exports.acceptApplication = async (req, res) => {
     const updatedProject = await Project.findOneAndUpdate(
       { _id: project._id, clientId: req.user.id, freelancerId: null, status: "open" },
       { freelancerId: application.freelancerId, status: "in_progress" },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updatedProject) {
@@ -175,7 +178,8 @@ exports.acceptApplication = async (req, res) => {
 
     res.json({ application: populated, project: updatedProject });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ApplicationController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -205,7 +209,8 @@ exports.rejectApplication = async (req, res) => {
 
     res.json(application);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ApplicationController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -230,6 +235,7 @@ exports.withdrawApplication = async (req, res) => {
 
     res.json(application);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ApplicationController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

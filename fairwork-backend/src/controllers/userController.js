@@ -123,7 +123,8 @@ exports.getPublicProfile = async (req, res) => {
       reviews,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to fetch user profile." });
+    console.error("[UserController] getUserProfile error:", err);
+    res.status(500).json({ message: "Failed to fetch user profile." });
   }
 };
 
@@ -259,7 +260,8 @@ exports.updateProfile = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to update profile." });
+    console.error("[UserController] updateProfile error:", err);
+    res.status(500).json({ message: "Failed to update profile." });
   }
 };
 
@@ -288,7 +290,8 @@ exports.updatePreferences = async (req, res) => {
       notificationPreferences: user.notificationPreferences,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to update preferences." });
+    console.error("[UserController] updatePreferences error:", err);
+    res.status(500).json({ message: "Failed to update preferences." });
   }
 };
 
@@ -316,6 +319,7 @@ exports.exportUserData = async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename=fairwork-user-${userId}-export.json`);
     res.json(exportData);
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to export user data." });
+    console.error("[UserController] exportUserData error:", err);
+    res.status(500).json({ message: "Failed to export user data." });
   }
 };

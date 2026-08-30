@@ -5,7 +5,7 @@ const applicationSchema = new mongoose.Schema(
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true },
     freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     proposalText: { type: String, required: true },
-    proposedAmount: { type: Number, required: true },
+    proposedAmount: { type: mongoose.Schema.Types.Decimal128, required: true },
     estimatedDelivery: { type: String, required: true },
     status: {
       type: String,
@@ -17,6 +17,6 @@ const applicationSchema = new mongoose.Schema(
 );
 
 // Compound index: A freelancer can have at most one active application per project
-applicationSchema.index({ projectId: 1, freelancerId: 1 }, { unique: true });
+applicationSchema.index({ projectId: 1, freelancerId: 1 }, { unique: true, partialFilterExpression: { status: { $in: ["pending", "accepted"] } } });
 
 module.exports = mongoose.model("Application", applicationSchema);

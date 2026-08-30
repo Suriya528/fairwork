@@ -32,7 +32,8 @@ exports.submitReview = async (req, res) => {
     if (err.code === 11000) {
       return res.status(400).json({ message: "Already reviewed" });
     }
-    res.status(500).json({ message: err.message });
+    console.error("[ReviewController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -42,6 +43,7 @@ exports.getReviews = async (req, res) => {
       .populate("reviewerId", "firstName lastName avatarUrl");
     res.json(reviews);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ReviewController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -28,7 +28,7 @@ async function transitionStatus(projectId, fromStatus, toStatus, additionalGuard
     throw err;
   }
 
-  const updateOpts = { new: true };
+  const updateOpts = { returnDocument: "after" };
   if (session) updateOpts.session = session;
 
   const result = await Project.findOneAndUpdate(

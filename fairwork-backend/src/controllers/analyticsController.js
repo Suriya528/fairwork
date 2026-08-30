@@ -53,7 +53,8 @@ exports.getFreelancerAnalytics = async (req, res) => {
       monthlyData,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[AnalyticsController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -94,6 +95,7 @@ exports.getClientAnalytics = async (req, res) => {
       monthlyData,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[AnalyticsController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

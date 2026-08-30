@@ -40,16 +40,18 @@ function validateBusinessAmount(amount, currency = "USD") {
   }
 
   const [whole, fraction = ""] = str.split(".");
-  const maxScale = ["USD", "INR"].includes(currency) ? 2 : 6;
+  const maxScale = currency === "USD" ? 2 : 6;
   if (fraction.length > maxScale) {
     return { valid: false, error: `Amount exceeds maximum ${maxScale} decimal places for ${currency}` };
   }
 
-  const numericCheck = parseFloat(str);
-  if (numericCheck <= 0) {
+  // Range check using pure integer arithmetic (no IEEE-754 floats)
+  const wholePart = BigInt(whole);
+  const fracPart = BigInt(fraction.padEnd(maxScale, "0"));
+  if (wholePart === 0n && fracPart === 0n) {
     return { valid: false, error: "Amount must be greater than zero" };
   }
-  if (numericCheck > 1_000_000_000) {
+  if (wholePart > 1_000_000_000n) {
     return { valid: false, error: "Amount exceeds platform ceiling" };
   }
 

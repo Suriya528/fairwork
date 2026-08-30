@@ -3,6 +3,7 @@ const express = require("express");
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const helmet = require("helmet");
 require("dotenv").config();
 
 const Project = require("./models/Project");
@@ -59,7 +60,8 @@ function createServerApp(config = {}) {
   };
 
   app.use(cors(corsOptions));
-  app.use(express.json());
+  app.use(helmet());
+  app.use(express.json({ limit: "1mb" }));
 
   // Health and Readiness Check Endpoints
   app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
@@ -260,7 +262,7 @@ if (require.main === module) {
     .connect(process.env.MONGO_URI)
     .then(() => {
       console.log("MongoDB connected");
-      require("./services/blockchainListener").startBlockchainListener().catch((err) => console.error("Blockchain listener failed:", err.message));
+      require("./services/blockchainListener").startBlockchainListener().then(handle => { if (handle) global.__listenerHandle = handle; }).catch((err) => console.error("Blockchain listener failed:", err.message));
       httpServer.listen(process.env.PORT || 5000, () =>
         console.log(`Server running on port ${process.env.PORT || 5000}`)
       );
@@ -275,6 +277,7 @@ if (require.main === module) {
     console.log(`Received ${signal}. Shutting down gracefully...`);
     httpServer.close(async () => {
       console.log("HTTP server closed.");
+      if (global.__listenerHandle?.pollIntervalId) clearInterval(global.__listenerHandle.pollIntervalId);
       await mongoose.connection.close();
       console.log("MongoDB connection closed.");
       process.exit(0);

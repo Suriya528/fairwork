@@ -34,11 +34,16 @@ test("Integration-Gate Logic Suite", async (t) => {
       JWT_ISSUER: "fairwork-staging",
       JWT_AUDIENCE: "fairwork-staging-app",
       CLIENT_URL: "https://staging.fairwork.io",
+      BACKEND_URL: "https://api-staging.fairwork.io",
       REDIS_URL: "redis://localhost:6379",
       CHAIN_ID: "11155111",
       ESCROW_CONTRACT_ADDRESS: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
       TOKEN_CONTRACT_ADDRESS: "0xf21bdf6737a3009359f9ec1fa515e6d74702f575",
       EXPECTED_ESCROW_BYTECODE_HASH: "0x608060405234801561001057600080fd5b50",
+      GOOGLE_CLIENT_ID: "test.apps.googleusercontent.com",
+      GOOGLE_CLIENT_SECRET: "test-google-secret",
+      GITHUB_CLIENT_ID: "test-github-client-id",
+      GITHUB_CLIENT_SECRET: "test-github-secret",
     };
 
     assert.equal(validateStartupConfig(validConfig), true);

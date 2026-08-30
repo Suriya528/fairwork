@@ -96,7 +96,8 @@ exports.login = async (req, res) => {
 
     res.json({ token, user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: cleanEmail, role: user.role } });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Unable to complete login" });
   }
 };
 
@@ -105,7 +106,8 @@ exports.getMe = async (req, res) => {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[Auth] getMe error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -132,7 +134,8 @@ exports.verifyEmail = async (req, res) => {
 
     res.json({ message: "Email verified successfully", isEmailVerified: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[Auth] verifyEmail error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -160,7 +163,8 @@ exports.resendVerificationEmail = async (req, res) => {
 
     res.json({ message: "Verification email resent successfully." });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[Auth] resendVerification error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -186,7 +190,7 @@ exports.verifyWallet = async (req, res) => {
     if (recovered !== claimed) return res.status(400).json({ message: "Invalid wallet signature" });
     const consumed = await WalletNonce.findOneAndDelete({ _id: record._id, userId: req.user.id, sessionId: req.user.sessionId, nonce });
     if (!consumed) return res.status(400).json({ message: "Wallet verification nonce is expired or invalid" });
-    const user = await User.findByIdAndUpdate(req.user.id, { walletAddress: claimed }, { new: true, runValidators: true }).select("-password");
+    const user = await User.findByIdAndUpdate(req.user.id, { walletAddress: claimed }, { returnDocument: "after", runValidators: true }).select("-password");
     recordActivitySafely({ userIds: [user._id], eventKey: `wallet-verified:${user._id}:${claimed}`, actorId: user._id, type: "wallet_verified", title: "Wallet verified", message: "Your wallet ownership was verified." });
     res.json(user);
   } catch (err) {

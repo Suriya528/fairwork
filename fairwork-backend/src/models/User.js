@@ -26,8 +26,8 @@ const ratingCountsSchema = new mongoose.Schema({
 }, { _id: false });
 
 const userStatsSchema = new mongoose.Schema({
-  totalEarnedUSDC: { type: Number, default: 0 },
-  totalSpentUSDC: { type: Number, default: 0 },
+  totalEarnedUSDC: { type: mongoose.Schema.Types.Decimal128, default: mongoose.Types.Decimal128.fromString("0.00") },
+  totalSpentUSDC: { type: mongoose.Schema.Types.Decimal128, default: mongoose.Types.Decimal128.fromString("0.00") },
   completedProjectsCount: { type: Number, default: 0 },
   completedMilestonesCount: { type: Number, default: 0 },
   ratingCounts: { type: ratingCountsSchema, default: () => ({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }) },
@@ -93,6 +93,13 @@ userSchema.index({ walletAddress: 1 }, { unique: true, sparse: true });
 userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ githubId: 1 }, { unique: true, sparse: true });
 userSchema.index({ emailVerificationToken: 1 }, { sparse: true });
+
+userSchema.pre("save", function clearEmptySparseFields() {
+  if (this.walletAddress === "") this.walletAddress = undefined;
+  if (this.googleId === "") this.googleId = undefined;
+  if (this.githubId === "") this.githubId = undefined;
+  if (this.emailVerificationToken === "") this.emailVerificationToken = undefined;
+});
 
 userSchema.pre("save", function normalizeWallet() {
   if (this.walletAddress) this.walletAddress = this.walletAddress.toLowerCase();

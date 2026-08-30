@@ -230,8 +230,9 @@ function toDeliverable(file: BackendDeliverable): ApiDeliverable {
  * sort, or filter query params exist on the backend yet.
  */
 export async function getProjects(token: string): Promise<ApiProject[]> {
-  const data = await apiFetch<BackendProject[]>("/projects", { token })
-  return (Array.isArray(data) ? data : []).map(toProject)
+  const data = await apiFetch<BackendProject[] | { projects: BackendProject[] }>("/projects", { token })
+  const list = Array.isArray(data) ? data : (data?.projects ?? [])
+  return list.map(toProject)
 }
 
 export async function getMyProjects(token: string): Promise<ApiProject[]> {

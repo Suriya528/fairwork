@@ -26,7 +26,6 @@ const allowedMimeTypes = [
   "application/gzip",
   "application/x-7z-compressed",
   "application/x-rar-compressed",
-  "application/octet-stream",
   // Media
   "video/mp4",
   "video/quicktime",

@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const Project = require("../models/Project");
+const { sendErrorResponse } = require("../utils/errorResponse");
+
+// Display-only helper — NOT used for financial settlement calculations.
+// Settlement uses exact BigInt arithmetic in reconciliationService.js.
+function decimalToNumber(d) { return d ? Number(d.toString()) : 0; }
 
 /**
  * Validates user membership for a project's communication channel.
@@ -48,20 +53,20 @@ async function getProjectEscrowSnapshot(projectId) {
 
   if (!project) throw new Error("Project not found");
 
-  const totalBudget = project.budget ? parseFloat(project.budget.toString()) : 0;
+  const totalBudget = decimalToNumber(project.budget);
   const milestones = project.milestones || [];
 
   const releasedAmount = milestones
     .filter((m) => m.paymentReleased)
-    .reduce((sum, m) => sum + (m.amount ? parseFloat(m.amount.toString()) : 0), 0);
+    .reduce((sum, m) => sum + decimalToNumber(m.amount), 0);
 
   const pendingAmount = milestones
     .filter((m) => m.status === "completed" && !m.paymentReleased)
-    .reduce((sum, m) => sum + (m.amount ? parseFloat(m.amount.toString()) : 0), 0);
+    .reduce((sum, m) => sum + decimalToNumber(m.amount), 0);
 
   const unreleasedAmount = milestones
     .filter((m) => !m.paymentReleased)
-    .reduce((sum, m) => sum + (m.amount ? parseFloat(m.amount.toString()) : 0), 0);
+    .reduce((sum, m) => sum + decimalToNumber(m.amount), 0);
 
   let settlementState = "ACTIVE";
   if (project.status === "completed" || project.escrowCompleted) {
@@ -135,7 +140,7 @@ exports.getMessages = async (req, res) => {
 
     res.json(messages);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message });
+    sendErrorResponse(res, err, " MessageController\);
   }
 };
 
@@ -218,7 +223,7 @@ exports.getCatchUpMessages = async (req, res) => {
       nextCursor,
     });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message });
+    sendErrorResponse(res, err, " MessageController\);
   }
 };
 
@@ -228,7 +233,7 @@ exports.getEscrowSnapshotEndpoint = async (req, res) => {
     const snapshot = await getProjectEscrowSnapshot(req.params.projectId);
     res.json(snapshot);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message || "Failed to fetch escrow snapshot." });
+    sendErrorResponse(res, err, " MessageController\);
   }
 };
 
@@ -260,7 +265,7 @@ exports.sendMessage = async (req, res) => {
     const populated = await message.populate("senderId", "firstName lastName avatarUrl");
     res.status(201).json(populated);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message });
+    sendErrorResponse(res, err, " MessageController\);
   }
 };
 
@@ -282,7 +287,7 @@ exports.markRead = async (req, res) => {
     );
     res.json({ message: "Marked as read", readAt: incomingReadAt.toISOString() });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message });
+    sendErrorResponse(res, err, " MessageController\);
   }
 };
 
@@ -292,3 +297,4 @@ module.exports = {
   createSystemEventMessage,
   assertProjectMembership,
 };
+

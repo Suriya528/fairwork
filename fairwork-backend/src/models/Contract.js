@@ -15,4 +15,7 @@ const contractSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+contractSchema.index({ projectId: 1 });
+contractSchema.index({ clientId: 1 });
+
 module.exports = mongoose.model("Contract", contractSchema);

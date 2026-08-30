@@ -3,6 +3,7 @@ const User = require("../models/User");
 const { recordActivitySafely } = require("../services/activityService");
 const { uploadToCloudinary } = require("../services/cloudinaryUpload");
 const { canAccessProject } = require("../services/projectAccess");
+const { sendErrorResponse } = require("../utils/errorResponse");
 
 async function projectForParty(projectId, userId) {
   const project = await Project.findById(projectId);
@@ -96,18 +97,29 @@ exports.createProject = async (req, res) => {
     recordActivitySafely({ userIds: [req.user.id], eventKey: `project-created:${project._id}`, actorId: req.user.id, type: "project_created", title: "Project created", message: `You created “${project.title}”.`, projectId: project._id });
     res.status(201).json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
 exports.getAllProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ status: "open" })
-      .populate("clientId", "firstName lastName")
-      .sort({ createdAt: -1 });
-    res.json(projects);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [projects, total] = await Promise.all([
+      Project.find({ status: "open" })
+        .populate("clientId", "firstName lastName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Project.countDocuments({ status: "open" }),
+    ]);
+    res.json({ projects, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] getAllProjects error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -119,7 +131,8 @@ exports.getProject = async (req, res) => {
     if (!project) return res.status(404).json({ message: "Project not found" });
     res.json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -148,7 +161,7 @@ exports.assignFreelancer = async (req, res) => {
           status: "in_progress",
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!project) {
@@ -174,7 +187,8 @@ exports.assignFreelancer = async (req, res) => {
     });
     res.json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -204,7 +218,9 @@ exports.completeProject = async (req, res) => {
     const updated = await transitionStatus(project._id, "in_progress", "completed", { clientId: req.user.id });
     res.json(updated);
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message });
+    const status = err.statusCode || err.status || 500;
+    console.error("[ProjectController] error:", err);
+    res.status(status).json({ message: status < 500 ? err.message : "Internal server error" });
   }
 };
 
@@ -228,7 +244,8 @@ exports.getMyProjects = async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(projects);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -240,7 +257,8 @@ exports.getProjectDeliverables = async (req, res) => {
     await project.populate("deliverables.uploadedBy", "firstName lastName");
     res.json(project.deliverables);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -299,7 +317,8 @@ exports.uploadProjectDeliverable = async (req, res) => {
 
     res.status(201).json(project.deliverables[project.deliverables.length - 1]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -333,7 +352,8 @@ exports.submitMilestone = async (req, res) => {
 
     res.json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -367,7 +387,8 @@ exports.requestMilestoneRevision = async (req, res) => {
 
     res.json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -398,7 +419,8 @@ exports.approveMilestone = async (req, res) => {
 
     res.json(project);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -410,7 +432,8 @@ exports.getProjectReferenceFiles = async (req, res) => {
     await project.populate("referenceFiles.uploadedBy", "firstName lastName");
     res.json(project.referenceFiles || []);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -441,6 +464,7 @@ exports.uploadProjectReferenceFile = async (req, res) => {
     await project.populate("referenceFiles.uploadedBy", "firstName lastName");
     res.status(201).json(project.referenceFiles[project.referenceFiles.length - 1]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[ProjectController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

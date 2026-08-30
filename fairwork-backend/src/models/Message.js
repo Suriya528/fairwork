@@ -33,4 +33,6 @@ messageSchema.index(
 messageSchema.index({ projectId: 1, createdAt: 1, _id: 1 });
 messageSchema.index({ projectId: 1, senderId: 1, createdAt: -1 });
 
+messageSchema.index({ projectId: 1, read: 1 });
+
 module.exports = mongoose.models.Message || mongoose.model("Message", messageSchema);
