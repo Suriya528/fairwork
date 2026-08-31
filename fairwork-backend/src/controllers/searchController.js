@@ -136,6 +136,7 @@ exports.globalSearch = async (req, res) => {
       pages: matchedPages,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[SearchController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

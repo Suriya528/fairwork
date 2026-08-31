@@ -25,7 +25,10 @@ exports.chatStream = async (req, res) => {
 
   try {
     const userQuery = req.body?.q || req.query?.q || ""
-    const pageContext = req.body?.context || (req.query?.context ? JSON.parse(req.query.context) : null)
+    let pageContext = req.body?.context || null;
+    if (!pageContext && req.query?.context) {
+      try { pageContext = JSON.parse(req.query.context); } catch { pageContext = null; }
+    }
 
     if (!userQuery.trim()) {
       return res.status(400).json({ message: "Payload property 'q' is required." })
@@ -72,8 +75,9 @@ exports.chatStream = async (req, res) => {
       res.end()
     }
   } catch (err) {
+    console.error("[AIController] stream error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ message: err.message || "AI stream error" })
+      res.status(500).json({ message: "AI stream error" })
     } else if (!res.writableEnded) {
       res.write(`event: error\ndata: ${JSON.stringify({ message: "Stream interrupted" })}\n\n`)
       res.end()
@@ -100,7 +104,8 @@ exports.generateProject = async (req, res) => {
     const scope = await generateProjectScope(prompt.trim(), numBudget)
     res.json(scope)
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to generate project scope." })
+    console.error("[AIController] generateProject error:", err);
+    res.status(500).json({ message: "Failed to generate project scope." })
   }
 }
 
@@ -117,6 +122,7 @@ exports.generateProposalDraft = async (req, res) => {
     const proposal = await generateProposal(projectTitle || "", projectDescription || "")
     res.json({ proposal })
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to generate proposal." })
+    console.error("[AIController] generateProposal error:", err);
+    res.status(500).json({ message: "Failed to generate proposal." })
   }
 }

@@ -8,7 +8,6 @@ import {
   FiGitBranch,
   FiCode,
   FiLock,
-  FiRefreshCw,
   FiAward,
 } from "react-icons/fi"
 import { getGithubActivity, type GithubActivityDTO } from "../../services/userApi"

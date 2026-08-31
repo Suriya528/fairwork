@@ -24,7 +24,8 @@ exports.uploadFile = async (req, res) => {
       mimeType: req.file.mimetype || "",
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[UploadController] uploadFile error:", err);
+    res.status(500).json({ message: "File upload failed" });
   }
 };
 
@@ -61,6 +62,7 @@ exports.getPresignedUrl = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to generate presigned upload URL." });
+    console.error("[UploadController] getPresignedUrl error:", err);
+    res.status(500).json({ message: "Failed to generate upload URL." });
   }
 };

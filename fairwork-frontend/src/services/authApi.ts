@@ -49,6 +49,14 @@ export interface AuthUser {
     githubUrl?: string
     tags?: string[]
   }>
+  githubIdentity?: {
+    githubUserId?: string
+    username: string
+    avatarUrl: string
+    profileUrl: string
+    connectedAt?: string
+    visibility: "PUBLIC" | "PRIVATE"
+  } | null
   /** Backend field is reputationScore — renamed here to match how the UI refers to it. */
   rating: number
   /** Backend field is totalReviews. */

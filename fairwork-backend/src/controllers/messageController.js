@@ -140,7 +140,7 @@ exports.getMessages = async (req, res) => {
 
     res.json(messages);
   } catch (err) {
-    sendErrorResponse(res, err, " MessageController\);
+    sendErrorResponse(res, err, "MessageController");
   }
 };
 
@@ -223,7 +223,7 @@ exports.getCatchUpMessages = async (req, res) => {
       nextCursor,
     });
   } catch (err) {
-    sendErrorResponse(res, err, " MessageController\);
+    sendErrorResponse(res, err, "MessageController");
   }
 };
 
@@ -233,7 +233,7 @@ exports.getEscrowSnapshotEndpoint = async (req, res) => {
     const snapshot = await getProjectEscrowSnapshot(req.params.projectId);
     res.json(snapshot);
   } catch (err) {
-    sendErrorResponse(res, err, " MessageController\);
+    sendErrorResponse(res, err, "MessageController");
   }
 };
 
@@ -265,7 +265,7 @@ exports.sendMessage = async (req, res) => {
     const populated = await message.populate("senderId", "firstName lastName avatarUrl");
     res.status(201).json(populated);
   } catch (err) {
-    sendErrorResponse(res, err, " MessageController\);
+    sendErrorResponse(res, err, "MessageController");
   }
 };
 
@@ -287,7 +287,7 @@ exports.markRead = async (req, res) => {
     );
     res.json({ message: "Marked as read", readAt: incomingReadAt.toISOString() });
   } catch (err) {
-    sendErrorResponse(res, err, " MessageController\);
+    sendErrorResponse(res, err, "MessageController");
   }
 };
 
