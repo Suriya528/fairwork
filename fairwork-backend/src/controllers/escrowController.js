@@ -17,8 +17,9 @@ exports.depositEscrow = async (req, res) => {
     const project = await reconcileEscrowFunding(projectId, txnHash, req.user.id);
     res.json({ message: "Escrow recorded successfully", project });
   } catch (err) {
-    const status = err.status || 400;
-    res.status(status).json({ message: err.message || "Failed to reconcile escrow deposit." });
+    const status = err.status || (err.message && /^[A-Z_]+/.test(err.message) ? 400 : 500);
+    console.error("[EscrowController] depositEscrow error:", err);
+    res.status(status).json({ message: status < 500 ? err.message : "Failed to reconcile escrow deposit." });
   }
 };
 
@@ -38,7 +39,8 @@ exports.releaseEscrow = async (req, res) => {
     const project = await reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req.user.id);
     res.json({ message: "Escrow payment released successfully", project });
   } catch (err) {
-    const status = err.status || 400;
-    res.status(status).json({ message: err.message || "Failed to reconcile milestone release." });
+    const status = err.status || (err.message && /^[A-Z_]+/.test(err.message) ? 400 : 500);
+    console.error("[EscrowController] releaseEscrow error:", err);
+    res.status(status).json({ message: status < 500 ? err.message : "Failed to reconcile milestone release." });
   }
 };

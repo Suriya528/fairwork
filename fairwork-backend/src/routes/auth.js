@@ -24,7 +24,7 @@ router.post("/register", registerRateLimiter, register);
 router.post("/login", authRateLimiter, login);
 router.get("/me", auth, getMe);
 router.get("/verify-email", verifyEmail);
-router.post("/resend-verification", resendVerificationEmail);
+router.post("/resend-verification", authRateLimiter, resendVerificationEmail);
 router.put("/wallet", auth, updateWallet);
 router.post("/wallet/nonce", auth, walletNonce);
 router.post("/wallet/verify", auth, verifyWallet);

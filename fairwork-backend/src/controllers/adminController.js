@@ -684,7 +684,8 @@ exports.createReport = async (req, res) => {
 
     res.status(201).json(report);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("[AdminController] createReport error:", err);
+    res.status(500).json({ message: "Failed to submit report." });
   }
 };
 

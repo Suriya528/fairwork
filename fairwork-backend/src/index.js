@@ -63,6 +63,10 @@ function createServerApp(config = {}) {
   app.use(helmet());
   app.use(express.json({ limit: "1mb" }));
 
+  // Trust first proxy hop (Nginx/Docker/cloud LB) so req.ip returns the real client IP.
+  // Critical for: rate limiter accuracy, secure cookie transport, accurate logging.
+  if (isProd) app.set("trust proxy", 1);
+
   // Health and Readiness Check Endpoints
   app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
   app.get("/readyz", (req, res) => {
@@ -286,6 +290,18 @@ if (require.main === module) {
 
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+  // Prevent silent crashes in production
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("UNHANDLED_REJECTION at:", promise, "reason:", reason);
+    // Don't crash the process — log and continue serving
+  });
+
+  process.on("uncaughtException", (err) => {
+    console.error("UNCAUGHT_EXCEPTION — shutting down:", err);
+    // Force exit after uncaught — process state is unreliable
+    process.exit(1);
+  });
 }
 
 module.exports = { createServerApp, isUserActiveAndAuthorized };
