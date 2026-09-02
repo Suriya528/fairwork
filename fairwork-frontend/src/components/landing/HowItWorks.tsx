@@ -13,6 +13,7 @@ const steps = [
     description:
       "Client creates the project brief and breaks down deliverables into explicit milestone amounts.",
     statusBadge: "Draft / Funding",
+    badgeTone: "text-muted bg-elevated border-border",
   },
   {
     step: "02",
@@ -21,6 +22,7 @@ const steps = [
     description:
       "Select a qualified freelancer. Both parties agree on milestone scope and delivery terms.",
     statusBadge: "Freelancer Assigned",
+    badgeTone: "text-blue-400 bg-blue-500/10 border-blue-500/20",
   },
   {
     step: "03",
@@ -29,6 +31,7 @@ const steps = [
     description:
       "Client deposits milestone funds into the smart contract escrow. Neither party can withdraw unilaterally.",
     statusBadge: "Escrow Funded",
+    badgeTone: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
     step: "04",
@@ -37,6 +40,7 @@ const steps = [
     description:
       "Freelancer submits deliverables. Client inspects work, approves, and authorizes instant on-chain release.",
     statusBadge: "Milestone Released",
+    badgeTone: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   },
 ] as const
 
@@ -61,7 +65,7 @@ export function HowItWorks() {
           {/* Subtle connecting line across desktop steps */}
           <div className="pointer-events-none absolute top-1/2 left-0 hidden h-0.5 w-full -translate-y-6 bg-gradient-to-r from-primary/10 via-primary/30 to-emerald-500/20 lg:block" aria-hidden />
 
-          {steps.map(({ step, icon: Icon, title, description, statusBadge }) => (
+          {steps.map(({ step, icon: Icon, title, description, statusBadge, badgeTone }) => (
             <div
               key={step}
               className="relative flex flex-col justify-between rounded-2xl border border-border bg-base p-6 shadow-lg shadow-black/20 backdrop-blur-sm transition-all duration-200 hover:border-border-strong hover:-translate-y-1"
@@ -82,7 +86,7 @@ export function HowItWorks() {
               {/* Protocol State Indicator */}
               <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-between">
                 <span className="text-[11px] font-mono text-subtle">State</span>
-                <span className="rounded bg-elevated px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400 border border-border">
+                <span className={`rounded px-2 py-0.5 font-mono text-[10px] font-semibold border ${badgeTone}`}>
                   {statusBadge}
                 </span>
               </div>

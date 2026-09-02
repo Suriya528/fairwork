@@ -38,7 +38,7 @@ export function TrustSection() {
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-12">
           {/* Left Column: Messaging */}
           <div className="lg:col-span-6">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 font-mono">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
               Payment Protection Infrastructure
             </span>
             <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">

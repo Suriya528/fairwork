@@ -21,7 +21,7 @@ export function MarketplaceSearch() {
   return (
     <section className="w-full bg-surface border-b border-border/40 py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-border-strong bg-base p-4 sm:p-5 shadow-xl shadow-black/30">
+        <div className="mx-auto max-w-4xl rounded-2xl border border-border bg-base/95 p-4 sm:p-5 shadow-lg shadow-black/20">
           {/* Search mode toggle buttons */}
           <div className="mb-3.5 flex items-center justify-between border-b border-border pb-3 px-1">
             <div className="flex items-center gap-1 rounded-lg bg-surface p-1 border border-border">

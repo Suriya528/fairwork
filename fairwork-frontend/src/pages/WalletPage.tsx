@@ -144,15 +144,15 @@ export function WalletPage() {
               {recentTransactions.map((t) => (
                 <div
                   key={t.id}
-                  className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3"
+                  className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-border-strong hover:bg-elevated/40"
                 >
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs font-medium text-foreground">
                       {t.type}
                     </span>
-                    <span className="text-[11px] text-subtle">{formatDate(t.createdAt)}</span>
+                    <span className="text-[11px] text-subtle font-mono">{formatDate(t.createdAt)}</span>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-sm font-semibold font-mono text-foreground">
                     {formatAmount(t.amount)}
                   </span>
                 </div>

@@ -85,11 +85,11 @@ export function PlatformBenefits() {
           </div>
 
           {/* Freelancer Card */}
-          <div className="flex flex-col justify-between rounded-2xl border border-border bg-base p-7 shadow-xl shadow-black/20 hover:border-emerald-500/40 transition-colors">
+          <div className="flex flex-col justify-between rounded-2xl border border-border bg-base p-7 shadow-xl shadow-black/20 hover:border-border-strong transition-colors">
             <div>
               <div className="flex items-center justify-between border-b border-border pb-5">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-elevated text-foreground border border-border">
                     <FiUserCheck className="h-5 w-5" />
                   </span>
                   <div>
@@ -97,7 +97,7 @@ export function PlatformBenefits() {
                     <p className="text-xs text-subtle">Get paid for every approved milestone</p>
                   </div>
                 </div>
-                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[11px] font-mono font-semibold text-emerald-400">
+                <span className="rounded-full bg-elevated border border-border px-2.5 py-1 text-[11px] font-mono font-semibold text-muted">
                   Freelancer Mode
                 </span>
               </div>
@@ -105,7 +105,7 @@ export function PlatformBenefits() {
               <ul className="mt-6 flex flex-col gap-3.5" role="list">
                 {freelancerBenefits.map((item) => (
                   <li key={item} className="flex items-start gap-3 text-xs leading-relaxed text-muted">
-                    <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                    <span className="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-surface border border-border text-primary">
                       <FiCheck className="h-3 w-3" aria-hidden />
                     </span>
                     {item}
@@ -117,7 +117,7 @@ export function PlatformBenefits() {
             <div className="mt-8 pt-6 border-t border-border/80">
               <Link
                 to={destination}
-                className={cn(btnBase, "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 h-11 w-full gap-2 text-xs font-semibold")}
+                className={cn(btnBase, "border border-border-strong bg-surface text-foreground hover:bg-surface-hover h-11 w-full gap-2 text-xs font-semibold")}
               >
                 Browse Freelance Opportunities
                 <FiArrowRight className="h-4 w-4" />

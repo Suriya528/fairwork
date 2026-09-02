@@ -111,7 +111,7 @@ export function LandingFooter() {
           <div className="flex items-center gap-4 text-xs font-mono text-subtle">
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
-              <span>Protocol v1.0 Operational</span>
+              <span>Sepolia Testnet Deployment</span>
             </span>
           </div>
         </div>
