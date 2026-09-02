@@ -343,8 +343,8 @@ BACKEND_URL=http://localhost:5000
 # Blockchain Parameters
 CHAIN_ID=11155111
 RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
-ESCROW_CONTRACT_ADDRESS=0x7d51b87db4df857cdd76ad63a9ace7b5c5599385
-SETTLEMENT_TOKEN_ADDRESS=0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+ESCROW_CONTRACT_ADDRESS=0xYourDeployedEscrowContractAddress
+SETTLEMENT_TOKEN_ADDRESS=0xYourSepoliaUSDCTokenAddress
 
 # OAuth Credentials
 GOOGLE_CLIENT_ID=your-google-client-id
@@ -357,8 +357,8 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 ```env
 VITE_API_URL=http://localhost:5000/api
 VITE_CHAIN_ID=11155111
-VITE_ESCROW_CONTRACT_ADDRESS=0x7d51b87db4df857cdd76ad63a9ace7b5c5599385
-VITE_SETTLEMENT_TOKEN_ADDRESS=0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+VITE_ESCROW_CONTRACT_ADDRESS=0xYourDeployedEscrowContractAddress
+VITE_SETTLEMENT_TOKEN_ADDRESS=0xYourSepoliaUSDCTokenAddress
 ```
 
 ### 3. Launch Development Servers
