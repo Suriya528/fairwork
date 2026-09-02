@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { FiMenu, FiX, FiArrowRight } from "react-icons/fi"
+import { FiMenu, FiX, FiArrowRight, FiGithub } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { Logo } from "@/components/common/Logo"
 import { useAuth } from "@/context/AuthContext"
@@ -91,6 +91,16 @@ export function LandingHeader() {
 
         {/* Desktop auth CTA & Theme Toggle */}
         <div className="hidden items-center gap-3 md:flex">
+          <a
+            href="https://github.com/Suriya528/fairwork"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open Source Repository on GitHub"
+            aria-label="GitHub Repository"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
+          >
+            <FiGithub className="h-4 w-4" aria-hidden />
+          </a>
           <ThemeToggle />
           {isAuthed ? (
             <Link
@@ -130,6 +140,15 @@ export function LandingHeader() {
 
         {/* Mobile hamburger */}
         <div className="flex items-center gap-2 md:hidden">
+          <a
+            href="https://github.com/Suriya528/fairwork"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub Repository"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-muted hover:bg-elevated hover:text-foreground"
+          >
+            <FiGithub className="h-4 w-4" aria-hidden />
+          </a>
           <ThemeToggle />
           <button
             type="button"

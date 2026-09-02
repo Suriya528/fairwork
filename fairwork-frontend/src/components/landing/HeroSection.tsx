@@ -83,6 +83,20 @@ export function HeroSection() {
                 Become a Freelancer
               </Link>
             </div>
+
+            {/* Engineering Standards Spec Strip */}
+            <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-2 text-[11px] font-mono text-subtle">
+              <span className="text-foreground/80 font-semibold">Architecture:</span>
+              <span>Solidity 0.8.28</span>
+              <span className="text-border-strong">•</span>
+              <span>OpenZeppelin 5.0</span>
+              <span className="text-border-strong">•</span>
+              <span>EIP-712</span>
+              <span className="text-border-strong">•</span>
+              <span>SafeERC20</span>
+              <span className="text-border-strong">•</span>
+              <span>Sepolia Testnet</span>
+            </div>
           </div>
 
           {/* Right Column: Signature Interactive Protocol Escrow Card */}

@@ -125,8 +125,32 @@ export function TrustSection() {
                 })}
               </div>
 
+              {/* Authentic Smart Contract Code Snippet from EscrowContract.sol */}
+              <div className="mt-5 overflow-hidden rounded-xl border border-border bg-base/90 p-4 font-mono text-[11px] leading-relaxed">
+                <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2 text-subtle text-[10px]">
+                  <span>contracts/EscrowContract.sol</span>
+                  <span>Solidity ^0.8.28</span>
+                </div>
+                <pre className="overflow-x-auto text-muted">
+                  <code>
+                    <span className="text-purple-400">function</span>{" "}
+                    <span className="text-blue-400">releaseMilestone</span>(
+                    <span className="text-emerald-400">string calldata</span> projectId,{" "}
+                    <span className="text-emerald-400">uint256</span> index
+                    ) <span className="text-purple-400">external nonReentrant</span> {"{\n"}
+                    {"  "}Escrow <span className="text-purple-400">storage</span> e = escrows[projectId];{"\n"}
+                    {"  "}<span className="text-blue-400">require</span>(msg.sender == e.client, <span className="text-amber-400">&quot;Only client&quot;</span>);{"\n"}
+                    {"  "}<span className="text-blue-400">require</span>(e.isFunded &amp;&amp; !e.isDisputed, <span className="text-amber-400">&quot;Escrow unavailable&quot;</span>);{"\n"}
+                    {"  "}e.milestones[index].released = <span className="text-purple-400">true</span>;{"\n"}
+                    {"  "}IERC20(e.token).<span className="text-blue-400">safeTransfer</span>(e.freelancer, m.amount);{"\n"}
+                    {"  "}<span className="text-purple-400">emit</span> <span className="text-blue-400">MilestoneReleased</span>(projectId, index, e.freelancer, m.amount);{"\n"}
+                    {"}"}
+                  </code>
+                </pre>
+              </div>
+
               {/* Security Guarantee Banner */}
-              <div className="mt-6 flex items-center justify-between rounded-xl bg-primary/10 border border-primary/20 p-3.5 text-xs">
+              <div className="mt-5 flex items-center justify-between rounded-xl bg-primary/10 border border-primary/20 p-3.5 text-xs">
                 <span className="text-muted">Zero platform hold. Direct P2P protocol settlement.</span>
                 <span className="font-mono font-bold text-primary">EIP-712 Ready</span>
               </div>

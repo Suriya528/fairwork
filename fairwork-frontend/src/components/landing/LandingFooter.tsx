@@ -31,6 +31,7 @@ const footerSections = [
       { label: "Sign In", href: "/login" },
       { label: "Create Account", href: "/register" },
       { label: "Help Center", href: "/help" },
+      { label: "GitHub Repository", href: "https://github.com/Suriya528/fairwork" },
     ],
   },
 ] as const
@@ -56,7 +57,7 @@ export function LandingFooter() {
             <div className="flex flex-col gap-2 pt-1 font-mono text-[11px] text-subtle">
               <div className="inline-flex items-center gap-2">
                 <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden />
-                <span>Arbitrum &amp; Ethereum Testnet</span>
+                <span>Ethereum Sepolia Testnet</span>
               </div>
               <div className="inline-flex items-center gap-2">
                 <FiCpu className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
@@ -79,7 +80,16 @@ export function LandingFooter() {
                 <ul className="flex flex-col gap-2.5" role="list">
                   {section.links.map(({ label, href }) => (
                     <li key={label}>
-                      {href.startsWith("#") ? (
+                      {href.startsWith("http") ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block py-0.5 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                        >
+                          {label}
+                        </a>
+                      ) : href.startsWith("#") ? (
                         <a
                           href={href}
                           className="inline-block py-0.5 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
