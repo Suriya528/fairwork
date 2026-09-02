@@ -29,16 +29,13 @@ import {
   CardTitle,
 } from "@/components/ui/Card"
 import { PageHeader } from "@/components/common/PageHeader"
-import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
-import { useCurrency } from "@/context/CurrencyContext"
+import { FlagUSA } from "@/components/common/FlagIcons"
 import { useAuth } from "@/context/AuthContext"
 import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { updateProfile, updatePreferences, type NotificationPreferences, type PortfolioItem } from "@/services/userApi"
 import { apiFetch } from "@/services/apiClient"
-import { cn } from "@/lib/utils"
 
 export function SettingsPage() {
-  const { currency, setCurrency } = useCurrency()
   const { user, token } = useAuth()
 
   // Profile Form State
@@ -700,60 +697,27 @@ export function SettingsPage() {
         {/* Currency Display Preference Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Display Currency (Settlement Invariant: USDC)</CardTitle>
+            <CardTitle>Platform & Settlement Currency</CardTitle>
             <CardDescription>
-              Select your display currency for UI budget estimation. All Web3 contract deposits, transfers, and escrow commitments strictly settle in USDC on-chain.
+              FairWork operates exclusively in US Dollars. All Web3 contract deposits, milestone allocations, transfers, and escrow commitments strictly settle in USD / USDC on-chain.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setCurrency("INR")}
-                className={cn(
-                  "group relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden",
-                  currency === "INR"
-                    ? "border-primary bg-primary/10 shadow-sm"
-                    : "border-border bg-surface hover:bg-elevated hover:border-primary/50",
-                )}
-              >
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/30 font-bold text-lg font-mono transition-transform duration-200 group-hover:scale-105">
-                  <span>₹</span>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 transition-all duration-200 group-hover:opacity-100 group-hover:scale-100">
-                    <FlagIndia className="h-5 w-7" />
-                  </div>
+            <div className="max-w-md">
+              <div className="flex items-center gap-3.5 rounded-xl border border-primary/40 bg-primary/10 p-4 shadow-sm">
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/20 border border-primary/30">
+                  <FlagUSA className="h-6 w-8" />
                 </div>
                 <div>
-                  <div className="flex items-center justify-center gap-1.5">
-                    <p className="text-xs font-bold text-foreground">INR (~₹ Estimated)</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground">US Dollar (USD / USDC)</p>
+                    <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 font-mono text-[10px] text-emerald-400 font-semibold">
+                      Standard
+                    </span>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-muted">Estimated Display Only</p>
+                  <p className="mt-0.5 text-xs text-muted">Fixed-budget milestone settlement currency</p>
                 </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrency("USD")}
-                className={cn(
-                  "group relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden",
-                  currency === "USD"
-                    ? "border-primary bg-primary/10 shadow-sm"
-                    : "border-border bg-surface hover:bg-elevated hover:border-emerald-500/50",
-                )}
-              >
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold text-lg font-mono transition-transform duration-200 group-hover:scale-105">
-                  <span>$</span>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 transition-all duration-200 group-hover:opacity-100 group-hover:scale-100">
-                    <FlagUSA className="h-5 w-7" />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-center gap-1.5">
-                    <p className="text-xs font-bold text-foreground">USD ($ / USDC)</p>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-muted">On-Chain Settlement Value</p>
-                </div>
-              </button>
+              </div>
             </div>
           </CardContent>
         </Card>

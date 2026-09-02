@@ -20,13 +20,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<DisplayCurrency>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored === "INR" || stored === "USD") {
+      if (stored === "USD") {
         return stored
       }
     } catch {
       // Fallback on storage errors
     }
-    return "INR" // Default preference for India-focused experience
+    return "USD" // Default currency is US Dollar ($)
   })
 
   useEffect(() => {

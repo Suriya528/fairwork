@@ -16,7 +16,6 @@ import {
 } from "react-icons/fi"
 import { Badge } from "@/components/ui/Badge"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
-import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
 import { AccountMenu } from "./AccountMenu"
 import { useAuth } from "@/context/AuthContext"
 import { useWallet } from "@/context/WalletContext"
@@ -31,7 +30,7 @@ interface TopbarProps {
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const { user, token } = useAuth()
   const { isVerified, connectedAccount } = useWallet()
-  const { currency, setCurrency, formatAmount } = useCurrency()
+  const { formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -305,25 +304,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
           </Badge>
         )}
 
-        <button
-          type="button"
-          onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
-          title={`Switch currency preference (Current: ${currency})`}
-          aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-          className="group relative flex h-9 items-center gap-1.5 rounded-lg border border-border bg-base px-2.5 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
-        >
-          {currency === "INR" ? (
-            <>
-              <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-              <span>₹ INR</span>
-            </>
-          ) : (
-            <>
-              <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-              <span>$ USD</span>
-            </>
-          )}
-        </button>
+        {/* Clean Topbar actions */}
         <ThemeToggle />
         <AccountMenu />
       </div>

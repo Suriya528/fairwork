@@ -3,9 +3,7 @@ import { Link, useLocation } from "react-router-dom"
 import { FiMenu, FiX, FiArrowRight } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { Logo } from "@/components/common/Logo"
-import { FlagIndia, FlagUSA } from "@/components/common/FlagIcons"
 import { useAuth } from "@/context/AuthContext"
-import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
 
 const btnBase =
@@ -23,7 +21,6 @@ const navLinks = [
 export function LandingHeader() {
   const { status } = useAuth()
   const location = useLocation()
-  const { currency, setCurrency } = useCurrency()
   const isAuthed = status === "authenticated"
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -92,27 +89,8 @@ export function LandingHeader() {
           ))}
         </div>
 
-        {/* Desktop auth CTA & Theme/Currency Toggle */}
+        {/* Desktop auth CTA & Theme Toggle */}
         <div className="hidden items-center gap-3 md:flex">
-          <button
-            type="button"
-            onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
-            title={`Switch display currency (Current: ${currency})`}
-            aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-            className="group relative flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
-          >
-            {currency === "INR" ? (
-              <>
-                <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-                <span>₹ INR</span>
-              </>
-            ) : (
-              <>
-                <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-                <span>$ USD</span>
-              </>
-            )}
-          </button>
           <ThemeToggle />
           {isAuthed ? (
             <Link
@@ -152,24 +130,6 @@ export function LandingHeader() {
 
         {/* Mobile hamburger */}
         <div className="flex items-center gap-2 md:hidden">
-          <button
-            type="button"
-            onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
-            aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-            className="group relative flex h-9 items-center gap-1 rounded-xl border border-border bg-surface px-2 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
-          >
-            {currency === "INR" ? (
-              <>
-                <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-                <span>₹ INR</span>
-              </>
-            ) : (
-              <>
-                <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-                <span>$ USD</span>
-              </>
-            )}
-          </button>
           <ThemeToggle />
           <button
             type="button"
@@ -230,25 +190,7 @@ export function LandingHeader() {
 
             <div className="flex flex-col gap-2 border-t border-border p-4">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <ThemeToggle showLabel className="flex-1 justify-center py-2" />
-                <button
-                  type="button"
-                  onClick={() => setCurrency(currency === "INR" ? "USD" : "INR")}
-                  aria-label={`Current display currency: ${currency}. Click to switch to ${currency === "INR" ? "USD" : "INR"}`}
-                  className="group relative flex h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-xs font-mono font-bold text-muted transition-all duration-200 hover:border-border-strong hover:bg-elevated hover:text-foreground"
-                >
-                  {currency === "INR" ? (
-                    <>
-                      <FlagIndia className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-                      <span>₹ INR</span>
-                    </>
-                  ) : (
-                    <>
-                      <FlagUSA className="h-3.5 w-5 transition-transform duration-200 group-hover:scale-125" />
-                      <span>$ USD</span>
-                    </>
-                  )}
-                </button>
+                <ThemeToggle showLabel className="w-full justify-center py-2" />
               </div>
               {isAuthed ? (
                 <Link
