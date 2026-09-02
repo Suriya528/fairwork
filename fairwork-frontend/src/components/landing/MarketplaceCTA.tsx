@@ -19,23 +19,23 @@ export function MarketplaceCTA() {
     <section className="w-full bg-base py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-3xl border border-border-strong bg-gradient-to-b from-surface via-surface to-elevated px-6 py-16 text-center sm:px-12 sm:py-24 shadow-2xl shadow-black/60">
-          {/* Glow Effects */}
+          {/* Ambient Lighting */}
           <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-            <div className="absolute left-1/2 top-1/2 h-[450px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary/15 to-emerald-500/10 blur-3xl" />
+            <div className="absolute left-1/2 top-1/2 h-[450px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary/15 via-primary/5 to-transparent blur-3xl" />
           </div>
 
           <div className="mx-auto max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-base/80 px-3.5 py-1 text-xs text-muted font-mono mb-6">
-              <FiLock className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Escrow Protocol Ready</span>
+              <FiLock className="h-3.5 w-3.5 text-primary" />
+              <span>Smart Contract Milestone Escrow</span>
             </div>
 
             <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-              Start your next project with complete confidence
+              Build and scale with milestone-backed security
             </h2>
 
             <p className="mt-5 text-base text-muted sm:text-lg leading-relaxed">
-              Join FairWork today. Experience freelancing backed by transparent milestone contracts and non-custodial payment escrow.
+              Post a project or browse technical contracts. Funds remain cryptographically locked in escrow until deliverables are submitted, reviewed, and approved.
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
