@@ -320,6 +320,23 @@
     border-color: var(--color-border-strong);
     box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.3);
   }
+
+  /* FairWork Brand Signature CTA */
+  .brand-btn-primary {
+    position: relative;
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #4f46e5 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 14px -3px rgba(37, 99, 235, 0.35);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .brand-btn-primary:hover {
+    box-shadow: 0 6px 20px -3px rgba(37, 99, 235, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.45);
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+  }
+  .brand-btn-primary:active {
+    transform: translateY(0) scale(0.98);
+  }
 }
 
 @keyframes fade-in {

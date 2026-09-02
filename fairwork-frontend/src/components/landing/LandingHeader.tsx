@@ -117,7 +117,7 @@ export function LandingHeader() {
                 className={cn(
                   btnBase,
                   btnGhost,
-                  "h-9 px-3.5 text-xs font-semibold",
+                  "h-9 px-3.5 text-xs font-semibold hover:border-border-strong hover:bg-elevated transition-colors",
                   isLoginActive && "text-foreground font-bold border border-primary/40 bg-surface-hover",
                 )}
               >
@@ -127,12 +127,12 @@ export function LandingHeader() {
                 to="/register"
                 className={cn(
                   btnBase,
-                  btnPrimary,
-                  "h-9 px-4 text-xs",
+                  "brand-btn-primary group h-9 px-4 text-xs gap-1.5",
                   isRegisterActive && "ring-2 ring-ring ring-offset-2 ring-offset-background",
                 )}
               >
-                Sign Up
+                <span>Sign Up</span>
+                <FiArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
               </Link>
             </>
           )}
@@ -225,14 +225,15 @@ export function LandingHeader() {
                   <Link
                     to="/register"
                     onClick={() => setMobileOpen(false)}
-                    className={cn(btnBase, btnPrimary, "h-11 w-full px-4 text-xs font-bold")}
+                    className={cn(btnBase, "brand-btn-primary group h-11 w-full px-4 text-xs font-bold gap-2")}
                   >
-                    Sign Up
+                    <span>Sign Up</span>
+                    <FiArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden />
                   </Link>
                   <Link
                     to="/login"
                     onClick={() => setMobileOpen(false)}
-                    className={cn(btnBase, btnOutline, "h-11 w-full px-4 text-xs font-bold")}
+                    className={cn(btnBase, btnOutline, "h-11 w-full px-4 text-xs font-bold hover:bg-elevated hover:border-border-strong")}
                   >
                     Log In
                   </Link>
