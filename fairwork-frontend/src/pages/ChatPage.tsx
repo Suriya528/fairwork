@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/Textarea"
 import { Badge } from "@/components/ui/Badge"
 import { EmptyState } from "@/components/feedback/EmptyState"
 import { PageHeader } from "@/components/common/PageHeader"
+import { sanitizeUrl } from "@/lib/sanitizeUrl"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
@@ -303,7 +304,7 @@ export function ChatPage() {
                               <span className="truncate">{m.content || m.fileMeta?.filename || "Attachment"}</span>
                             </div>
                             <a
-                              href={m.fileUrl}
+                              href={sanitizeUrl(m.fileUrl)}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-accent-300 hover:underline pt-1"

@@ -33,19 +33,18 @@ exports.globalSearch = async (req, res) => {
       .limit(10)
       .lean();
 
-    // 2. Search Users (firstName, lastName, email, role, skills, bio, walletAddress)
+    // 2. Search Users (firstName, lastName, role, skills, bio, walletAddress)
     const usersPromise = User.find({
       $or: [
         { firstName: searchRegex },
         { lastName: searchRegex },
-        { email: searchRegex },
         { role: searchRegex },
         { skills: searchRegex },
         { bio: searchRegex },
         { walletAddress: searchRegex },
       ],
     })
-      .select("firstName lastName email role skills bio walletAddress avatarUrl")
+      .select("firstName lastName role skills bio walletAddress avatarUrl")
       .limit(10)
       .lean();
 
@@ -125,12 +124,12 @@ exports.globalSearch = async (req, res) => {
       })),
       users: users.map((u) => ({
         id: u._id,
-        name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email,
-        email: u.email,
+        name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || "User",
         role: u.role,
         skills: u.skills || [],
         bio: u.bio || "",
-        walletAddress: u.walletAddress || "",
+        walletAddress: u.walletAddress ? `${u.walletAddress.slice(0, 6)}...${u.walletAddress.slice(-4)}` : "",
+        avatarUrl: u.avatarUrl || "",
       })),
       wallets,
       pages: matchedPages,

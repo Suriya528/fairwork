@@ -46,9 +46,28 @@ exports.raiseDispute = async (req, res) => {
 exports.voteDispute = async (req, res) => {
   try {
     const { vote } = req.body;
+    if (!["client", "freelancer"].includes(vote)) {
+      return res.status(400).json({ message: "Vote must be either 'client' or 'freelancer'." });
+    }
+
     const dispute = await Dispute.findById(req.params.id);
     if (!dispute) return res.status(404).json({ message: "Dispute not found" });
 
+    if (dispute.status !== "pending") {
+      return res.status(400).json({ message: "Cannot vote on an already resolved dispute." });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required to cast a vote." });
+    }
+
+    dispute.voters = dispute.voters || [];
+    if (dispute.voters.some((v) => String(v) === String(userId))) {
+      return res.status(409).json({ message: "You have already cast your vote on this dispute." });
+    }
+
+    dispute.voters.push(userId);
     if (vote === "client") dispute.clientVotes += 1;
     else if (vote === "freelancer") dispute.freelancerVotes += 1;
 
@@ -73,9 +92,10 @@ exports.resolveDispute = async (req, res) => {
       { returnDocument: "after" }
     );
     if (dispute) {
+      const resolvedStatus = winner === "client" ? "refunded" : "completed";
       const project = await Project.findByIdAndUpdate(
         dispute.projectId,
-        { status: "completed", escrowDisputed: false, escrowCompleted: true },
+        { status: resolvedStatus, escrowDisputed: false, escrowCompleted: true },
         { returnDocument: "after" }
       );
       if (project) {

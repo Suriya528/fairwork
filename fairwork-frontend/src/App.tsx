@@ -74,6 +74,25 @@ function PublicHelpCenter() {
 }
 
 /**
+ * Smart Help Center route handler:
+ * Renders HelpCenterPage inside AppLayout if authenticated;
+ * renders PublicHelpCenter with LandingHeader/Footer for guests.
+ */
+function SmartHelpPage() {
+  const { status } = useAuth()
+  if (status === "authenticated") {
+    return (
+      <AppLayout>
+        <RouteErrorBoundary featureName="Help Center">
+          <HelpCenterPage />
+        </RouteErrorBoundary>
+      </AppLayout>
+    )
+  }
+  return <PublicHelpCenter />
+}
+
+/**
  * App root: global providers + the route table.
  */
 export function App() {
@@ -126,15 +145,16 @@ export function App() {
                   <Route path="settings" element={<RouteErrorBoundary featureName="Settings"><SettingsPage /></RouteErrorBoundary>} />
                   <Route path="notifications" element={<RouteErrorBoundary featureName="Notifications"><NotificationsPage /></RouteErrorBoundary>} />
                   <Route path="transactions" element={<RouteErrorBoundary featureName="Transactions"><TransactionsPage /></RouteErrorBoundary>} />
-                  <Route path="help" element={<RouteErrorBoundary featureName="Help Center"><HelpCenterPage /></RouteErrorBoundary>} />
                   <Route path="chat" element={<RouteErrorBoundary featureName="Chat"><ChatPage /></RouteErrorBoundary>} />
                   <Route path="admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
                   <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
-                  <Route path="*" element={<NotFoundPage />} />
                 </Route>
 
-                {/* Standalone Public Help Center route for logged-out visitors */}
-                <Route path="help" element={<PublicHelpCenter />} />
+                {/* Smart Help Center: authed visitors get app shell; guests get public landing shell */}
+                <Route path="help" element={<SmartHelpPage />} />
+
+                {/* Global 404 handler for all unknown routes */}
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </WalletProvider>
           </AuthProvider>

@@ -75,6 +75,14 @@ exports.createProject = async (req, res) => {
       };
     });
 
+    for (let i = 0; i < formattedMilestones.length; i++) {
+      if (formattedMilestones[i].amount <= 0) {
+        return res.status(400).json({
+          message: `Milestone ${i + 1} amount must be a positive number greater than 0.`,
+        });
+      }
+    }
+
     const milestoneSum = formattedMilestones.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
     if (Math.abs(milestoneSum - numBudget) > 0.01) {
       return res.status(400).json({

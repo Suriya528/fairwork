@@ -9,6 +9,7 @@ const disputeSchema = new mongoose.Schema({
   winner: { type: String, enum: ["client", "freelancer", "none"], default: "none" },
   clientVotes: { type: Number, default: 0 },
   freelancerVotes: { type: Number, default: 0 },
+  voters: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   blockchainTxn: { type: String, default: "" },
 }, { timestamps: true });
 

@@ -32,6 +32,7 @@ async function authenticate(req, res, next) {
     req.user = {
       id: claims.id,
       role: dbUser.role,  // Always from DB, never from token
+      sessionId: claims.sessionId,
       exp: claims.exp,
     };
 

@@ -204,7 +204,7 @@ function createServerApp(config = {}) {
         const isVerified =
           activeUser.authProvider === "google" || activeUser.authProvider === "github" || isTestFixture
             ? true
-            : Boolean(activeUser.isEmailVerified === true && activeUser.authProvider !== "local" && !isSamplePlaceholder);
+            : Boolean(activeUser.isEmailVerified === true);
 
         if (!isVerified) {
           return socket.emit("app_error", {
@@ -216,7 +216,7 @@ function createServerApp(config = {}) {
         const isParticipant = String(project.clientId) === userId || (project.freelancerId && String(project.freelancerId) === userId);
         const isAdmin = activeUser.role === "admin";
 
-        const canSend = isParticipant || (isAdmin && project.status === "DISPUTED");
+        const canSend = isParticipant || (isAdmin && project.status?.toLowerCase() === "disputed");
         if (!canSend) {
           return socket.emit("app_error", {
             code: "FORBIDDEN_DISPATCH",

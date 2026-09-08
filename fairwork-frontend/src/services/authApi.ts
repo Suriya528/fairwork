@@ -157,22 +157,13 @@ interface BackendAuthResponse {
 function toAuthUser(user: BackendUser): AuthUser {
   const emailStr = (user.email || "").toLowerCase().trim()
   const isTestFixture = emailStr.endsWith(".test") || emailStr.includes("example.test")
-  const isSamplePlaceholder =
-    !isTestFixture &&
-    (emailStr.includes("example.com") ||
-      emailStr.includes("example.org") ||
-      emailStr.startsWith("target_") ||
-      emailStr.startsWith("client_contract_") ||
-      emailStr.startsWith("freelancer_contract_") ||
-      emailStr.startsWith("mock_") ||
-      emailStr.startsWith("dummy_"))
 
   // Only Google and GitHub OAuth accounts have guaranteed real-world verified emails.
   // Local password accounts require explicit token verification or social login link.
   const isVerified =
     user.authProvider === "google" || user.authProvider === "github" || isTestFixture
       ? true
-      : Boolean(user.isEmailVerified === true && user.authProvider !== "local" && !isSamplePlaceholder)
+      : Boolean(user.isEmailVerified === true)
 
   return {
     id: user.id ?? user._id ?? "",

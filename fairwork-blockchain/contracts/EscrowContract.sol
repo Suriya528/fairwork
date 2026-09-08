@@ -70,6 +70,13 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
     }
     function getEscrowParties(string calldata projectId) external view returns (address client, address freelancer, bool isFunded, bool isDisputed, bool isCompleted) { Escrow storage e = escrows[projectId]; return (e.client, e.freelancer, e.isFunded, e.isDisputed, e.isCompleted); }
     function getBalance(string calldata projectId) external view returns (uint256) { Escrow storage e = escrows[projectId]; return e.totalAmount - e.releasedAmount; }
+    function getMilestonesCount(string calldata projectId) external view returns (uint256) { return escrows[projectId].milestones.length; }
+    function getMilestone(string calldata projectId, uint256 index) external view returns (uint256 amount, bool released) {
+        require(index < escrows[projectId].milestones.length, "Index out of bounds");
+        Milestone storage m = escrows[projectId].milestones[index];
+        return (m.amount, m.released);
+    }
+    function getMilestones(string calldata projectId) external view returns (Milestone[] memory) { return escrows[projectId].milestones; }
     function setDisputeContract(address _disputeContract) external onlyOwner { require(disputeContract == address(0), "Dispute contract set"); require(_disputeContract != address(0), "Invalid dispute contract"); disputeContract = _disputeContract; }
     function pause() external onlyOwner { _pause(); }
     function unpause() external onlyOwner { _unpause(); }

@@ -36,6 +36,11 @@ exports.register = async (req, res) => {
       emailVerificationExpires: verificationExpires,
     });
 
+    if (process.env.NODE_ENV !== "production") {
+      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+      console.log(`[DEV] Verification Link for ${cleanEmail}: ${clientUrl}/verify-email?token=${verificationToken}`);
+    }
+
     const token = jwt.sign(
         { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
         process.env.JWT_SECRET,
@@ -160,6 +165,11 @@ exports.resendVerificationEmail = async (req, res) => {
     user.emailVerificationToken = token;
     user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
+
+    if (process.env.NODE_ENV !== "production") {
+      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+      console.log(`[DEV] Resent Verification Link for ${cleanEmail}: ${clientUrl}/verify-email?token=${token}`);
+    }
 
     res.json({ message: "Verification email resent successfully." });
   } catch (err) {

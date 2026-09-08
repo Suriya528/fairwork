@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const User = require("../models/User");
 const Project = require("../models/Project");
 const Review = require("../models/Review");
@@ -24,7 +25,7 @@ function validateSocialUrl(urlStr, allowedHost) {
     const parsed = new URL(urlStr.trim());
     return (
       parsed.protocol === "https:" &&
-      (parsed.hostname === allowedHost || parsed.hostname.endsWith(`.${allowedHost}`))
+      (parsed.hostname === allowedHost || parsed.hostname.endsWith("." + allowedHost))
     );
   } catch {
     return false;
@@ -55,7 +56,7 @@ exports.getPublicProfile = async (req, res) => {
       .sort({ updatedAt: -1 })
       .limit(10);
 
-    const reviews = await Review.find({ targetUserId: id })
+    const reviews = await Review.find({ revieweeId: id })
       .populate("reviewerId", "firstName lastName avatarUrl")
       .select("rating comment createdAt")
       .sort({ createdAt: -1 })
@@ -173,7 +174,7 @@ exports.updateProfile = async (req, res) => {
     // General URL Protocol Validation
     const genericUrls = [avatarUrl, bannerUrl, portfolio];
     if (Array.isArray(portfolioItems)) {
-      portfolioItems.forEach((item) => {
+      for (const item of portfolioItems) {
         if (item) {
           genericUrls.push(item.imageUrl, item.projectUrl);
           if (item.githubUrl && !validateSocialUrl(item.githubUrl, "github.com")) {
@@ -182,7 +183,7 @@ exports.updateProfile = async (req, res) => {
             });
           }
         }
-      });
+      }
     }
 
     for (const u of genericUrls) {
@@ -204,7 +205,14 @@ exports.updateProfile = async (req, res) => {
           return res.status(409).json({ message: "Email address is already in use by another account." });
         }
         user.email = cleanEmail;
-        user.isEmailVerified = user.authProvider === "google" || user.authProvider === "github";
+        user.isEmailVerified = false;
+        const verificationToken = crypto.randomBytes(32).toString("hex");
+        user.emailVerificationToken = verificationToken;
+        user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        if (process.env.NODE_ENV !== "production") {
+          const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+          console.log(`[DEV] New Email Verification Link for ${cleanEmail}: ${clientUrl}/verify-email?token=${verificationToken}`);
+        }
       }
     }
 

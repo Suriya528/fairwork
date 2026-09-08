@@ -22,7 +22,7 @@ module.exports = async function requireVerifiedEmail(req, res, next) {
     const isVerified =
       user.authProvider === "google" || user.authProvider === "github" || isTestFixture
         ? true
-        : Boolean(user.isEmailVerified === true && user.authProvider !== "local" && !isSamplePlaceholder);
+        : Boolean(user.isEmailVerified === true);
 
     if (!isVerified) {
       return res.status(403).json({

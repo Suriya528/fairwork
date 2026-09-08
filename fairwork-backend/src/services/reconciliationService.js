@@ -59,9 +59,11 @@ if (!ESCROW_ABI.length) {
         { type: "address", name: "client" },
         { type: "address", name: "freelancer" },
         { type: "address", name: "token" },
-        { type: "uint256", name: "totalBudget" },
-        { type: "bool", name: "funded" },
-        { type: "bool", name: "completed" },
+        { type: "uint256", name: "totalAmount" },
+        { type: "uint256", name: "releasedAmount" },
+        { type: "bool", name: "isFunded" },
+        { type: "bool", name: "isDisputed" },
+        { type: "bool", name: "isCompleted" },
       ],
     },
   ];
@@ -344,8 +346,132 @@ function getResolvedContractAddress(canonicalKey, legacyAliasKey) {
   return resolved ? resolved.toLowerCase() : null;
 }
 
+/**
+ * REST reconciliation for on-chain escrow funding.
+ */
+async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
+  if (!projectId) throw new Error("PROJECT_ID_REQUIRED");
+  if (!isValidTxHash(txnHash)) throw new Error("INVALID_TRANSACTION_HASH");
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
+
+  if (callerUserId && String(project.clientId) !== String(callerUserId)) {
+    const err = new Error("UNAUTHORIZED_CALLER: Only the project client can reconcile funding");
+    err.status = 403;
+    throw err;
+  }
+
+  if (project.escrowFunded && project.escrowTxnHash === txnHash) {
+    return project;
+  }
+
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || "https://rpc.sepolia.org";
+  const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+  const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
+
+  try {
+    const receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
+    if (!receipt) {
+      const err = new Error("TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation");
+      err.status = 202;
+      throw err;
+    }
+    if (receipt.status !== "success" && receipt.status !== 1) {
+      throw new Error("TRANSACTION_REVERTED_ON_CHAIN");
+    }
+
+    if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
+      throw new Error("TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract");
+    }
+  } catch (rpcErr) {
+    if (rpcErr.message && (rpcErr.message.includes("TRANSACTION_REVERTED") || rpcErr.message.includes("TRANSACTION_RECIPIENT_MISMATCH") || rpcErr.status === 202)) {
+      throw rpcErr;
+    }
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`ON_CHAIN_RECEIPT_FETCH_FAILED: ${rpcErr.message}`);
+    }
+  }
+
+  project.escrowFunded = true;
+  project.escrowTxnHash = txnHash;
+  if (project.status === "open") {
+    project.status = "in_progress";
+  }
+  await project.save();
+  return project;
+}
+
+/**
+ * REST reconciliation for on-chain milestone release.
+ */
+async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, callerUserId = null) {
+  if (!projectId) throw new Error("PROJECT_ID_REQUIRED");
+  assertNonNegativeSafeInteger(milestoneIndex, "milestoneIndex");
+  if (!isValidTxHash(txnHash)) throw new Error("INVALID_TRANSACTION_HASH");
+
+  const project = await Project.findById(projectId);
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
+
+  if (callerUserId && String(project.clientId) !== String(callerUserId)) {
+    const err = new Error("UNAUTHORIZED_CALLER: Only the project client can release milestone escrow");
+    err.status = 403;
+    throw err;
+  }
+
+  if (!project.milestones || !project.milestones[milestoneIndex]) {
+    throw new Error("MILESTONE_INDEX_OUT_OF_BOUNDS");
+  }
+
+  if (project.milestones[milestoneIndex].paymentReleased) {
+    return project;
+  }
+
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || "https://rpc.sepolia.org";
+  const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+  const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
+
+  try {
+    const receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
+    if (!receipt) {
+      const err = new Error("TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation");
+      err.status = 202;
+      throw err;
+    }
+    if (receipt.status !== "success" && receipt.status !== 1) {
+      throw new Error("TRANSACTION_REVERTED_ON_CHAIN");
+    }
+
+    if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
+      throw new Error("TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract");
+    }
+  } catch (rpcErr) {
+    if (rpcErr.message && (rpcErr.message.includes("TRANSACTION_REVERTED") || rpcErr.message.includes("TRANSACTION_RECIPIENT_MISMATCH") || rpcErr.status === 202)) {
+      throw rpcErr;
+    }
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`ON_CHAIN_RECEIPT_FETCH_FAILED: ${rpcErr.message}`);
+    }
+  }
+
+  project.milestones[milestoneIndex].paymentReleased = true;
+  project.milestones[milestoneIndex].status = "completed";
+  project.milestones[milestoneIndex].releasedAt = new Date();
+
+  const allReleased = project.milestones.every((m) => m.paymentReleased);
+  if (allReleased) {
+    project.status = "completed";
+    project.escrowCompleted = true;
+  }
+
+  await project.save();
+  return project;
+}
+
 module.exports = {
   reconcileVerifiedBlockchainEvent,
+  reconcileEscrowFunding,
+  reconcileMilestoneRelease,
   decodeRawLogToVerifiedEvent,
   buildBlockchainEventKey,
   isValidEthAddress,

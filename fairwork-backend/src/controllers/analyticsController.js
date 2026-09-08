@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const Review = require("../models/Review");
 const User = require("../models/User");
@@ -10,7 +11,7 @@ exports.getFreelancerAnalytics = async (req, res) => {
     const completed = projects.filter(p => p.status === "completed");
     const disputed = projects.filter(p => p.status === "disputed");
 
-    const totalEarnings = completed.reduce((sum, p) => sum + p.budget, 0);
+    const totalEarnings = completed.reduce((sum, p) => sum + Number(p.budget?.toString() || 0), 0);
     const successRate = projects.length > 0
       ? Math.round((completed.length / projects.length) * 100)
       : 0;
@@ -24,10 +25,12 @@ exports.getFreelancerAnalytics = async (req, res) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const monthlyData = await Project.aggregate([
+    const userObjectId = mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+
+    const rawMonthly = await Project.aggregate([
       {
         $match: {
-          freelancerId: userId,
+          freelancerId: userObjectId,
           status: "completed",
           createdAt: { $gte: sixMonthsAgo },
         },
@@ -41,6 +44,12 @@ exports.getFreelancerAnalytics = async (req, res) => {
       },
       { $sort: { _id: 1 } },
     ]);
+
+    const monthlyData = rawMonthly.map((item) => ({
+      month: item._id,
+      earnings: Number(item.earnings?.toString() || 0),
+      count: item.count,
+    }));
 
     res.json({
       totalProjects: projects.length,
@@ -65,15 +74,17 @@ exports.getClientAnalytics = async (req, res) => {
     const projects = await Project.find({ clientId: userId });
     const completed = projects.filter(p => p.status === "completed");
 
-    const totalSpent = completed.reduce((sum, p) => sum + p.budget, 0);
+    const totalSpent = completed.reduce((sum, p) => sum + Number(p.budget?.toString() || 0), 0);
     const successRate = projects.length > 0
       ? Math.round((completed.length / projects.length) * 100)
       : 0;
 
-    const monthlyData = await Project.aggregate([
+    const userObjectId = mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+
+    const rawMonthly = await Project.aggregate([
       {
         $match: {
-          clientId: userId,
+          clientId: userObjectId,
           status: "completed",
         },
       },
@@ -86,6 +97,12 @@ exports.getClientAnalytics = async (req, res) => {
       },
       { $sort: { _id: 1 } },
     ]);
+
+    const monthlyData = rawMonthly.map((item) => ({
+      month: item._id,
+      spent: Number(item.spent?.toString() || 0),
+      count: item.count,
+    }));
 
     res.json({
       totalProjects: projects.length,

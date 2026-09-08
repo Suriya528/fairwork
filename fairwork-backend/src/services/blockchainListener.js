@@ -200,9 +200,11 @@ async function startBlockchainListener(config = {}) {
                   { type: "address", name: "client" },
                   { type: "address", name: "freelancer" },
                   { type: "address", name: "token" },
-                  { type: "uint256", name: "totalBudget" },
-                  { type: "bool", name: "funded" },
-                  { type: "bool", name: "completed" },
+                  { type: "uint256", name: "totalAmount" },
+                  { type: "uint256", name: "releasedAmount" },
+                  { type: "bool", name: "isFunded" },
+                  { type: "bool", name: "isDisputed" },
+                  { type: "bool", name: "isCompleted" },
                 ],
               }],
               functionName: "escrows",
@@ -214,8 +216,10 @@ async function startBlockchainListener(config = {}) {
             freelancer: escrowData[1],
             token: escrowData[2],
             totalBudget: escrowData[3],
-            funded: escrowData[4],
-            completed: escrowData[5],
+            releasedAmount: escrowData[4],
+            funded: Boolean(escrowData[5]),
+            isDisputed: Boolean(escrowData[6]),
+            completed: Boolean(escrowData[7]),
           };
         } catch (readErr) {
           await QuarantineEvent.create({

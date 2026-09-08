@@ -35,8 +35,10 @@ exports.releaseEscrow = async (req, res) => {
   try {
     const { projectId, milestoneIndex, txnHash } = req.body;
     if (!projectId) return res.status(400).json({ message: "projectId is required" });
+    if (milestoneIndex === undefined || milestoneIndex === null) return res.status(400).json({ message: "milestoneIndex is required" });
+    if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 
-    const project = await reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, req.user.id);
+    const project = await reconcileMilestoneRelease(projectId, Number(milestoneIndex), txnHash, req.user.id);
     res.json({ message: "Escrow payment released successfully", project });
   } catch (err) {
     const status = err.status || (err.message && /^[A-Z_]+/.test(err.message) ? 400 : 500);

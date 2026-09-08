@@ -37,6 +37,7 @@ import { LoadingState } from "@/components/feedback/LoadingState"
 import { ErrorState } from "@/components/feedback/ErrorState"
 import { ApplyModal } from "@/components/applications/ApplyModal"
 import { formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "@/lib/format"
+import { sanitizeUrl } from "@/lib/sanitizeUrl"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { ApiError } from "@/services/apiClient"
@@ -452,7 +453,7 @@ function MilestoneRow({
             {milestoneDeliverables.map((f) => (
               <a
                 key={f.id}
-                href={f.url}
+                href={sanitizeUrl(f.url)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-between rounded-lg border border-border bg-base px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-hover transition-colors"
@@ -1453,7 +1454,7 @@ export function ProjectDetailPage() {
                                 </div>
                               </div>
                               <a
-                                href={file.url}
+                                href={sanitizeUrl(file.url)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-border-strong px-3 text-xs font-medium text-foreground transition-colors hover:bg-surface-hover"
@@ -1520,7 +1521,7 @@ export function ProjectDetailPage() {
                             </div>
                           </div>
                           <a
-                            href={rf.url}
+                            href={sanitizeUrl(rf.url)}
                             target="_blank"
                             rel="noreferrer"
                             className="text-xs font-medium text-primary hover:underline shrink-0"

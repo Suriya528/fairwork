@@ -342,9 +342,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       return false
     }
 
-    if (!connectedAccount) {
+    let activeAccount = connectedAccount
+    if (!activeAccount) {
       const acc = await connect()
       if (!acc) return false
+      activeAccount = acc
     }
 
     setWalletState("VERIFYING")
@@ -368,18 +370,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const challenge = await getWalletNonce(token)
 
       const signature = await wallet.signTypedData({
-        account: connectedAccount as `0x${string}`,
+        account: activeAccount as `0x${string}`,
         domain: challenge.domain,
         types: challenge.types,
         primaryType: challenge.primaryType,
         message: {
-          walletAddress: connectedAccount,
+          walletAddress: activeAccount,
           nonce: challenge.nonce,
           purpose: challenge.purpose,
         },
       })
 
-      const verifiedUser = await apiVerifyWallet(connectedAccount!, challenge.nonce, signature, token)
+      const verifiedUser = await apiVerifyWallet(activeAccount, challenge.nonce, signature, token)
 
       await updateWallet(verifiedUser.walletAddress)
 
