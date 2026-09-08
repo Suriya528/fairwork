@@ -87,6 +87,11 @@ export interface ForgotPasswordPayload {
   email: string
 }
 
+export interface ResetPasswordPayload {
+  token: string
+  newPassword: string
+}
+
 /** Normalized error thrown by every service call so the UI can trust `.message`. */
 export class AuthError extends Error {
   /** Optional per-field messages, e.g. { email: "Already registered" }. */
@@ -357,13 +362,34 @@ export async function completeOAuthRoleSelection(
 
 export async function requestPasswordReset(
   payload: ForgotPasswordPayload,
-): Promise<{ ok: true }> {
-  // No /forgot-password route exists on the backend yet (routes/auth.js
-  // only has register/login/me/wallet). Keeping this mocked rather than
-  // inventing a server endpoint that wasn't part of this task.
-  await new Promise((resolve) => setTimeout(resolve, 900))
-  void payload
-  return { ok: true }
+): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: { email: payload.email },
+  })
+}
+
+export async function resetPassword(
+  payload: ResetPasswordPayload,
+): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/reset-password", {
+    method: "POST",
+    body: payload,
+  })
+}
+
+export async function verifyEmail(token: string): Promise<{ message: string; isEmailVerified: boolean }> {
+  return apiFetch<{ message: string; isEmailVerified: boolean }>(
+    `/auth/verify-email?token=${encodeURIComponent(token)}`,
+    { method: "GET" }
+  )
+}
+
+export async function resendVerificationEmail(email: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/resend-verification", {
+    method: "POST",
+    body: { email },
+  })
 }
 
 // --- Session storage -----------------------------------------------------

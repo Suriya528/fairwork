@@ -191,15 +191,6 @@ function createServerApp(config = {}) {
 
         const emailStr = (activeUser.email || "").toLowerCase().trim();
         const isTestFixture = emailStr.endsWith(".test") || emailStr.includes("example.test");
-        const isSamplePlaceholder =
-          !isTestFixture &&
-          (emailStr.includes("example.com") ||
-            emailStr.includes("example.org") ||
-            emailStr.startsWith("target_") ||
-            emailStr.startsWith("client_contract_") ||
-            emailStr.startsWith("freelancer_contract_") ||
-            emailStr.startsWith("mock_") ||
-            emailStr.startsWith("dummy_"));
 
         const isVerified =
           activeUser.authProvider === "google" || activeUser.authProvider === "github" || isTestFixture

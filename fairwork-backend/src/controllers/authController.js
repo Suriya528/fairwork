@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const WalletNonce = require("../models/WalletNonce");
 const { DOMAIN, TYPES, PURPOSE, verifyWalletSignature } = require("../utils/walletVerification");
 const { recordActivitySafely } = require("../services/activityService");
+const emailService = require("../services/emailService");
 
 exports.register = async (req, res) => {
   try {
@@ -34,15 +35,17 @@ exports.register = async (req, res) => {
       isEmailVerified: false,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
+      tokenVersion: 0,
     });
 
-    if (process.env.NODE_ENV !== "production") {
-      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-      console.log(`[DEV] Verification Link for ${cleanEmail}: ${clientUrl}/verify-email?token=${verificationToken}`);
+    try {
+      await emailService.sendVerificationEmail(cleanEmail, verificationToken);
+    } catch (mailErr) {
+      console.error("[Auth] Failed to send verification email on register:", mailErr.message);
     }
 
     const token = jwt.sign(
-        { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
+        { id: user._id, role: user.role, sessionId: crypto.randomUUID(), tokenVersion: 0 },
         process.env.JWT_SECRET,
         {
           expiresIn: "7d",
@@ -89,7 +92,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-        { id: user._id, role: user.role, sessionId: crypto.randomUUID() },
+        { id: user._id, role: user.role, sessionId: crypto.randomUUID(), tokenVersion: user.tokenVersion || 0 },
         process.env.JWT_SECRET,
         {
           expiresIn: "7d",
@@ -166,14 +169,103 @@ exports.resendVerificationEmail = async (req, res) => {
     user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
 
-    if (process.env.NODE_ENV !== "production") {
-      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-      console.log(`[DEV] Resent Verification Link for ${cleanEmail}: ${clientUrl}/verify-email?token=${token}`);
+    try {
+      await emailService.sendVerificationEmail(cleanEmail, token);
+    } catch (mailErr) {
+      console.error("[Auth] Failed to send verification email on resend:", mailErr.message);
     }
 
     res.json({ message: "Verification email resent successfully." });
   } catch (err) {
     console.error("[Auth] resendVerification error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body ?? {};
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Email address is required" });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+
+    // Always respond with identical message to prevent account enumeration
+    const genericResponse = {
+      message: "If an account with that email exists, a password reset link has been sent.",
+    };
+
+    if (!user) {
+      return res.json(genericResponse);
+    }
+
+    // If account was created with OAuth (Google or GitHub) and has no local password
+    if (user.authProvider !== "local" || !user.password) {
+      try {
+        await emailService.sendOAuthNoticeEmail(cleanEmail, user.authProvider || "google");
+      } catch (mailErr) {
+        console.error("[Auth] Failed to send OAuth notice email:", mailErr.message);
+      }
+      return res.json(genericResponse);
+    }
+
+    // Generate raw token and save SHA-256 hash in database
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    try {
+      await emailService.sendPasswordResetEmail(cleanEmail, rawToken);
+    } catch (mailErr) {
+      console.error("[Auth] Failed to send password reset email:", mailErr.message);
+    }
+
+    res.json(genericResponse);
+  } catch (err) {
+    console.error("[Auth] forgotPassword error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body ?? {};
+    if (!token || typeof token !== "string" || !newPassword || typeof newPassword !== "string") {
+      return res.status(400).json({ message: "Reset token and new password are required" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token.trim()).digest("hex");
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired password reset token" });
+    }
+
+    if (user.authProvider !== "local") {
+      return res.status(400).json({ message: "Social login accounts cannot reset passwords." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.tokenVersion = (user.tokenVersion || 0) + 1; // Invalidate all existing sessions
+    await user.save();
+
+    res.json({ message: "Password reset successfully. You can now sign in with your new password." });
+  } catch (err) {
+    console.error("[Auth] resetPassword error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };

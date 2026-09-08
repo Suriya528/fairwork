@@ -63,6 +63,9 @@ const userSchema = new mongoose.Schema({
   },
   emailVerificationToken: { type: String, default: undefined },
   emailVerificationExpires: { type: Date, default: undefined },
+  passwordResetToken: { type: String, default: undefined },
+  passwordResetExpires: { type: Date, default: undefined },
+  tokenVersion: { type: Number, default: 0 },
   walletAddress: { type: String, trim: true, lowercase: true, default: undefined },
   role: { type: String, enum: ["client", "freelancer", "admin"], required: true },
   skills: [String],
@@ -93,12 +96,14 @@ userSchema.index({ walletAddress: 1 }, { unique: true, sparse: true });
 userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 userSchema.index({ githubId: 1 }, { unique: true, sparse: true });
 userSchema.index({ emailVerificationToken: 1 }, { sparse: true });
+userSchema.index({ passwordResetToken: 1 }, { sparse: true });
 
 userSchema.pre("save", function clearEmptySparseFields() {
   if (this.walletAddress === "") this.walletAddress = undefined;
   if (this.googleId === "") this.googleId = undefined;
   if (this.githubId === "") this.githubId = undefined;
   if (this.emailVerificationToken === "") this.emailVerificationToken = undefined;
+  if (this.passwordResetToken === "") this.passwordResetToken = undefined;
 });
 
 userSchema.pre("save", function normalizeWallet() {

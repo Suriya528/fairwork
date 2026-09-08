@@ -1,9 +1,40 @@
 const Review = require("../models/Review");
 const User = require("../models/User");
+const Project = require("../models/Project");
 
 exports.submitReview = async (req, res) => {
   try {
     const { projectId, revieweeId, rating, comment } = req.body;
+
+    if (!projectId || !revieweeId || rating === undefined) {
+      return res.status(400).json({ message: "projectId, revieweeId, and rating are required." });
+    }
+
+    const numRating = Number(rating);
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ message: "Rating must be between 1 and 5." });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.status !== "completed") {
+      return res.status(400).json({ message: "Reviews can only be submitted for completed projects." });
+    }
+
+    const isClient = String(project.clientId) === String(req.user.id);
+    const isFreelancer = String(project.freelancerId) === String(req.user.id);
+
+    if (!isClient && !isFreelancer) {
+      return res.status(403).json({ message: "Only project participants can submit reviews." });
+    }
+
+    const expectedReviewee = isClient ? String(project.freelancerId) : String(project.clientId);
+    if (String(revieweeId) !== expectedReviewee) {
+      return res.status(400).json({ message: "You can only review your project counterparty." });
+    }
 
     const existing = await Review.findOne({ projectId, reviewerId: req.user.id });
     if (existing) return res.status(400).json({ message: "Already reviewed" });
@@ -12,8 +43,8 @@ exports.submitReview = async (req, res) => {
       projectId,
       reviewerId: req.user.id,
       revieweeId,
-      rating,
-      comment,
+      rating: Math.round(numRating),
+      comment: String(comment || "").trim(),
     });
 
     const reviews = await Review.find({ revieweeId });

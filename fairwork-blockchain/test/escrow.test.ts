@@ -71,14 +71,52 @@ describe("FairWork ERC-20 milestone escrow", async () => {
     assert.deepEqual(parties.slice(2), [true, false, true]);
   });
 
-  it("returns only the remaining escrow balance on a valid refund", async () => {
+  it("enforces a 48-hour timelock on refunds and returns remaining balance to 0", async () => {
     const { client, freelancer, outsider, token, escrow } = await fundedFixture();
+    const testClient = await viem.getTestClient();
+
     await escrow.write.releaseMilestone(["project-1", 0n], { account: client.account });
+
+    // 1. Cannot refund without requesting first
+    await viem.assertions.revertWith(escrow.write.refund(["project-1"], { account: client.account }), "Refund not requested");
+
+    // 2. Client requests refund
+    await escrow.write.requestRefund(["project-1"], { account: client.account });
+
+    // 3. Duplicate request is blocked
+    await viem.assertions.revertWith(escrow.write.requestRefund(["project-1"], { account: client.account }), "Refund already requested");
+
+    // 4. Cannot execute before timelock expires
+    await viem.assertions.revertWith(escrow.write.refund(["project-1"], { account: client.account }), "Refund timelocked");
+
+    // 5. Advance time by 48 hours + 1 second
+    await testClient.increaseTime({ seconds: 48 * 3600 + 1 });
+    await testClient.mine({ blocks: 1 });
+
+    // 6. Outsider cannot execute client refund
     await viem.assertions.revertWith(escrow.write.refund(["project-1"], { account: outsider.account }), "Only client");
+
+    // 7. Client executes refund
     await escrow.write.refund(["project-1"], { account: client.account });
     assert.equal(await token.read.balanceOf([freelancer.account.address]), 100n);
     assert.equal(await token.read.balanceOf([client.account.address]), 200n);
+    assert.equal(await escrow.read.getBalance(["project-1"]), 0n);
+
+    // 8. Escrow is completed, cannot refund again
     await viem.assertions.revertWith(escrow.write.refund(["project-1"], { account: client.account }), "Escrow unavailable");
+  });
+
+  it("allows client to cancel a pending refund request", async () => {
+    const { client, escrow } = await fundedFixture();
+    const testClient = await viem.getTestClient();
+
+    await escrow.write.requestRefund(["project-1"], { account: client.account });
+    await escrow.write.cancelRefund(["project-1"], { account: client.account });
+
+    // Even after 48 hours, refund cannot execute because request was cancelled
+    await testClient.increaseTime({ seconds: 48 * 3600 + 1 });
+    await testClient.mine({ blocks: 1 });
+    await viem.assertions.revertWith(escrow.write.refund(["project-1"], { account: client.account }), "Refund not requested");
   });
 
   it("freezes a funded escrow and resolves the remaining balance only through the arbitrator", async () => {

@@ -15,6 +15,11 @@ exports.raiseDispute = async (req, res) => {
       return res.status(403).json({ message: "Only project participants can raise a dispute" });
     }
 
+    const existingDispute = await Dispute.findOne({ projectId, status: "pending" });
+    if (existingDispute) {
+      return res.status(409).json({ message: "A dispute is already pending for this project." });
+    }
+
     const dispute = await Dispute.create({
       projectId,
       raisedBy: req.user.id,

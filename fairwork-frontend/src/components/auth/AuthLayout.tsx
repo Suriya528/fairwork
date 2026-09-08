@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import type { ReactNode } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { FiX } from "react-icons/fi"
 import { LandingPage } from "@/pages/LandingPage"
 import { cn } from "@/lib/utils"
@@ -107,19 +107,19 @@ export function AuthLayout({
           {/* Legal Fineprint */}
           <footer className="mt-6 text-center text-[11px] leading-relaxed text-subtle font-mono">
             By continuing you agree to FairWork&apos;s{" "}
-            <a
-              href="#"
+            <Link
+              to="/terms"
               className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
             >
               Terms of Service
-            </a>{" "}
+            </Link>{" "}
             and{" "}
-            <a
-              href="#"
+            <Link
+              to="/privacy"
               className="text-muted underline-offset-2 transition-colors hover:text-foreground hover:underline"
             >
               Privacy Policy
-            </a>
+            </Link>
             .
           </footer>
         </div>

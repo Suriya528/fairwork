@@ -293,13 +293,13 @@ export function RegisterPage() {
               label={
                 <span className="text-xs">
                   I agree to the{" "}
-                  <a href="#" className="text-primary hover:underline font-semibold">
+                  <Link to="/terms" target="_blank" className="text-primary hover:underline font-semibold">
                     Terms of Service
-                  </a>{" "}
+                  </Link>{" "}
                   and{" "}
-                  <a href="#" className="text-primary hover:underline font-semibold">
+                  <Link to="/privacy" target="_blank" className="text-primary hover:underline font-semibold">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </span>
               }
               onChange={(e) => {

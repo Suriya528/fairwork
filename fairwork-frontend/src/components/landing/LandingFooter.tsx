@@ -26,11 +26,11 @@ const footerSections = [
     ],
   },
   {
-    title: "Platform & Portal",
+    title: "Platform & Legal",
     links: [
-      { label: "Sign In", href: "/login" },
-      { label: "Create Account", href: "/register" },
       { label: "Help Center", href: "/help" },
+      { label: "Terms of Service", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
       { label: "GitHub Repository", href: "https://github.com/Suriya528/fairwork" },
     ],
   },

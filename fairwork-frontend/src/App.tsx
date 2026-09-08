@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, lazy, Suspense } from "react"
 import { Navigate, Routes, Route } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
@@ -13,33 +13,47 @@ import { setupGlobalErrorListeners } from "@/lib/errorLogger"
 import { AiAssistantDrawer } from "@/components/ai/AiAssistantDrawer"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingFooter } from "@/components/landing/LandingFooter"
-import { DashboardPage } from "@/pages/DashboardPage"
-import { LandingPage } from "@/pages/LandingPage"
-import { AnalyticsPage } from "@/pages/AnalyticsPage"
-import { ProjectsPage } from "@/pages/ProjectsPage"
-import { CreateProjectPage } from "@/pages/CreateProjectPage"
-import { ProjectDetailPage } from "@/pages/ProjectDetailPage"
-import { MyProjectsPage } from "@/pages/MyProjectsPage"
-import { MyApplicationsPage } from "@/pages/MyApplicationsPage"
-import { ContractsPage } from "@/pages/ContractsPage"
-import { MilestonesPage } from "@/pages/MilestonesPage"
-import { EscrowPage } from "@/pages/EscrowPage"
-import { DisputesPage } from "@/pages/DisputesPage"
-import { ActivityPage } from "@/pages/ActivityPage"
-import { ProfilePage } from "@/pages/ProfilePage"
-import { WalletPage } from "@/pages/WalletPage"
-import { SettingsPage } from "@/pages/SettingsPage"
-import { NotificationsPage } from "@/pages/NotificationsPage"
-import { TransactionsPage } from "@/pages/TransactionsPage"
-import { HelpCenterPage } from "@/pages/HelpCenterPage"
-import { ChatPage } from "@/pages/ChatPage"
-import { AdminDashboardPage } from "@/pages/AdminDashboardPage"
-import { NotFoundPage } from "@/pages/NotFoundPage"
-import { LoginPage } from "@/pages/auth/LoginPage"
-import { RegisterPage } from "@/pages/auth/RegisterPage"
-import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
-import { AuthCallbackPage } from "@/pages/auth/AuthCallbackPage"
-import { SelectRolePage } from "@/pages/auth/SelectRolePage"
+
+// Dynamic code-split page imports (mapped for named exports)
+const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })))
+const LandingPage = lazy(() => import("@/pages/LandingPage").then((m) => ({ default: m.LandingPage })))
+const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })))
+const ProjectsPage = lazy(() => import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })))
+const CreateProjectPage = lazy(() => import("@/pages/CreateProjectPage").then((m) => ({ default: m.CreateProjectPage })))
+const ProjectDetailPage = lazy(() => import("@/pages/ProjectDetailPage").then((m) => ({ default: m.ProjectDetailPage })))
+const MyProjectsPage = lazy(() => import("@/pages/MyProjectsPage").then((m) => ({ default: m.MyProjectsPage })))
+const MyApplicationsPage = lazy(() => import("@/pages/MyApplicationsPage").then((m) => ({ default: m.MyApplicationsPage })))
+const ContractsPage = lazy(() => import("@/pages/ContractsPage").then((m) => ({ default: m.ContractsPage })))
+const MilestonesPage = lazy(() => import("@/pages/MilestonesPage").then((m) => ({ default: m.MilestonesPage })))
+const EscrowPage = lazy(() => import("@/pages/EscrowPage").then((m) => ({ default: m.EscrowPage })))
+const DisputesPage = lazy(() => import("@/pages/DisputesPage").then((m) => ({ default: m.DisputesPage })))
+const ActivityPage = lazy(() => import("@/pages/ActivityPage").then((m) => ({ default: m.ActivityPage })))
+const ProfilePage = lazy(() => import("@/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })))
+const WalletPage = lazy(() => import("@/pages/WalletPage").then((m) => ({ default: m.WalletPage })))
+const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })))
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })))
+const TransactionsPage = lazy(() => import("@/pages/TransactionsPage").then((m) => ({ default: m.TransactionsPage })))
+const HelpCenterPage = lazy(() => import("@/pages/HelpCenterPage").then((m) => ({ default: m.HelpCenterPage })))
+const ChatPage = lazy(() => import("@/pages/ChatPage").then((m) => ({ default: m.ChatPage })))
+const AdminDashboardPage = lazy(() => import("@/pages/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })))
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })))
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })))
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })))
+const VerifyEmailPage = lazy(() => import("@/pages/auth/VerifyEmailPage").then((m) => ({ default: m.VerifyEmailPage })))
+const AuthCallbackPage = lazy(() => import("@/pages/auth/AuthCallbackPage").then((m) => ({ default: m.AuthCallbackPage })))
+const SelectRolePage = lazy(() => import("@/pages/auth/SelectRolePage").then((m) => ({ default: m.SelectRolePage })))
+const TermsPage = lazy(() => import("@/pages/legal/TermsPage").then((m) => ({ default: m.TermsPage })))
+const PrivacyPage = lazy(() => import("@/pages/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })))
+
+function PageFallback() {
+  return (
+    <div className="flex h-[50vh] w-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  )
+}
 
 function RoleHome() {
   const { user } = useAuth()
@@ -93,7 +107,7 @@ function SmartHelpPage() {
 }
 
 /**
- * App root: global providers + the route table.
+ * App root: global providers + code-split route table.
  */
 export function App() {
   useEffect(() => {
@@ -109,55 +123,63 @@ export function App() {
               <WalletProvider>
                 <ScrollToTop />
                 <AiAssistantDrawer />
-                <Routes>
-                {/* Public landing page — visible to unauthenticated visitors */}
-                <Route index element={<PublicHome />} />
+                <Suspense fallback={<PageFallback />}>
+                  <Routes>
+                    {/* Public landing page — visible to unauthenticated visitors */}
+                    <Route index element={<PublicHome />} />
 
-                {/* Auth routes render standalone */}
-                <Route path="login" element={<LoginPage />} />
-                <Route path="register" element={<RegisterPage />} />
-                <Route path="forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="auth/callback" element={<AuthCallbackPage />} />
-                <Route path="auth/select-role" element={<SelectRolePage />} />
+                    {/* Auth routes render standalone */}
+                    <Route path="login" element={<LoginPage />} />
+                    <Route path="register" element={<RegisterPage />} />
+                    <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="reset-password" element={<ResetPasswordPage />} />
+                    <Route path="verify-email" element={<VerifyEmailPage />} />
+                    <Route path="auth/callback" element={<AuthCallbackPage />} />
+                    <Route path="auth/select-role" element={<SelectRolePage />} />
 
-                {/* Protected Application shell for authenticated users */}
-                <Route
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route path="dashboard" element={<RouteErrorBoundary featureName="Dashboard"><RoleHome /></RouteErrorBoundary>} />
-                  <Route path="analytics" element={<RouteErrorBoundary featureName="Analytics"><AnalyticsPage /></RouteErrorBoundary>} />
-                  <Route path="projects" element={<RouteErrorBoundary featureName="Projects"><ProjectsPage /></RouteErrorBoundary>} />
-                  <Route path="projects/new" element={<ProtectedRoute requiredRole="client"><RouteErrorBoundary featureName="Create Project"><CreateProjectPage /></RouteErrorBoundary></ProtectedRoute>} />
-                  <Route path="projects/mine" element={<RouteErrorBoundary featureName="My Projects"><MyProjectsPage /></RouteErrorBoundary>} />
-                  <Route path="applications" element={<ProtectedRoute requiredRole="freelancer"><RouteErrorBoundary featureName="Applications"><MyApplicationsPage /></RouteErrorBoundary></ProtectedRoute>} />
-                  <Route path="projects/:id" element={<RouteErrorBoundary featureName="Project Details"><ProjectDetailPage /></RouteErrorBoundary>} />
-                  <Route path="contracts" element={<RouteErrorBoundary featureName="Contracts"><ContractsPage /></RouteErrorBoundary>} />
-                  <Route path="milestones" element={<RouteErrorBoundary featureName="Milestones"><MilestonesPage /></RouteErrorBoundary>} />
-                  <Route path="escrow" element={<RouteErrorBoundary featureName="Escrow"><EscrowPage /></RouteErrorBoundary>} />
-                  <Route path="disputes" element={<RouteErrorBoundary featureName="Disputes"><DisputesPage /></RouteErrorBoundary>} />
-                  <Route path="activity" element={<RouteErrorBoundary featureName="Activity"><ActivityPage /></RouteErrorBoundary>} />
-                  <Route path="profile" element={<RouteErrorBoundary featureName="Profile"><ProfilePage /></RouteErrorBoundary>} />
-                  <Route path="wallet" element={<RouteErrorBoundary featureName="Wallet"><WalletPage /></RouteErrorBoundary>} />
-                  <Route path="settings" element={<RouteErrorBoundary featureName="Settings"><SettingsPage /></RouteErrorBoundary>} />
-                  <Route path="notifications" element={<RouteErrorBoundary featureName="Notifications"><NotificationsPage /></RouteErrorBoundary>} />
-                  <Route path="transactions" element={<RouteErrorBoundary featureName="Transactions"><TransactionsPage /></RouteErrorBoundary>} />
-                  <Route path="chat" element={<RouteErrorBoundary featureName="Chat"><ChatPage /></RouteErrorBoundary>} />
-                  <Route path="admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
-                  <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
-                </Route>
+                    {/* Public Legal Pages */}
+                    <Route path="terms" element={<TermsPage />} />
+                    <Route path="privacy" element={<PrivacyPage />} />
 
-                {/* Smart Help Center: authed visitors get app shell; guests get public landing shell */}
-                <Route path="help" element={<SmartHelpPage />} />
+                    {/* Protected Application shell for authenticated users */}
+                    <Route
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout />
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route path="dashboard" element={<RouteErrorBoundary featureName="Dashboard"><RoleHome /></RouteErrorBoundary>} />
+                      <Route path="analytics" element={<RouteErrorBoundary featureName="Analytics"><AnalyticsPage /></RouteErrorBoundary>} />
+                      <Route path="projects" element={<RouteErrorBoundary featureName="Projects"><ProjectsPage /></RouteErrorBoundary>} />
+                      <Route path="projects/new" element={<ProtectedRoute requiredRole="client"><RouteErrorBoundary featureName="Create Project"><CreateProjectPage /></RouteErrorBoundary></ProtectedRoute>} />
+                      <Route path="projects/mine" element={<RouteErrorBoundary featureName="My Projects"><MyProjectsPage /></RouteErrorBoundary>} />
+                      <Route path="applications" element={<ProtectedRoute requiredRole="freelancer"><RouteErrorBoundary featureName="Applications"><MyApplicationsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                      <Route path="projects/:id" element={<RouteErrorBoundary featureName="Project Details"><ProjectDetailPage /></RouteErrorBoundary>} />
+                      <Route path="contracts" element={<RouteErrorBoundary featureName="Contracts"><ContractsPage /></RouteErrorBoundary>} />
+                      <Route path="milestones" element={<RouteErrorBoundary featureName="Milestones"><MilestonesPage /></RouteErrorBoundary>} />
+                      <Route path="escrow" element={<RouteErrorBoundary featureName="Escrow"><EscrowPage /></RouteErrorBoundary>} />
+                      <Route path="disputes" element={<RouteErrorBoundary featureName="Disputes"><DisputesPage /></RouteErrorBoundary>} />
+                      <Route path="activity" element={<RouteErrorBoundary featureName="Activity"><ActivityPage /></RouteErrorBoundary>} />
+                      <Route path="profile" element={<RouteErrorBoundary featureName="Profile"><ProfilePage /></RouteErrorBoundary>} />
+                      <Route path="wallet" element={<RouteErrorBoundary featureName="Wallet"><WalletPage /></RouteErrorBoundary>} />
+                      <Route path="settings" element={<RouteErrorBoundary featureName="Settings"><SettingsPage /></RouteErrorBoundary>} />
+                      <Route path="notifications" element={<RouteErrorBoundary featureName="Notifications"><NotificationsPage /></RouteErrorBoundary>} />
+                      <Route path="transactions" element={<RouteErrorBoundary featureName="Transactions"><TransactionsPage /></RouteErrorBoundary>} />
+                      <Route path="chat" element={<RouteErrorBoundary featureName="Chat"><ChatPage /></RouteErrorBoundary>} />
+                      <Route path="admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
+                      <Route path="admin/*" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary featureName="Admin"><AdminDashboardPage /></RouteErrorBoundary></ProtectedRoute>} />
+                    </Route>
 
-                {/* Global 404 handler for all unknown routes */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </WalletProvider>
-          </AuthProvider>
+                    {/* Smart Help Center: authed visitors get app shell; guests get public landing shell */}
+                    <Route path="help" element={<SmartHelpPage />} />
+
+                    {/* Global 404 handler for all unknown routes */}
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </Suspense>
+              </WalletProvider>
+            </AuthProvider>
           </ToastProvider>
         </CurrencyProvider>
       </ThemeProvider>

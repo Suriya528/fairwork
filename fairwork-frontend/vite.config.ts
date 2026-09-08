@@ -13,4 +13,15 @@ export default defineConfig({
   server: {
     host: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-viem": ["viem"],
+          "vendor-charts": ["recharts"],
+        },
+      },
+    },
+  },
 })

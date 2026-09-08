@@ -5,6 +5,8 @@ const {
   getMe,
   verifyEmail,
   resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
   updateWallet,
   walletNonce,
   verifyWallet,
@@ -25,6 +27,8 @@ router.post("/login", authRateLimiter, login);
 router.get("/me", auth, getMe);
 router.get("/verify-email", verifyEmail);
 router.post("/resend-verification", authRateLimiter, resendVerificationEmail);
+router.post("/forgot-password", authRateLimiter, forgotPassword);
+router.post("/reset-password", authRateLimiter, resetPassword);
 router.put("/wallet", auth, updateWallet);
 router.post("/wallet/nonce", auth, walletNonce);
 router.post("/wallet/verify", auth, verifyWallet);

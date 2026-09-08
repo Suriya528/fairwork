@@ -14,6 +14,7 @@ import {
   FiCamera,
   FiImage,
   FiAlertTriangle,
+  FiMail,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -34,6 +35,7 @@ import { useAuth } from "@/context/AuthContext"
 import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { updateProfile, updatePreferences, type NotificationPreferences, type PortfolioItem } from "@/services/userApi"
 import { apiFetch } from "@/services/apiClient"
+import { resendVerificationEmail } from "@/services/authApi"
 
 export function SettingsPage() {
   const { user, token } = useAuth()
@@ -75,6 +77,29 @@ export function SettingsPage() {
   const [emailInput, setEmailInput] = useState(user?.email || "")
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailSuccess, setEmailSuccess] = useState("")
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
+
+  async function handleResendVerification() {
+    if (!user?.email || resendCooldown > 0) return
+    setResendingVerification(true)
+    setEmailSuccess("")
+    try {
+      await resendVerificationEmail(user.email)
+      setEmailSuccess(`Verification link dispatched to ${user.email}. Please check your inbox!`)
+      setResendCooldown(60)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend verification link")
+    } finally {
+      setResendingVerification(false)
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -349,6 +374,20 @@ export function SettingsPage() {
                   <p className="mt-1.5 leading-relaxed text-amber-200/90">
                     Your current account email address (<code className="font-mono text-amber-100 bg-amber-500/15 px-1.5 py-0.5 rounded">{user?.email}</code>) is unverified. Please enter your valid email address below and click <strong className="font-semibold text-amber-100">Update to Verify</strong> to receive security alerts and unlock full platform access.
                   </p>
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      loading={resendingVerification}
+                      disabled={resendCooldown > 0}
+                      onClick={handleResendVerification}
+                      className="text-xs h-8 bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 border border-amber-500/30"
+                    >
+                      <FiMail className="mr-1.5 h-3.5 w-3.5" />
+                      {resendCooldown > 0 ? `Resend link in ${resendCooldown}s` : "Resend Verification Link"}
+                    </Button>
+                  </div>
                 </div>
               )}
 

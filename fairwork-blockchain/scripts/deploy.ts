@@ -6,7 +6,9 @@ async function main() {
   const { viem } = await network.create();
   const [deployer] = await viem.getWalletClients();
   const deployerAddress = deployer.account.address;
-  console.log("Deployer / Arbitrator Address:", deployerAddress);
+  const arbitratorAddress = (process.env.ARBITRATOR_ADDRESS || deployerAddress) as `0x${string}`;
+  console.log("Deployer Address:", deployerAddress);
+  console.log("Configured Arbitrator Address:", arbitratorAddress);
 
   const escrow = await viem.deployContract("EscrowContract");
   console.log("EscrowContract deployed to:", escrow.address);
@@ -14,7 +16,7 @@ async function main() {
   const reputation = await viem.deployContract("ReputationContract");
   console.log("ReputationContract deployed to:", reputation.address);
 
-  const dispute = await viem.deployContract("DisputeContract", [escrow.address, deployerAddress]);
+  const dispute = await viem.deployContract("DisputeContract", [escrow.address, arbitratorAddress]);
   console.log("DisputeContract deployed to:", dispute.address);
 
   // Link DisputeContract to EscrowContract

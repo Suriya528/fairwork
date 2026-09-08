@@ -11,7 +11,7 @@ async function authenticate(req, res, next) {
     const claims = verifyAuthToken(authHeader);
 
     // DB lookup for current state — authorization is always derived from DB
-    const dbUser = await User.findById(claims.id).select("isSuspended suspendedReason role email authProvider isEmailVerified").lean();
+    const dbUser = await User.findById(claims.id).select("isSuspended suspendedReason role email authProvider isEmailVerified tokenVersion").lean();
     
     // Deleted-user guard
     if (!dbUser) {
@@ -28,11 +28,19 @@ async function authenticate(req, res, next) {
       });
     }
 
+    // Token version check: invalidate sessions issued before password change
+    const currentVersion = dbUser.tokenVersion || 0;
+    const tokenVersion = claims.tokenVersion;
+    if (tokenVersion === undefined ? currentVersion > 0 : tokenVersion < currentVersion) {
+      return res.status(401).json({ message: "Session expired. Please sign in again.", code: "SESSION_EXPIRED" });
+    }
+
     // Merge token claims with current DB role
     req.user = {
       id: claims.id,
       role: dbUser.role,  // Always from DB, never from token
       sessionId: claims.sessionId,
+      tokenVersion: currentVersion,
       exp: claims.exp,
     };
 

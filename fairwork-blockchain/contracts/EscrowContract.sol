@@ -17,11 +17,15 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
     }
     mapping(string => Escrow) public escrows;
     address public disputeContract;
+    uint256 public constant REFUND_DELAY = 48 hours;
+    mapping(string => uint256) public refundRequestedAt;
 
     event EscrowCreated(string indexed projectId, address indexed client, address indexed freelancer, address token, uint256 totalAmount);
     event EscrowFunded(string indexed projectId, address indexed client, uint256 amount);
     event MilestoneReleased(string indexed projectId, uint256 milestoneIndex, address indexed freelancer, uint256 amount);
     event EscrowRefunded(string indexed projectId, address indexed client, uint256 amount);
+    event RefundRequested(string indexed projectId, address indexed client, uint256 executeAfter);
+    event RefundCancelled(string indexed projectId);
     event EscrowDisputed(string indexed projectId);
     event DisputeResolved(string indexed projectId, address indexed winner, uint256 amount);
 
@@ -54,15 +58,48 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
         Escrow storage e = escrows[projectId];
         require(e.client != address(0), "Escrow missing"); require(msg.sender == e.client, "Only client"); require(e.isFunded, "Not funded"); require(!e.isDisputed && !e.isCompleted, "Escrow unavailable");
         require(index < e.milestones.length && !e.milestones[index].released, "Invalid milestone");
+        refundRequestedAt[projectId] = 0;
         Milestone storage m = e.milestones[index]; m.released = true; e.releasedAmount += m.amount; if (e.releasedAmount == e.totalAmount) e.isCompleted = true;
         IERC20(e.token).safeTransfer(e.freelancer, m.amount); emit MilestoneReleased(projectId, index, e.freelancer, m.amount);
     }
+    function requestRefund(string calldata projectId) external whenNotPaused {
+        Escrow storage e = escrows[projectId];
+        require(e.client != address(0), "Escrow missing");
+        require(msg.sender == e.client, "Only client");
+        require(e.isFunded && !e.isDisputed && !e.isCompleted, "Escrow unavailable");
+        require(refundRequestedAt[projectId] == 0, "Refund already requested");
+        refundRequestedAt[projectId] = block.timestamp;
+        emit RefundRequested(projectId, msg.sender, block.timestamp + REFUND_DELAY);
+    }
+    function cancelRefund(string calldata projectId) external whenNotPaused {
+        Escrow storage e = escrows[projectId];
+        require(e.client != address(0), "Escrow missing");
+        require(msg.sender == e.client, "Only client");
+        require(refundRequestedAt[projectId] != 0, "No refund requested");
+        refundRequestedAt[projectId] = 0;
+        emit RefundCancelled(projectId);
+    }
     function refund(string calldata projectId) external nonReentrant whenNotPaused {
-        Escrow storage e = escrows[projectId]; require(e.client != address(0), "Escrow missing"); require(msg.sender == e.client, "Only client"); require(e.isFunded && !e.isDisputed && !e.isCompleted, "Escrow unavailable");
-        uint256 amount = e.totalAmount - e.releasedAmount; e.isCompleted = true; IERC20(e.token).safeTransfer(e.client, amount); emit EscrowRefunded(projectId, e.client, amount);
+        Escrow storage e = escrows[projectId];
+        require(e.client != address(0), "Escrow missing");
+        require(msg.sender == e.client, "Only client");
+        require(e.isFunded && !e.isDisputed && !e.isCompleted, "Escrow unavailable");
+        require(refundRequestedAt[projectId] != 0, "Refund not requested");
+        require(block.timestamp >= refundRequestedAt[projectId] + REFUND_DELAY, "Refund timelocked");
+        refundRequestedAt[projectId] = 0;
+        uint256 amount = e.totalAmount - e.releasedAmount;
+        e.releasedAmount = e.totalAmount;
+        e.isCompleted = true;
+        IERC20(e.token).safeTransfer(e.client, amount);
+        emit EscrowRefunded(projectId, e.client, amount);
     }
     function markDisputed(string calldata projectId) external onlyDisputeContract whenNotPaused {
-        Escrow storage e = escrows[projectId]; require(e.client != address(0), "Escrow missing"); require(e.isFunded && !e.isCompleted && !e.isDisputed, "Escrow unavailable"); e.isDisputed = true; emit EscrowDisputed(projectId);
+        Escrow storage e = escrows[projectId];
+        require(e.client != address(0), "Escrow missing");
+        require(e.isFunded && !e.isCompleted && !e.isDisputed, "Escrow unavailable");
+        e.isDisputed = true;
+        refundRequestedAt[projectId] = 0;
+        emit EscrowDisputed(projectId);
     }
     function resolveDispute(string calldata projectId, address winner) external nonReentrant onlyDisputeContract whenNotPaused {
         Escrow storage e = escrows[projectId]; require(e.client != address(0), "Escrow missing"); require(e.isDisputed, "Not disputed"); require(winner == e.client || winner == e.freelancer, "Invalid winner");

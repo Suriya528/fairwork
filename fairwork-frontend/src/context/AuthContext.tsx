@@ -35,6 +35,7 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<AuthSession>
   logout: () => void
   updateWallet: (walletAddress: string) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -179,6 +180,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [token, user],
   )
 
+  const refreshUser = useCallback(async () => {
+    if (!token) return
+    try {
+      const freshUser = await getMe(token)
+      setUser(freshUser)
+      const stored = getStoredSession()
+      if (stored) {
+        updateStoredSession({ ...stored, user: freshUser })
+      }
+    } catch {
+      // Non-fatal if server temporarily unavailable
+    }
+  }, [token])
+
   return (
     <AuthContext.Provider
       value={{
@@ -190,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         updateWallet,
+        refreshUser,
       }}
     >
       {children}
