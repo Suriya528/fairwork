@@ -915,12 +915,49 @@ exports.replayQuarantineEvent = async (req, res) => {
 
     let replayResult = "SUCCESS";
     if (quarantineEvent.rawEventData) {
-      const outcome = await reconcileVerifiedBlockchainEvent({
-        verifiedEvent: quarantineEvent.rawEventData,
-        onChainEscrowState: quarantineEvent.rawEventData.onChainEscrowState,
-        expectedTokenAddress: process.env.CANONICAL_TOKEN_ADDRESS || quarantineEvent.rawEventData.tokenAddress,
-      });
-      replayResult = outcome;
+      let rawData = quarantineEvent.rawEventData;
+      if (typeof rawData === "string") {
+        try {
+          rawData = JSON.parse(rawData);
+        } catch {
+          // Keep as raw data
+        }
+      }
+
+      if (typeof rawData === "object" && rawData !== null) {
+        const eventName = rawData.eventName;
+        if (!eventName || eventName === "MilestoneReleased") {
+          const outcome = await reconcileVerifiedBlockchainEvent({
+            verifiedEvent: rawData,
+            onChainEscrowState: rawData.onChainEscrowState,
+            expectedTokenAddress: process.env.CANONICAL_TOKEN_ADDRESS || rawData.tokenAddress,
+          });
+          replayResult = outcome;
+        } else {
+          const eventHandlers = require("../services/eventHandlers");
+          const handlerFn = eventHandlers[`handle${eventName}`];
+          if (typeof handlerFn === "function") {
+            const session = await mongoose.startSession();
+            try {
+              session.startTransaction();
+              const outcome = await handlerFn({
+                verifiedEvent: rawData,
+                onChainEscrowState: rawData.onChainEscrowState,
+                session,
+              });
+              await session.commitTransaction();
+              replayResult = outcome;
+            } catch (handlerErr) {
+              if (session.inTransaction()) await session.abortTransaction();
+              throw handlerErr;
+            } finally {
+              await session.endSession();
+            }
+          } else {
+            replayResult = "MANUALLY_RECORDED";
+          }
+        }
+      }
     }
 
     quarantineEvent.resolved = true;

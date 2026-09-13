@@ -29,39 +29,36 @@ async function detectReorg({ publicClient, chainId, contractAddress, lastProcess
   }
 
   // 2. Mismatch → walk backwards to locate common ancestor
-  let currentBlockNum = lastProcessedBlock - 1;
+  const minSearchBlock = Math.max(0, lastProcessedBlock - MAX_REORG_DEPTH);
+  const checkpoints = await BlockCheckpoint.find({
+    chainId,
+    contractAddress: contractAddress.toLowerCase(),
+    blockNumber: { $lt: lastProcessedBlock, $gte: minSearchBlock },
+  }).sort({ blockNumber: -1 });
+
   let commonAncestorBlock = null;
-  let depth = 1;
+  let reorgDepth = 0;
 
-  while (depth <= MAX_REORG_DEPTH && currentBlockNum >= 0) {
-    const checkpoint = await BlockCheckpoint.findOne({
-      chainId,
-      contractAddress: contractAddress.toLowerCase(),
-      blockNumber: currentBlockNum,
-    });
-
-    if (!checkpoint) {
-      throw new Error(`REORG_HISTORY_UNAVAILABLE: BlockCheckpoint missing for block ${currentBlockNum}`);
-    }
-
-    const onChainBlock = await publicClient.getBlock({ blockNumber: BigInt(currentBlockNum) });
-    if (onChainBlock.hash.toLowerCase() === checkpoint.blockHash.toLowerCase()) {
-      commonAncestorBlock = currentBlockNum;
+  for (const checkpoint of checkpoints) {
+    const onChainBlock = await publicClient.getBlock({ blockNumber: BigInt(checkpoint.blockNumber) });
+    if (onChainBlock && onChainBlock.hash && onChainBlock.hash.toLowerCase() === checkpoint.blockHash.toLowerCase()) {
+      commonAncestorBlock = checkpoint.blockNumber;
+      reorgDepth = lastProcessedBlock - commonAncestorBlock;
       break;
     }
-
-    currentBlockNum--;
-    depth++;
   }
 
   if (commonAncestorBlock === null) {
+    if (!checkpoints || checkpoints.length === 0) {
+      throw new Error(`REORG_HISTORY_UNAVAILABLE: BlockCheckpoint missing for block ${lastProcessedBlock - 1}`);
+    }
     throw new Error(`REORG_EXCEEDS_MAX_DEPTH: Exceeded MAX_REORG_DEPTH (${MAX_REORG_DEPTH}) without finding common ancestor`);
   }
 
   return {
     hasReorg: true,
     commonAncestorBlock,
-    reorgDepth: depth,
+    reorgDepth,
     orphanedBlockStart: commonAncestorBlock + 1,
     orphanedBlockEnd: lastProcessedBlock,
   };

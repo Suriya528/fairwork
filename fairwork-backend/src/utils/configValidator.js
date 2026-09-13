@@ -33,12 +33,16 @@ function validateStartupConfig(env = process.env) {
   }
 
   const escrowAddr = env.CANONICAL_ESCROW_ADDRESS || env.ESCROW_CONTRACT_ADDRESS || env.ESCROW_ADDRESS;
-  if (escrowAddr && !isValidEthAddress(escrowAddr)) {
+  if (isProdOrStaging && !escrowAddr) {
+    errors.push("Escrow contract address is missing in staging/production");
+  } else if (escrowAddr && !isValidEthAddress(escrowAddr)) {
     errors.push(`Escrow address is invalid EVM address: ${escrowAddr}`);
   }
 
   const tokenAddr = env.CANONICAL_TOKEN_ADDRESS || env.TOKEN_CONTRACT_ADDRESS || env.USDC_ADDRESS;
-  if (tokenAddr && !isValidEthAddress(tokenAddr)) {
+  if (isProdOrStaging && !tokenAddr) {
+    errors.push("Token contract address is missing in staging/production");
+  } else if (tokenAddr && !isValidEthAddress(tokenAddr)) {
     errors.push(`Token address is invalid EVM address: ${tokenAddr}`);
   }
 

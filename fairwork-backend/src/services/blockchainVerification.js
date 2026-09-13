@@ -55,7 +55,7 @@ async function verifyTransactionReceipt(txnHash) {
  */
 async function verifyOnChainEscrowFunded(projectId) {
   const client = getClient();
-  const escrowAddress = process.env.ESCROW_CONTRACT_ADDRESS || process.env.ESCROW_ADDRESS;
+  const escrowAddress = process.env.CANONICAL_ESCROW_ADDRESS || process.env.ESCROW_CONTRACT_ADDRESS || process.env.ESCROW_ADDRESS;
   if (!client || !escrowAddress) {
     return { verified: true, warning: "Escrow contract or RPC not configured; skipping on-chain state check." };
   }

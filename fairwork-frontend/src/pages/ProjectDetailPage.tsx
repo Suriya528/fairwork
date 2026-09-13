@@ -825,8 +825,13 @@ export function ProjectDetailPage() {
       )
       setActionState("Syncing escrow status with server...")
       const response = await depositEscrow(project.id, fundTxHash, token)
-      setProject((prev) => (prev ? { ...prev, escrowFunded: response.project.escrowFunded, escrowTxnHash: fundTxHash } : prev))
-      setActionState("Escrow funded successfully!")
+      if (response?.project) {
+        setProject((prev) => (prev ? { ...prev, escrowFunded: response.project.escrowFunded, escrowTxnHash: fundTxHash } : prev))
+        setActionState("Escrow funded successfully!")
+      } else {
+        setActionState("Transaction confirmed on-chain! Finalizing with blockchain indexer...")
+        setTimeout(() => loadProject(), 4000)
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to fund escrow.")
     } finally {
@@ -869,20 +874,25 @@ export function ProjectDetailPage() {
       const releaseTxHash = await releaseEscrowMilestone(project.id, index, user.walletAddress)
       setActionState("Syncing payment release with server...")
       const response = await releaseEscrowPayment(project.id, index, releaseTxHash, token)
-      setProject((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          milestones: (response.project.milestones || []).map((m, i) => ({
-            ...(prev.milestones[i] || m),
-            paymentReleased: m.paymentReleased,
-            status: m.status as any,
-          })),
-          escrowCompleted: response.project.escrowCompleted,
-          status: (response.project.status as any) || prev.status,
-        }
-      })
-      setActionState("Milestone released successfully!")
+      if (response?.project) {
+        setProject((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            milestones: (response.project.milestones || []).map((m, i) => ({
+              ...(prev.milestones[i] || m),
+              paymentReleased: m.paymentReleased,
+              status: m.status as any,
+            })),
+            escrowCompleted: response.project.escrowCompleted,
+            status: (response.project.status as any) || prev.status,
+          }
+        })
+        setActionState("Milestone released successfully!")
+      } else {
+        setActionState("Transaction confirmed on-chain! Finalizing milestone with blockchain indexer...")
+        setTimeout(() => loadProject(), 4000)
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to release milestone.")
     } finally {

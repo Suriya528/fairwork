@@ -17,7 +17,26 @@ const {
   decodeRawLogToVerifiedEvent,
   reconcileVerifiedBlockchainEvent,
   getResolvedContractAddress,
+  buildBlockchainEventKey,
 } = require("./reconciliationService");
+const mongoose = require("mongoose");
+const {
+  handleEscrowFunded,
+  handleEscrowRefunded,
+  handleRefundRequested,
+  handleRefundCancelled,
+  handleEscrowDisputed,
+  handleDisputeResolved,
+} = require("./eventHandlers");
+
+function safeStringify(val) {
+  if (val === undefined || val === null) return null;
+  try {
+    return JSON.stringify(val, (key, value) => typeof value === "bigint" ? value.toString() : value);
+  } catch {
+    return String(val);
+  }
+}
 
 const listenerStatus = {
   started: false,
@@ -202,6 +221,14 @@ async function startBlockchainListener(config = {}) {
 
       // Process each log
       for (const rawLog of logs) {
+        if (rawLog.blockNumber && rawLog.blockHash) {
+          await BlockCheckpoint.updateOne(
+            { chainId, contractAddress: escrowAddress.toLowerCase(), blockNumber: Number(rawLog.blockNumber) },
+            { $set: { blockHash: rawLog.blockHash.toLowerCase() } },
+            { upsert: true }
+          );
+        }
+
         let verifiedEvent;
         try {
           verifiedEvent = decodeRawLogToVerifiedEvent({
@@ -211,11 +238,20 @@ async function startBlockchainListener(config = {}) {
           });
         } catch (decodeErr) {
           // Quarantine malformed events
-          await QuarantineEvent.create({
-            category: "DECODE_FAILURE",
-            errorMessage: decodeErr.message,
-            rawEventData: JSON.stringify(rawLog),
-          });
+          try {
+            await QuarantineEvent.create({
+              category: "DECODE_FAILURE",
+              chainId,
+              contractAddress: escrowAddress.toLowerCase(),
+              blockNumber: rawLog?.blockNumber ? Number(rawLog.blockNumber) : null,
+              transactionHash: rawLog?.transactionHash ? String(rawLog.transactionHash).toLowerCase() : null,
+              logIndex: rawLog?.logIndex !== undefined && rawLog?.logIndex !== null ? Number(rawLog.logIndex) : null,
+              errorMessage: decodeErr.message,
+              rawEventData: safeStringify(rawLog),
+            });
+          } catch (qErr) {
+            logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent for DECODE_FAILURE:`, qErr.message);
+          }
           continue;
         }
 
@@ -259,11 +295,21 @@ async function startBlockchainListener(config = {}) {
               completed: Boolean(escrowData[7]),
             };
           } catch (readErr) {
-            await QuarantineEvent.create({
-              category: "ON_CHAIN_READ_FAILURE",
-              errorMessage: readErr.message,
-              rawEventData: JSON.stringify(verifiedEvent),
-            });
+            try {
+              await QuarantineEvent.create({
+                category: "ON_CHAIN_READ_FAILURE",
+                chainId,
+                contractAddress: escrowAddress.toLowerCase(),
+                blockNumber: verifiedEvent.blockNumber,
+                transactionHash: verifiedEvent.transactionHash,
+                logIndex: verifiedEvent.logIndex,
+                errorMessage: readErr.message,
+                stackTrace: readErr.stack,
+                rawEventData: safeStringify(verifiedEvent),
+              });
+            } catch (qErr) {
+              logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent for ON_CHAIN_READ_FAILURE:`, qErr.message);
+            }
             continue;
           }
         }
@@ -282,9 +328,6 @@ async function startBlockchainListener(config = {}) {
               },
             });
           } else {
-            const { handleEscrowFunded, handleEscrowRefunded, handleRefundRequested, handleRefundCancelled, handleEscrowDisputed, handleDisputeResolved } = require('./eventHandlers');
-            const mongoose = require("mongoose");
-            
             const session = await mongoose.startSession();
             try {
               session.startTransaction();
@@ -312,6 +355,27 @@ async function startBlockchainListener(config = {}) {
             return;
           }
           logger.error(`[Indexer ${podId}] Reconciliation error for event ${verifiedEvent.transactionHash}:${verifiedEvent.logIndex}:`, reconcileErr.message);
+          try {
+            await QuarantineEvent.create({
+              category: "BUSINESS_STATE_CONFLICT",
+              sourceEventKey: verifiedEvent ? buildBlockchainEventKey({
+                chainId,
+                contractAddress: escrowAddress,
+                transactionHash: verifiedEvent.transactionHash,
+                logIndex: verifiedEvent.logIndex,
+              }) : null,
+              chainId,
+              contractAddress: escrowAddress.toLowerCase(),
+              blockNumber: verifiedEvent?.blockNumber,
+              transactionHash: verifiedEvent?.transactionHash,
+              logIndex: verifiedEvent?.logIndex,
+              rawEventData: safeStringify(verifiedEvent),
+              errorMessage: reconcileErr.message,
+              stackTrace: reconcileErr.stack,
+            });
+          } catch (qErr) {
+            logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent:`, qErr.message);
+          }
         }
       }
 
@@ -344,18 +408,22 @@ async function startBlockchainListener(config = {}) {
         listenerStatus.healthy = false;
         listenerStatus.halted = true;
         logger.error(`CRITICAL INDEXER HALT: ${err.message}`);
-        await QuarantineEvent.create({
-          category: "OPERATOR_REVIEW",
-          errorMessage: err.message,
-          stackTrace: err.stack,
-        });
+        try {
+          await QuarantineEvent.create({
+            category: "OPERATOR_REVIEW",
+            errorMessage: err.message,
+            stackTrace: err.stack,
+          });
+        } catch (qErr) {
+          logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent:`, qErr.message);
+        }
       } else {
         logger.error(`[Indexer ${podId}] Error in loop:`, err.message);
       }
     }
 
     // Schedule next iteration
-    if (!shuttingDown) {
+    if (!shuttingDown && !listenerStatus.halted) {
       pollTimeoutId = setTimeout(poll, 15000);
     } else {
       shutdownResolve();

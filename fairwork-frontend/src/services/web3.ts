@@ -1,5 +1,5 @@
 import { createPublicClient, createWalletClient, custom, formatUnits, http, parseUnits, type Chain } from "viem"
-import { sepolia, mainnet, polygon, base, arbitrum } from "viem/chains"
+import { sepolia, mainnet, polygon, base, arbitrum, optimism } from "viem/chains"
 
 const SUPPORTED_CHAINS: Record<number, Chain> = {
   [sepolia.id]: sepolia,
@@ -7,6 +7,7 @@ const SUPPORTED_CHAINS: Record<number, Chain> = {
   [polygon.id]: polygon,
   [base.id]: base,
   [arbitrum.id]: arbitrum,
+  [optimism.id]: optimism,
 }
 
 const configuredChainId = Number(import.meta.env.VITE_CHAIN_ID || 11155111)
@@ -160,7 +161,7 @@ export async function fundEscrow(
 
   if (rawBalance < total) {
     throw new Error(
-      `Insufficient ${symbol} token balance on Sepolia testnet. Connected wallet (${account}) has ${formattedBalance} ${symbol}, but project requires ${formattedRequired} ${symbol}. Note: Sepolia ETH is used for gas fees and cannot be used as ${symbol} escrow tokens.`
+      `Insufficient ${symbol} token balance on ${targetChain.name}. Connected wallet (${account}) has ${formattedBalance} ${symbol}, but project requires ${formattedRequired} ${symbol}. Note: ${targetChain.nativeCurrency.symbol} is used for gas fees and cannot be used as ${symbol} escrow tokens.`
     )
   }
 
