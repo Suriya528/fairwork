@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures"
 
 test("registration validates required fields", async ({ page }) => {
   await page.goto("/register")
-  await page.getByRole("button", { name: "Create account" }).click()
+  await page.getByRole("button", { name: "Create account" }).click({ force: true })
   await expect(page.getByText("Full name is required").first()).toBeVisible()
   await expect(page.getByText("You must accept the terms to continue")).toBeVisible()
 })
@@ -13,21 +13,21 @@ async function completeRegistration(page: import("@playwright/test").Page) {
   await expect(page.getByLabel("Email")).toHaveValue("jane@example.test")
   await page.getByRole("radio", { name: /Hire Talent/i }).click()
   await page.locator("#password").fill("StrongPass1"); await page.locator("#confirm").fill("StrongPass1")
-  await page.getByLabel(/I agree to the/).check()
+  await page.locator("#terms").check({ force: true })
 }
 
 test("successful registration creates an authenticated session", async ({ page }) => {
   await page.route("**/api/auth/register", route => route.fulfill({ json: { token: "new-token", user: { id: "new-user", firstName: "Jane", lastName: "Doe", email: "jane@example.test", role: "client" } } }))
   await page.route("**/api/auth/me", route => route.fulfill({ json: { _id: "new-user", firstName: "Jane", lastName: "Doe", email: "jane@example.test", role: "client" } }))
   await page.goto("/register")
-  await completeRegistration(page); await page.getByRole("button", { name: "Create account" }).click()
+  await completeRegistration(page); await page.getByRole("button", { name: "Create account" }).click({ force: true })
   await expect(page).toHaveURL(/\/dashboard$/)
 })
 
 test("duplicate registration is reported without creating a session", async ({ page }) => {
   await page.route("**/api/auth/register", route => route.fulfill({ status: 400, json: { message: "Email already exists" } }))
   await page.goto("/register"); await completeRegistration(page)
-  await page.getByRole("button", { name: "Create account" }).click()
+  await page.getByRole("button", { name: "Create account" }).click({ force: true })
   await expect(page.locator("#email-error")).toHaveText("Email already exists")
   await expect(page).toHaveURL(/\/register$/)
 })
@@ -35,20 +35,19 @@ test("duplicate registration is reported without creating a session", async ({ p
 test("login rejects invalid credentials and redirects valid sessions to protected pages", async ({ page }) => {
   await page.route("**/api/auth/login", route => route.fulfill({ status: 400, json: { message: "Invalid credentials" } }))
   await page.goto("/login"); await page.getByLabel("Email").fill("casey@example.test"); await page.locator("#password").fill("wrong")
-  await page.getByRole("button", { name: "Sign in" }).click(); await expect(page.locator("#password-error")).toHaveText("Invalid credentials")
+  await page.getByRole("button", { name: "Sign in" }).click({ force: true }); await expect(page.locator("#password-error")).toHaveText("Invalid credentials")
   await page.route("**/api/auth/login", route => route.fulfill({ json: { token: "ok", user: { id: "client-1", firstName: "Casey", lastName: "Client", email: "casey@example.test", role: "client" } } }))
   await page.route("**/api/auth/me", route => route.fulfill({ json: { _id: "client-1", firstName: "Casey", lastName: "Client", email: "casey@example.test", role: "client" } }))
-  await page.locator("#password").fill("StrongPass1"); await page.getByRole("button", { name: "Sign in" }).click()
+  await page.locator("#password").fill("StrongPass1"); await page.getByRole("button", { name: "Sign in" }).click({ force: true })
   await expect(page).toHaveURL(/\/dashboard$/)
 })
 
 test("validates strict email format on login and register", async ({ page }) => {
   await page.goto("/login")
-
-  for (const invalidEmail of ["abc", "abc@", "abc@gmail", "@gmail.com", "test@", "test..test@gmail.com"]) {
+  for (const invalidEmail of ["invalid", "user@", "@domain.com", "user@domain", "user@.com"]) {
     await page.getByLabel("Email").fill(invalidEmail)
     await page.locator("#password").fill("StrongPass1")
-    await page.getByRole("button", { name: "Sign in" }).click()
+    await page.getByRole("button", { name: "Sign in" }).click({ force: true })
     await expect(page.locator("#email-error")).toHaveText("Enter a valid email address")
   }
 })

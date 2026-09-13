@@ -1,5 +1,16 @@
-import { createPublicClient, createWalletClient, custom, formatUnits, http, parseUnits } from "viem"
-import { sepolia } from "viem/chains"
+import { createPublicClient, createWalletClient, custom, formatUnits, http, parseUnits, type Chain } from "viem"
+import { sepolia, mainnet, polygon, base, arbitrum } from "viem/chains"
+
+const SUPPORTED_CHAINS: Record<number, Chain> = {
+  [sepolia.id]: sepolia,
+  [mainnet.id]: mainnet,
+  [polygon.id]: polygon,
+  [base.id]: base,
+  [arbitrum.id]: arbitrum,
+}
+
+const configuredChainId = Number(import.meta.env.VITE_CHAIN_ID || 11155111)
+export const targetChain: Chain = SUPPORTED_CHAINS[configuredChainId] || sepolia
 
 /* ────────────────────────────────────────────────────────────
  * Blockchain Configuration — Environment-Only Resolution
@@ -11,7 +22,7 @@ import { sepolia } from "viem/chains"
  *   VITE_ESCROW_CONTRACT_ADDRESS   ← VITE_ESCROW_ADDRESS
  *   VITE_DISPUTE_CONTRACT_ADDRESS  ← VITE_DISPUTE_ADDRESS
  *   VITE_USDC_ADDRESS              ← VITE_TOKEN_ADDRESS
- *   VITE_SEPOLIA_RPC_URL           (no alias)
+ *   VITE_RPC_URL / VITE_SEPOLIA_RPC_URL
  * ──────────────────────────────────────────────────────────── */
 
 function resolveAddressEnv(canonicalKey: string, aliasKey: string): `0x${string}` | undefined {
@@ -32,9 +43,9 @@ export const escrowAddress = resolveAddressEnv("VITE_ESCROW_CONTRACT_ADDRESS", "
 export const disputeAddress = resolveAddressEnv("VITE_DISPUTE_CONTRACT_ADDRESS", "VITE_DISPUTE_ADDRESS")
 export const usdcAddress = resolveAddressEnv("VITE_USDC_ADDRESS", "VITE_TOKEN_ADDRESS")
 
-const sepoliaRpcUrl = import.meta.env.VITE_SEPOLIA_RPC_URL as string | undefined
-export const publicClient = sepoliaRpcUrl
-  ? createPublicClient({ chain: sepolia, transport: http(sepoliaRpcUrl) })
+const rpcUrl = (import.meta.env.VITE_RPC_URL || import.meta.env.VITE_SEPOLIA_RPC_URL) as string | undefined
+export const publicClient = rpcUrl
+  ? createPublicClient({ chain: targetChain, transport: http(rpcUrl) })
   : undefined
 
 export const ERC20_ABI = [
@@ -58,9 +69,9 @@ export const DISPUTE_ABI = [
 
 export async function connectWallet() {
   if (typeof window === "undefined" || !window.ethereum) throw new Error("No browser wallet was found.")
-  const wallet = createWalletClient({ chain: sepolia, transport: custom(window.ethereum) })
+  const wallet = createWalletClient({ chain: targetChain, transport: custom(window.ethereum) })
   const [account] = await wallet.requestAddresses()
-  if ((await wallet.getChainId()) !== sepolia.id) await wallet.switchChain({ id: sepolia.id })
+  if ((await wallet.getChainId()) !== targetChain.id) await wallet.switchChain({ id: targetChain.id })
   return { wallet, account }
 }
 
@@ -70,7 +81,7 @@ export async function connectWallet() {
  */
 function configured() {
   const missing: string[] = []
-  if (!publicClient) missing.push("VITE_SEPOLIA_RPC_URL")
+  if (!publicClient) missing.push("VITE_RPC_URL (or VITE_SEPOLIA_RPC_URL)")
   if (!escrowAddress) missing.push("VITE_ESCROW_CONTRACT_ADDRESS")
   if (!disputeAddress) missing.push("VITE_DISPUTE_CONTRACT_ADDRESS")
   if (!usdcAddress) missing.push("VITE_USDC_ADDRESS")

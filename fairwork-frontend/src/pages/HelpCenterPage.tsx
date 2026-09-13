@@ -47,7 +47,7 @@ export function HelpCenterPage() {
           <Link
             to="/"
             className="inline-flex items-center gap-1.5 font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md py-0.5"
-            aria-label="Return to Home"
+            aria-label="Return to FairWork Homepage"
           >
             <FiArrowLeft className="h-3.5 w-3.5" aria-hidden />
             <span>Home</span>

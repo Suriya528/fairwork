@@ -3,6 +3,18 @@ import { test, expect } from "@playwright/test"
 test.setTimeout(90000)
 
 test("Contract generation, detailed legal document view, and dual signature flow", async ({ request, page }) => {
+  // Gracefully skip if backend is not running
+  try {
+    const health = await request.get("http://localhost:5000/health", { timeout: 2000 })
+    if (health.status() !== 200) {
+      test.skip(true, "Backend server at http://localhost:5000 is not running")
+      return
+    }
+  } catch {
+    test.skip(true, "Backend server at http://localhost:5000 is not running")
+    return
+  }
+
   const timestamp = Date.now()
   const clientEmail = `client_contract_${timestamp}@example.test`
   const freelancerEmail = `freelancer_contract_${timestamp}@example.test`

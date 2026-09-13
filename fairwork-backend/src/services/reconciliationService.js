@@ -585,6 +585,34 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
 
+    let verifiedEvent = null;
+    let onChainEscrowState = null;
+    const chainId = Number(process.env.CHAIN_ID || 11155111);
+
+    if (receipt && receipt.logs && receipt.logs.length > 0) {
+      for (const log of receipt.logs) {
+        if (!escrowAddress || (log.address && log.address.toLowerCase() === escrowAddress.toLowerCase())) {
+          try {
+            const decoded = decodeRawLogToVerifiedEvent(log, {
+              expectedChainId: chainId,
+              expectedEscrowAddress: escrowAddress,
+            });
+            if (
+              decoded &&
+              decoded.eventName === 'MilestoneReleased' &&
+              String(decoded.projectId) === String(projectId) &&
+              Number(decoded.milestoneIndex) === Number(milestoneIndex)
+            ) {
+              verifiedEvent = decoded;
+              break;
+            }
+          } catch {
+            // ignore non-matching log
+          }
+        }
+      }
+    }
+
     // Verify on-chain milestone state directly
     if (escrowAddress) {
       const milestoneData = await publicClient.readContract({
@@ -602,6 +630,40 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
       if (!isReleased) {
         throw new Error("MILESTONE_NOT_RELEASED_ON_CHAIN: Escrow contract indicates milestone is not yet released.");
       }
+
+      try {
+        const escrowData = await publicClient.readContract({
+          address: escrowAddress,
+          abi: [{
+            type: "function", name: "escrows", stateMutability: "view",
+            inputs: [{ type: "string", name: "projectId" }],
+            outputs: [
+              { type: "address", name: "client" },
+              { type: "address", name: "freelancer" },
+              { type: "address", name: "token" },
+              { type: "uint256", name: "totalAmount" },
+              { type: "uint256", name: "releasedAmount" },
+              { type: "bool", name: "isFunded" },
+              { type: "bool", name: "isDisputed" },
+              { type: "bool", name: "completed" },
+            ],
+          }],
+          functionName: "escrows",
+          args: [projectId],
+        });
+        onChainEscrowState = {
+          client: escrowData[0],
+          freelancer: escrowData[1],
+          token: escrowData[2],
+          totalBudget: escrowData[3],
+          releasedAmount: escrowData[4],
+          funded: Boolean(escrowData[5]),
+          isDisputed: Boolean(escrowData[6]),
+          completed: Boolean(escrowData[7]),
+        };
+      } catch {
+        // Fallback if full escrow struct read fails
+      }
     }
   } catch (rpcErr) {
     if (rpcErr.message && (
@@ -617,34 +679,53 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     }
   }
 
-  // Phase 2: ACID mutation with CAS predicate
+  // Phase 2: ACID mutation with CAS predicate and reorg-traceable SettlementEvent
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
 
-    const updateFields = {
-      [`milestones.${milestoneIndex}.paymentReleased`]: true,
-      [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
-      [`milestones.${milestoneIndex}.status`]: 'completed',
-      [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
-    };
+    if (verifiedEvent && onChainEscrowState) {
+      await reconcileVerifiedBlockchainEvent({
+        verifiedEvent,
+        onChainEscrowState,
+        expectedTokenAddress: onChainEscrowState.token,
+        externalSession: session,
+      });
 
-    const updateResult = await Project.updateOne(
-      { _id: projectId, [`milestones.${milestoneIndex}.paymentReleased`]: false },
-      { $set: updateFields },
-      { session }
-    );
+      await Project.updateOne(
+        { _id: projectId },
+        {
+          $set: {
+            [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
+            [`milestones.${milestoneIndex}.status`]: 'completed',
+            [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
+          },
+        },
+        { session }
+      );
+    } else {
+      const updateFields = {
+        [`milestones.${milestoneIndex}.paymentReleased`]: true,
+        [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
+        [`milestones.${milestoneIndex}.status`]: 'completed',
+        [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
+      };
 
-    if (updateResult.modifiedCount === 1) {
-      // Check if all milestones are now released
-      const updated = await Project.findById(projectId).session(session);
-      if (updated && updated.milestones.every(m => m.paymentReleased)) {
-        await Project.updateOne(
-          { _id: projectId },
-          { $set: { status: 'completed', escrowCompleted: true } },
-          { session }
-        );
-      }
+      await Project.updateOne(
+        { _id: projectId, [`milestones.${milestoneIndex}.paymentReleased`]: false },
+        { $set: updateFields },
+        { session }
+      );
+    }
+
+    // Check if all milestones are now released
+    const updated = await Project.findById(projectId).session(session);
+    if (updated && updated.milestones.every(m => m.paymentReleased)) {
+      await Project.updateOne(
+        { _id: projectId },
+        { $set: { status: 'completed', escrowCompleted: true } },
+        { session }
+      );
     }
 
     await session.commitTransaction();

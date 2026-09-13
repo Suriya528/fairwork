@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-fairwork_admin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-changeme_in_production}
@@ -14,16 +14,8 @@ services:
       - mongo_data:/data/db
     healthcheck:
       test: >
-        mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "
-          try {
-            rs.status().ok
-          } catch (e) {
-            rs.initiate({
-              _id: 'rs0',
-              members: [{ _id: 0, host: '127.0.0.1:27017' }]
-            }).ok
-          }
-        " || exit 1
+        mongosh -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "rs.status().ok" ||
+        mongosh --eval "try { rs.status().ok } catch(e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: '127.0.0.1:27017'}]}).ok }" || exit 1
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,7 +28,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -55,17 +47,28 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=5000
       - MONGO_URI=mongodb://${MONGO_ROOT_USER:-fairwork_admin}:${MONGO_ROOT_PASSWORD:-changeme_in_production}@mongo:27017/fairwork?replicaSet=rs0&authSource=admin
       - REDIS_URL=redis://redis:6379
-      - CLIENT_URL=http://localhost:3000
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:3000}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:5000}
       - JWT_SECRET=${JWT_SECRET:-fairwork_production_jwt_secret_key_minimum_32_chars}
+      - JWT_ISSUER=${JWT_ISSUER:-fairwork-api}
+      - JWT_AUDIENCE=${JWT_AUDIENCE:-fairwork-client}
       - RPC_URL=${RPC_URL:-https://rpc.sepolia.org}
+      - SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL:-https://rpc.sepolia.org}
       - CHAIN_ID=${CHAIN_ID:-11155111}
       - CANONICAL_ESCROW_ADDRESS=${CANONICAL_ESCROW_ADDRESS:-0x7d51B87Db4Df857cdd76ad63A9ace7b5C5599385}
       - CANONICAL_TOKEN_ADDRESS=${CANONICAL_TOKEN_ADDRESS:-0xf21bdF6737a3009359f9EC1fA515e6d74702f575}
+      - DISPUTE_CONTRACT_ADDRESS=${DISPUTE_CONTRACT_ADDRESS:-0x8ddbfe20695a1ddf8488ab80b443574c28024962}
+      - REPUTATION_CONTRACT_ADDRESS=${REPUTATION_CONTRACT_ADDRESS:-0x53b26eda403333c10f7a78c6e85b5a1f920b7ad3}
       - START_BLOCK=${START_BLOCK:-7728800}
+      - EXPECTED_ESCROW_BYTECODE_HASH=${EXPECTED_ESCROW_BYTECODE_HASH:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
     depends_on:
       mongo:
         condition: service_healthy
@@ -84,10 +87,16 @@ services:
       context: ./fairwork-frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:5000/api
-        - VITE_CHAIN_ID=11155111
-        - VITE_ESCROW_ADDRESS=0x7d51B87Db4Df857cdd76ad63A9ace7b5C5599385
-        - VITE_USDC_ADDRESS=0xf21bdF6737a3009359f9EC1fA515e6d74702f575
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000/api}
+        - VITE_CHAIN_ID=${CHAIN_ID:-11155111}
+        - VITE_RPC_URL=${RPC_URL:-https://rpc.sepolia.org}
+        - VITE_SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL:-https://rpc.sepolia.org}
+        - VITE_ESCROW_CONTRACT_ADDRESS=${CANONICAL_ESCROW_ADDRESS:-0x7d51B87Db4Df857cdd76ad63A9ace7b5C5599385}
+        - VITE_ESCROW_ADDRESS=${CANONICAL_ESCROW_ADDRESS:-0x7d51B87Db4Df857cdd76ad63A9ace7b5C5599385}
+        - VITE_DISPUTE_CONTRACT_ADDRESS=${DISPUTE_CONTRACT_ADDRESS:-0x8ddbfe20695a1ddf8488ab80b443574c28024962}
+        - VITE_DISPUTE_ADDRESS=${DISPUTE_CONTRACT_ADDRESS:-0x8ddbfe20695a1ddf8488ab80b443574c28024962}
+        - VITE_USDC_ADDRESS=${CANONICAL_TOKEN_ADDRESS:-0xf21bdF6737a3009359f9EC1fA515e6d74702f575}
+        - VITE_TOKEN_ADDRESS=${CANONICAL_TOKEN_ADDRESS:-0xf21bdF6737a3009359f9EC1fA515e6d74702f575}
     container_name: fairwork-frontend
     restart: unless-stopped
     ports:

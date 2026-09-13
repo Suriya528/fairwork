@@ -32,7 +32,6 @@ jobs:
       - name: Security Audit
         working-directory: ./fairwork-backend
         run: npm audit --audit-level=high
-        continue-on-error: true
 
   frontend-gate:
     name: Frontend Typecheck & Build Gate
@@ -63,7 +62,6 @@ jobs:
       - name: Security Audit
         working-directory: ./fairwork-frontend
         run: npm audit --audit-level=high
-        continue-on-error: true
 
   blockchain-gate:
     name: Smart Contract Compile & Test Gate

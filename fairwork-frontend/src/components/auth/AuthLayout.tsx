@@ -56,7 +56,7 @@ export function AuthLayout({
 
       {/* FOCUSED AUTHENTICATION OVERLAY & MODAL SURFACE (Zero blur) */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-overlay animate-fade-in"
+        className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto bg-overlay animate-fade-in"
         onClick={(e) => {
           if (e.target === e.currentTarget) {
             handleClose()
@@ -68,7 +68,7 @@ export function AuthLayout({
           aria-modal="true"
           aria-labelledby="auth-modal-title"
           className={cn(
-            "relative w-full max-w-md my-auto rounded-2xl border border-border-strong bg-surface p-6 sm:p-8 shadow-2xl animate-slide-up",
+            "relative w-full max-w-md my-4 sm:my-auto rounded-2xl border border-border-strong bg-surface p-6 sm:p-8 shadow-2xl animate-slide-up",
           )}
         >
           {/* Top Close Button (×) */}
