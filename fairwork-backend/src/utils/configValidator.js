@@ -32,12 +32,14 @@ function validateStartupConfig(env = process.env) {
     errors.push("CHAIN_ID must be numeric");
   }
 
-  if (env.ESCROW_CONTRACT_ADDRESS && !isValidEthAddress(env.ESCROW_CONTRACT_ADDRESS)) {
-    errors.push(`ESCROW_CONTRACT_ADDRESS is invalid EVM address: ${env.ESCROW_CONTRACT_ADDRESS}`);
+  const escrowAddr = env.CANONICAL_ESCROW_ADDRESS || env.ESCROW_CONTRACT_ADDRESS || env.ESCROW_ADDRESS;
+  if (escrowAddr && !isValidEthAddress(escrowAddr)) {
+    errors.push(`Escrow address is invalid EVM address: ${escrowAddr}`);
   }
 
-  if (env.TOKEN_CONTRACT_ADDRESS && !isValidEthAddress(env.TOKEN_CONTRACT_ADDRESS)) {
-    errors.push(`TOKEN_CONTRACT_ADDRESS is invalid EVM address: ${env.TOKEN_CONTRACT_ADDRESS}`);
+  const tokenAddr = env.CANONICAL_TOKEN_ADDRESS || env.TOKEN_CONTRACT_ADDRESS || env.USDC_ADDRESS;
+  if (tokenAddr && !isValidEthAddress(tokenAddr)) {
+    errors.push(`Token address is invalid EVM address: ${tokenAddr}`);
   }
 
   if (isProdOrStaging && !env.EXPECTED_ESCROW_BYTECODE_HASH) {

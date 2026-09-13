@@ -23,6 +23,7 @@ import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 import {
   connectChat,
+  disconnectChat,
   getMessages,
   getEscrowSnapshot,
   markRead,
@@ -90,15 +91,15 @@ export function ChatPage() {
 
     joinSelectedRoom()
 
-    socket.on("connect", () => {
+    const onConnect = () => {
       joinSelectedRoom()
-    })
+    }
 
-    socket.on("app_error", (errData: { code: string; message: string }) => {
+    const onAppError = (errData: { code: string; message: string }) => {
       setError(`[${errData.code}] ${errData.message}`)
-    })
+    }
 
-    socket.on("receive_message", (raw) => {
+    const onReceiveMessage = (raw: any) => {
       const message = toApiMessage(raw)
       if (message.projectId === selected) {
         setMessages((old) => (old.some((m) => m.id === message.id) ? old : [...old, message]))
@@ -107,25 +108,43 @@ export function ChatPage() {
           void markRead(selected, token, new Date().toISOString()).catch(() => {})
         }
       }
-    })
+    }
 
-    socket.on("user_typing", (data: { userId: string; projectId: string }) => {
+    const onUserTyping = (data: { userId: string; projectId: string }) => {
       if (data.projectId === selected && data.userId !== user?.id) {
         setTypingUser("Counterparty is typing...")
       }
-    })
+    }
 
-    socket.on("user_stop_typing", (data: { userId: string; projectId: string }) => {
+    const onUserStopTyping = (data: { userId: string; projectId: string }) => {
       if (data.projectId === selected && data.userId !== user?.id) {
         setTypingUser(null)
       }
-    })
+    }
+
+    socket.on("connect", onConnect)
+    socket.on("app_error", onAppError)
+    socket.on("receive_message", onReceiveMessage)
+    socket.on("user_typing", onUserTyping)
+    socket.on("user_stop_typing", onUserStopTyping)
 
     return () => {
-      socket.disconnect()
-      socketRef.current = null
+      socket.emit("leave_project", selected)
+      socket.off("connect", onConnect)
+      socket.off("app_error", onAppError)
+      socket.off("receive_message", onReceiveMessage)
+      socket.off("user_typing", onUserTyping)
+      socket.off("user_stop_typing", onUserStopTyping)
     }
   }, [selected, token, user?.id])
+
+  // Disconnect socket only when leaving ChatPage completely
+  useEffect(() => {
+    return () => {
+      disconnectChat()
+      socketRef.current = null
+    }
+  }, [])
 
   const handleDraftChange = (val: string) => {
     setDraft(val)

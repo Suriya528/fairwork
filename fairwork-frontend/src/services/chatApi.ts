@@ -116,11 +116,11 @@ let _socket: Socket | null = null
 let _socketToken: string | null = null
 
 export function connectChat(token: string): Socket {
-  // Reuse existing socket if token hasn't changed
-  if (_socket && _socketToken === token && _socket.connected) {
+  // Reuse existing socket if token hasn't changed and socket is not disconnected/closed
+  if (_socket && _socketToken === token && !_socket.disconnected) {
     return _socket
   }
-  // Disconnect old socket if token changed
+  // Disconnect old socket if token changed or disconnected
   if (_socket) {
     _socket.disconnect()
   }

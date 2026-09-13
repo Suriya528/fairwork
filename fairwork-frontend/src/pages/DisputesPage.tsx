@@ -9,9 +9,10 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { useDisputeSummary } from "@/context/DisputeSummaryContext"
 import { raiseDispute } from "@/services/disputesApi"
+import { raiseEscrowDispute } from "@/services/web3"
 
 export function DisputesPage() {
-  const { token } = useAuth()
+  const { user, token } = useAuth()
   const [searchParams] = useSearchParams()
   const { projects, disputes, openDisputeCount, error, refresh } = useDisputeSummary()
   const [reason, setReason] = useState<Record<string, string>>({})
@@ -25,6 +26,9 @@ export function DisputesPage() {
 
     setSubmitError("")
     try {
+      if (user?.walletAddress) {
+        await raiseEscrowDispute(projectId, reason[projectId], user.walletAddress)
+      }
       await raiseDispute(projectId, reason[projectId], token)
       setReason((value) => ({ ...value, [projectId]: "" }))
       await refresh()

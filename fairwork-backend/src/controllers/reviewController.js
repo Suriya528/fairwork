@@ -20,8 +20,9 @@ exports.submitReview = async (req, res) => {
       return res.status(404).json({ message: "Project not found." });
     }
 
-    if (project.status !== "completed") {
-      return res.status(400).json({ message: "Reviews can only be submitted for completed projects." });
+    const isEligibleStatus = project.status === "completed" || (project.status === "refunded" && project.escrowCompleted);
+    if (!isEligibleStatus) {
+      return res.status(400).json({ message: "Reviews can only be submitted for completed or resolved projects." });
     }
 
     const isClient = String(project.clientId) === String(req.user.id);

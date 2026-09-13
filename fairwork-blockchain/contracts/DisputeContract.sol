@@ -26,8 +26,8 @@ contract DisputeContract is Ownable {
     address public immutable escrowContract;
     address public arbitrator;
 
-    event DisputeRaised(string indexed projectId, address indexed raisedBy, string reason);
-    event DisputeResolvedByArbitrator(string indexed projectId, address indexed winner);
+    event DisputeRaised(string projectId, address indexed raisedBy, string reason);
+    event DisputeResolvedByArbitrator(string projectId, address indexed winner);
     event ArbitratorUpdated(address indexed oldArbitrator, address indexed newArbitrator);
 
     constructor(address _escrowContract, address _arbitrator) Ownable(msg.sender) {

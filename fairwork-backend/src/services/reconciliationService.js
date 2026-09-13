@@ -35,7 +35,7 @@ if (!ESCROW_ABI.length) {
       type: "event",
       name: "MilestoneReleased",
       inputs: [
-        { type: "string", name: "projectId", indexed: true },
+        { type: "string", name: "projectId", indexed: false },
         { type: "uint256", name: "milestoneIndex", indexed: true },
         { type: "address", name: "freelancer", indexed: true },
         { type: "uint256", name: "amount", indexed: false },
@@ -45,7 +45,7 @@ if (!ESCROW_ABI.length) {
       type: "event",
       name: "EscrowFunded",
       inputs: [
-        { type: "string", name: "projectId", indexed: true },
+        { type: "string", name: "projectId", indexed: false },
         { type: "address", name: "client", indexed: true },
         { type: "uint256", name: "amount", indexed: false },
       ],
@@ -53,7 +53,7 @@ if (!ESCROW_ABI.length) {
     {
       type: 'event', name: 'EscrowRefunded',
       inputs: [
-        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'string', name: 'projectId', indexed: false },
         { type: 'address', name: 'client', indexed: true },
         { type: 'uint256', name: 'amount', indexed: false },
       ],
@@ -61,7 +61,7 @@ if (!ESCROW_ABI.length) {
     {
       type: 'event', name: 'RefundRequested',
       inputs: [
-        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'string', name: 'projectId', indexed: false },
         { type: 'address', name: 'client', indexed: true },
         { type: 'uint256', name: 'executeAfter', indexed: false },
       ],
@@ -69,19 +69,19 @@ if (!ESCROW_ABI.length) {
     {
       type: 'event', name: 'RefundCancelled',
       inputs: [
-        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'string', name: 'projectId', indexed: false },
       ],
     },
     {
       type: 'event', name: 'EscrowDisputed',
       inputs: [
-        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'string', name: 'projectId', indexed: false },
       ],
     },
     {
       type: 'event', name: 'DisputeResolved',
       inputs: [
-        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'string', name: 'projectId', indexed: false },
         { type: 'address', name: 'winner', indexed: true },
         { type: 'uint256', name: 'amount', indexed: false },
       ],
@@ -434,7 +434,13 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     return project;
   }
 
-  // Phase 1: Verify on-chain receipt OUTSIDE transaction
+  // Prevent transaction hash recycling across different projects
+  const claimed = await Project.findOne({ escrowTxnHash: txnHash, _id: { $ne: projectId } });
+  if (claimed) {
+    throw new Error("TRANSACTION_ALREADY_CLAIMED: This transaction hash was already reconciled for another escrow project.");
+  }
+
+  // Phase 1: Verify on-chain receipt and contract state OUTSIDE transaction
   const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://rpc.sepolia.org';
   const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
   const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
@@ -452,8 +458,48 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
+
+    // Verify on-chain contract state directly
+    if (escrowAddress) {
+      const escrowData = await publicClient.readContract({
+        address: escrowAddress,
+        abi: [{
+          type: "function", name: "escrows", stateMutability: "view",
+          inputs: [{ type: "string", name: "projectId" }],
+          outputs: [
+            { type: "address", name: "client" },
+            { type: "address", name: "freelancer" },
+            { type: "address", name: "token" },
+            { type: "uint256", name: "totalAmount" },
+            { type: "uint256", name: "releasedAmount" },
+            { type: "bool", name: "isFunded" },
+            { type: "bool", name: "isDisputed" },
+            { type: "bool", name: "isCompleted" },
+          ],
+        }],
+        functionName: "escrows",
+        args: [projectId],
+      });
+
+      const onChainClient = escrowData[0];
+      const isFunded = Boolean(escrowData[5]);
+
+      if (!isFunded) {
+        throw new Error("ESCROW_NOT_FUNDED_ON_CHAIN: Escrow contract indicates project is not funded.");
+      }
+
+      if (project.clientWalletAddress && onChainClient.toLowerCase() !== project.clientWalletAddress.toLowerCase()) {
+        throw new Error("CLIENT_WALLET_MISMATCH: On-chain client does not match project client wallet.");
+      }
+    }
   } catch (rpcErr) {
-    if (rpcErr.message && (rpcErr.message.includes('TRANSACTION_REVERTED') || rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') || rpcErr.status === 202)) {
+    if (rpcErr.message && (
+      rpcErr.message.includes('TRANSACTION_REVERTED') ||
+      rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') ||
+      rpcErr.message.includes('ESCROW_NOT_FUNDED_ON_CHAIN') ||
+      rpcErr.message.includes('CLIENT_WALLET_MISMATCH') ||
+      rpcErr.status === 202
+    )) {
       throw rpcErr;
     }
     if (process.env.NODE_ENV === 'production') {
@@ -511,7 +557,16 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     return project;
   }
 
-  // Phase 1: Verify on-chain receipt OUTSIDE transaction
+  // Prevent transaction hash recycling across different milestone releases
+  const claimed = await Project.findOne({
+    _id: { $ne: projectId },
+    "milestones.releaseTxnHash": txnHash,
+  });
+  if (claimed) {
+    throw new Error("TRANSACTION_ALREADY_CLAIMED: This transaction hash was already reconciled for another milestone release.");
+  }
+
+  // Phase 1: Verify on-chain receipt and contract state OUTSIDE transaction
   const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://rpc.sepolia.org';
   const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
   const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
@@ -529,8 +584,32 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
+
+    // Verify on-chain milestone state directly
+    if (escrowAddress) {
+      const milestoneData = await publicClient.readContract({
+        address: escrowAddress,
+        abi: [{
+          type: "function", name: "getMilestone", stateMutability: "view",
+          inputs: [{ type: "string", name: "projectId" }, { type: "uint256", name: "index" }],
+          outputs: [{ type: "uint256", name: "amount" }, { type: "bool", name: "released" }],
+        }],
+        functionName: "getMilestone",
+        args: [projectId, BigInt(milestoneIndex)],
+      });
+
+      const isReleased = Boolean(milestoneData[1]);
+      if (!isReleased) {
+        throw new Error("MILESTONE_NOT_RELEASED_ON_CHAIN: Escrow contract indicates milestone is not yet released.");
+      }
+    }
   } catch (rpcErr) {
-    if (rpcErr.message && (rpcErr.message.includes('TRANSACTION_REVERTED') || rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') || rpcErr.status === 202)) {
+    if (rpcErr.message && (
+      rpcErr.message.includes('TRANSACTION_REVERTED') ||
+      rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') ||
+      rpcErr.message.includes('MILESTONE_NOT_RELEASED_ON_CHAIN') ||
+      rpcErr.status === 202
+    )) {
       throw rpcErr;
     }
     if (process.env.NODE_ENV === 'production') {
@@ -545,6 +624,7 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
 
     const updateFields = {
       [`milestones.${milestoneIndex}.paymentReleased`]: true,
+      [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
       [`milestones.${milestoneIndex}.status`]: 'completed',
       [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
     };

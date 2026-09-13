@@ -154,7 +154,10 @@ function createServerApp(config = {}) {
       const Redis = require("ioredis");
       const pubClient = new Redis(redisUrl);
       const subClient = pubClient.duplicate();
+      pubClient.on("error", (err) => logger.warn({ err: err.message }, "Socket.IO Redis pubClient error"));
+      subClient.on("error", (err) => logger.warn({ err: err.message }, "Socket.IO Redis subClient error"));
       io.adapter(createAdapter(pubClient, subClient));
+      global.__redisAdapterClients = [pubClient, subClient];
       logger.info("Socket.IO Redis adapter connected — cross-pod chat enabled");
     } catch (adapterErr) {
       logger.warn({ err: adapterErr.message }, "Socket.IO Redis adapter failed — falling back to in-memory adapter");
@@ -324,6 +327,9 @@ if (require.main === module) {
         await global.__listenerHandle.shutdown();
       } else if (global.__listenerHandle?.pollTimeoutId) {
         clearTimeout(global.__listenerHandle.pollTimeoutId);
+      }
+      if (global.__redisAdapterClients) {
+        await Promise.allSettled(global.__redisAdapterClients.map((c) => c.quit()));
       }
       await mongoose.connection.close();
       logger.info("MongoDB connection closed.");

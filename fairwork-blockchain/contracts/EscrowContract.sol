@@ -20,14 +20,14 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant REFUND_DELAY = 48 hours;
     mapping(string => uint256) public refundRequestedAt;
 
-    event EscrowCreated(string indexed projectId, address indexed client, address indexed freelancer, address token, uint256 totalAmount);
-    event EscrowFunded(string indexed projectId, address indexed client, uint256 amount);
-    event MilestoneReleased(string indexed projectId, uint256 milestoneIndex, address indexed freelancer, uint256 amount);
-    event EscrowRefunded(string indexed projectId, address indexed client, uint256 amount);
-    event RefundRequested(string indexed projectId, address indexed client, uint256 executeAfter);
-    event RefundCancelled(string indexed projectId);
-    event EscrowDisputed(string indexed projectId);
-    event DisputeResolved(string indexed projectId, address indexed winner, uint256 amount);
+    event EscrowCreated(string projectId, address indexed client, address indexed freelancer, address token, uint256 totalAmount);
+    event EscrowFunded(string projectId, address indexed client, uint256 amount);
+    event MilestoneReleased(string projectId, uint256 indexed milestoneIndex, address indexed freelancer, uint256 amount);
+    event EscrowRefunded(string projectId, address indexed client, uint256 amount);
+    event RefundRequested(string projectId, address indexed client, uint256 executeAfter);
+    event RefundCancelled(string projectId);
+    event EscrowDisputed(string projectId);
+    event DisputeResolved(string projectId, address indexed winner, uint256 amount);
 
     // OpenZeppelin 5 is pinned by this repository; it requires an explicit owner.
     constructor() Ownable(msg.sender) {}
