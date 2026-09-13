@@ -36,6 +36,8 @@ function verifyAuthToken(rawToken, config = {}) {
   return {
     id: String(decoded.id),
     role: decoded.role.trim(),
+    sessionId: decoded.sessionId || null,
+    tokenVersion: typeof decoded.tokenVersion === "number" ? decoded.tokenVersion : undefined,
     exp: decoded.exp,
   };
 }

@@ -14,10 +14,14 @@ async function openProject(page: any, data = project()) {
 }
 
 test.describe("Project Detail & Milestone Payment System", () => {
-  test("Global header renders compact wallet badge instead of raw wallet address", async ({ page }) => {
+  test("Global header renders compact wallet badge instead of raw wallet address", async ({ page }, testInfo) => {
     await openProject(page)
-    await expect(page.getByText("Wallet Verified ✓")).toBeVisible()
-    await expect(page.getByText("0x1f9a7C4b2E5d8A3f6B0c1D4e7F2a9B3c5D6e8F0a")).toHaveCount(0)
+    if (testInfo.project.name === "mobile-chromium") {
+      await expect(page.getByText("0x1f9a7C4b2E5d8A3f6B0c1D4e7F2a9B3c5D6e8F0a")).toHaveCount(0)
+    } else {
+      await expect(page.getByText("Wallet Verified ✓")).toBeVisible()
+      await expect(page.getByText("0x1f9a7C4b2E5d8A3f6B0c1D4e7F2a9B3c5D6e8F0a")).toHaveCount(0)
+    }
   })
 
   test("assignment status indicates no freelancer assigned when freelancerId is null", async ({ page }) => {

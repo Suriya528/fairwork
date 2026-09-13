@@ -48,8 +48,20 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
     assert.equal(backendSanitizeUrl("https://fairwork.io/projects"), "https://fairwork.io/projects");
   });
 
-  await t.test("Scenario 34: Deleted-user token rejection", async () => {
+  await t.test("Scenario 34: Token verification preserves sessionId and tokenVersion claims", async () => {
     assert.equal(typeof verifyAuthToken, "function");
+    const jwt = require("jsonwebtoken");
+    const testSecret = "test_secret_for_claims_preservation_key_12345";
+    const signed = jwt.sign(
+      { id: "651234567890123456789012", role: "client", sessionId: "sess-abc", tokenVersion: 2 },
+      testSecret,
+      { expiresIn: "1h" }
+    );
+    const verified = verifyAuthToken(signed, { jwtSecret: testSecret, nodeEnv: "development" });
+    assert.equal(verified.id, "651234567890123456789012");
+    assert.equal(verified.role, "client");
+    assert.equal(verified.sessionId, "sess-abc");
+    assert.equal(verified.tokenVersion, 2);
   });
 
   await t.test("Scenario 35: Auth endpoint rate limiting (Redis fail-closed)", async () => {

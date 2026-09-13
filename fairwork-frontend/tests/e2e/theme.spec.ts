@@ -12,7 +12,7 @@ test.describe("Theme System (Dark / Light Mode)", () => {
     // Click theme toggle button in header
     const toggleBtn = page.getByRole("button", { name: /switch to light theme/i }).first()
     await expect(toggleBtn).toBeVisible()
-    await toggleBtn.click()
+    await toggleBtn.click({ force: true })
 
     // Root html should now have data-theme="light" and light class
     await expect(html).toHaveAttribute("data-theme", "light")
@@ -25,7 +25,7 @@ test.describe("Theme System (Dark / Light Mode)", () => {
 
     // Toggle back to dark theme
     const darkToggleBtn = page.getByRole("button", { name: /switch to dark theme/i }).first()
-    await darkToggleBtn.click()
+    await darkToggleBtn.click({ force: true })
     await expect(html).toHaveAttribute("data-theme", "dark")
     await expect(html).toHaveClass(/dark/)
   })

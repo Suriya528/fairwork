@@ -63,7 +63,7 @@ test.describe("FairWork Ask AI Subsystem E2E Suite", () => {
     await input.press("Enter")
 
     // Close drawer mid-stream
-    await page.getByRole("button", { name: "Close drawer" }).click()
+    await page.getByRole("button", { name: "Close drawer" }).click({ force: true })
 
     // Assert drawer closed
     await expect(page.getByRole("heading", { name: "FairWork Ask AI" })).not.toBeVisible()

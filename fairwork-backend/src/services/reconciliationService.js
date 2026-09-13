@@ -142,14 +142,25 @@ function buildBlockchainEventKey({ chainId, contractAddress, transactionHash, lo
   return `EVENT:${assertNonNegativeSafeInteger(chainId, "chainId")}:${contractAddress.toLowerCase()}:${transactionHash.toLowerCase()}:${assertNonNegativeSafeInteger(logIndex, "logIndex")}`;
 }
 
-function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAddress }) {
+function decodeRawLogToVerifiedEvent(firstArg, secondArg) {
+  let rawLog, expectedChainId, expectedEscrowAddress;
+  if (firstArg && firstArg.rawLog) {
+    ({ rawLog, expectedChainId, expectedEscrowAddress } = firstArg);
+  } else {
+    rawLog = firstArg;
+    if (secondArg && typeof secondArg === "object") {
+      expectedChainId = secondArg.expectedChainId;
+      expectedEscrowAddress = secondArg.expectedEscrowAddress;
+    }
+  }
+
   if (!rawLog || !Array.isArray(rawLog.topics) || rawLog.data === undefined) {
     throw new Error("MALFORMED_RAW_LOG_PAYLOAD");
   }
 
   const contractAddress = rawLog.address;
   if (!isValidEthAddress(contractAddress)) throw new Error("INVALID_ESCROW_CONTRACT_ADDRESS");
-  if (contractAddress.toLowerCase() !== expectedEscrowAddress.toLowerCase()) {
+  if (expectedEscrowAddress && contractAddress.toLowerCase() !== expectedEscrowAddress.toLowerCase()) {
     throw new Error("ESCROW_CONTRACT_ADDRESS_MISMATCH");
   }
 
@@ -593,7 +604,8 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
       for (const log of receipt.logs) {
         if (!escrowAddress || (log.address && log.address.toLowerCase() === escrowAddress.toLowerCase())) {
           try {
-            const decoded = decodeRawLogToVerifiedEvent(log, {
+            const decoded = decodeRawLogToVerifiedEvent({
+              rawLog: log,
               expectedChainId: chainId,
               expectedEscrowAddress: escrowAddress,
             });
