@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { logger } = require("../utils/logger");
 const { createPublicClient, http } = require("viem");
-const { sepolia } = require("viem/chains");
+const { resolveViemChain, getRpcUrl } = require("./chainResolver");
 const Project = require("../models/Project.js");
 const SyncState = require("../models/BlockchainSyncState");
 const SettlementEvent = require("../models/SettlementEvent");
@@ -81,29 +81,30 @@ async function executeWithFullJitter(fn, maxRetries = 3, baseDelayMs = 20, maxDe
  * Main loop for the blockchain indexing service.
  */
 async function startBlockchainListener(config = {}) {
-  const podId = config.podId || `pod-${process.pid}-${Math.random().toString(36).slice(2, 7)}`;
-  const syncKey = config.syncKey || "SEPOLIA_ESCROW_SYNC";
+  try {
+    const podId = config.podId || `pod-${process.pid}-${Math.random().toString(36).slice(2, 7)}`;
+    const syncKey = config.syncKey || "SEPOLIA_ESCROW_SYNC";
 
-  // 1. Startup Integrity Bundle Verification
-  const integrity = await verifyAtStartup(config);
-  if (integrity.status === "FAILED_PROD") {
-    throw new Error("STARTUP_INTEGRITY_VERIFICATION_FAILED");
-  }
+    // 1. Startup Integrity Bundle Verification
+    const integrity = await verifyAtStartup(config);
+    if (integrity.status === "FAILED_PROD") {
+      throw new Error("STARTUP_INTEGRITY_VERIFICATION_FAILED");
+    }
 
-  const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
-  const tokenAddress = getResolvedContractAddress("CANONICAL_TOKEN_ADDRESS", "USDC_ADDRESS");
-  const rpcUrl = config.rpcUrl || process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || "https://rpc.sepolia.org";
-  const chainId = config.chainId || parseInt(process.env.CHAIN_ID || "11155111", 10);
+    const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
+    const tokenAddress = getResolvedContractAddress("CANONICAL_TOKEN_ADDRESS", "USDC_ADDRESS");
+    const rpcUrl = getRpcUrl(config.rpcUrl);
+    const chainId = config.chainId || parseInt(process.env.CHAIN_ID || "11155111", 10);
 
-  if (!escrowAddress) {
-    logger.warn("WARNING: Escrow address unconfigured. Blockchain listener paused.");
-    return;
-  }
+    if (!escrowAddress) {
+      logger.warn("WARNING: Escrow address unconfigured. Blockchain listener paused.");
+      return;
+    }
 
-  // 2. Ensure SyncState document exists
-  await ensureSyncState(syncKey, chainId, escrowAddress);
+    // 2. Ensure SyncState document exists
+    await ensureSyncState(syncKey, chainId, escrowAddress);
 
-  const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+    const publicClient = createPublicClient({ chain: resolveViemChain(chainId), transport: http(rpcUrl) });
   let currentLease = await acquireLease(podId, syncKey);
 
   if (!currentLease) {
@@ -365,19 +366,26 @@ async function startBlockchainListener(config = {}) {
   listenerStatus.started = true;
   pollTimeoutId = setTimeout(poll, 1000);
 
-  return {
-    pollTimeoutId,
-    podId,
-    syncKey,
-    async shutdown() {
-      shuttingDown = true;
-      listenerStatus.healthy = false;
-      listenerStatus.halted = true;
-      clearTimeout(pollTimeoutId);
-      await shutdownPromise;
-      logger.info(`[Indexer ${podId}] Shutdown complete — in-flight work drained.`);
-    },
-  };
+    return {
+      pollTimeoutId,
+      podId,
+      syncKey,
+      async shutdown() {
+        shuttingDown = true;
+        listenerStatus.healthy = false;
+        listenerStatus.halted = true;
+        clearTimeout(pollTimeoutId);
+        await shutdownPromise;
+        logger.info(`[Indexer ${podId}] Shutdown complete — in-flight work drained.`);
+      },
+    };
+  } catch (err) {
+    listenerStatus.started = false;
+    listenerStatus.healthy = false;
+    listenerStatus.halted = true;
+    listenerStatus.lastError = err.message;
+    throw err;
+  }
 }
 
 module.exports = {

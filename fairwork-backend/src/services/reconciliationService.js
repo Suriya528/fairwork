@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
 const { decodeEventLog, parseUnits, keccak256, toHex, createPublicClient, http } = require("viem");
-const { sepolia } = require("viem/chains");
+const { resolveViemChain, getRpcUrl } = require("./chainResolver");
 
 const SettlementEvent = require("../models/SettlementEvent");
 const OutboxEvent = require("../models/OutboxEvent");
@@ -362,6 +362,9 @@ async function reconcileVerifiedBlockchainEvent({
         $set: {
           [`milestones.${milestoneIndex}.paymentReleased`]: true,
           [`milestones.${milestoneIndex}.settlementEventId`]: settlementEvent._id,
+          [`milestones.${milestoneIndex}.status`]: 'completed',
+          [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
+          [`milestones.${milestoneIndex}.releaseTxnHash`]: transactionHash,
         },
       },
       updateOpts
@@ -376,6 +379,16 @@ async function reconcileVerifiedBlockchainEvent({
         return 'ALREADY_PROCESSED';
       }
       throw new Error('SETTLEMENT_PROJECTION_FAILED: Milestone not found or unexpected state.');
+    }
+
+    // Check if all milestones are now released
+    const updatedProject = await ProjectModel.findById(projectId).session(useSession);
+    if (updatedProject && updatedProject.milestones && updatedProject.milestones.every(m => m.paymentReleased)) {
+      await ProjectModel.updateOne(
+        { _id: projectId },
+        { $set: { status: 'completed', escrowCompleted: true } },
+        updateOpts
+      );
     }
 
     // 6. Enqueue Outbox Event in same ACID transaction
@@ -452,8 +465,8 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
   }
 
   // Phase 1: Verify on-chain receipt and contract state OUTSIDE transaction
-  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://rpc.sepolia.org';
-  const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+  const rpcUrl = getRpcUrl();
+  const publicClient = createPublicClient({ chain: resolveViemChain(), transport: http(rpcUrl) });
   const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
 
   try {
@@ -590,8 +603,8 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
   }
 
   // Phase 1: Verify on-chain receipt and contract state OUTSIDE transaction
-  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://rpc.sepolia.org';
-  const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+  const rpcUrl = getRpcUrl();
+  const publicClient = createPublicClient({ chain: resolveViemChain(), transport: http(rpcUrl) });
   const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
 
   try {

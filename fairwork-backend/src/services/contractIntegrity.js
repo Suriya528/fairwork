@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { createPublicClient, http } = require("viem");
-const { sepolia } = require("viem/chains");
+const { resolveViemChain, getRpcUrl } = require("./chainResolver");
 
 /**
  * Validates contract deployment integrity, bytecode hashes, ABI checksums,
@@ -15,7 +15,7 @@ async function verifyAtStartup(config = {}) {
   const escrowAddress = config.escrowAddress || process.env.CANONICAL_ESCROW_ADDRESS || process.env.ESCROW_ADDRESS;
   const tokenAddress = config.tokenAddress || process.env.CANONICAL_TOKEN_ADDRESS || process.env.USDC_ADDRESS;
   const expectedTokenDecimals = config.tokenDecimals || parseInt(process.env.TOKEN_DECIMALS || "6", 10);
-  const rpcUrl = config.rpcUrl || process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || "https://rpc.sepolia.org";
+  const rpcUrl = getRpcUrl(config.rpcUrl);
 
   if (!escrowAddress) {
     if (isProd) throw new Error("FATAL_STARTUP_ESCROW_ADDRESS_REQUIRED");
@@ -39,7 +39,7 @@ async function verifyAtStartup(config = {}) {
 
   // 2. Query chain and contract via RPC
   try {
-    const client = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+    const client = createPublicClient({ chain: resolveViemChain(chainId), transport: http(rpcUrl) });
     const netChainId = await client.getChainId();
 
     if (netChainId !== chainId) {

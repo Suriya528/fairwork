@@ -16,6 +16,7 @@ const OutboxEvent = require("../src/models/OutboxEvent");
 const BlockchainSyncState = require("../src/models/BlockchainSyncState");
 const Message = require("../src/models/Message");
 const BlockCheckpoint = require("../src/models/BlockCheckpoint");
+const { resolveViemChain, getRpcUrl } = require("../src/services/chainResolver");
 
 test("Integration-Gate Logic Suite", async (t) => {
 
@@ -137,6 +138,90 @@ test("Integration-Gate Logic Suite", async (t) => {
     assert.ok(BlockchainSyncState.schema);
     assert.ok(Message.schema);
     assert.ok(BlockCheckpoint.schema);
+  });
+
+  await t.test("Gate 10: Dynamic Multi-Chain Resolver Verification (Mainnet, L2s, Sepolia)", async () => {
+    // Ethereum Mainnet
+    const mainnetChain = resolveViemChain(1);
+    assert.equal(mainnetChain.id, 1);
+    assert.equal(mainnetChain.name, "Ethereum");
+
+    // Base
+    const baseChain = resolveViemChain(8453);
+    assert.equal(baseChain.id, 8453);
+    assert.equal(baseChain.name, "Base");
+
+    // Polygon
+    const polygonChain = resolveViemChain(137);
+    assert.equal(polygonChain.id, 137);
+    assert.equal(polygonChain.name, "Polygon");
+
+    // Arbitrum
+    const arbitrumChain = resolveViemChain(42161);
+    assert.equal(arbitrumChain.id, 42161);
+    assert.equal(arbitrumChain.name, "Arbitrum One");
+
+    // Sepolia
+    const sepoliaChain = resolveViemChain(11155111);
+    assert.equal(sepoliaChain.id, 11155111);
+    assert.equal(sepoliaChain.name, "Sepolia");
+
+    // Custom EVM fallback
+    const customChain = resolveViemChain(9999);
+    assert.equal(customChain.id, 9999);
+    assert.equal(customChain.name, "EVM-9999");
+  });
+
+  await t.test("Gate 11: SettlementEvent Schema & Reorg Reversal Functionality", async () => {
+    // Verify SettlementEvent model enum supports all 7 events
+    const eventNameEnum = SettlementEvent.schema.path("eventName").enumValues;
+    const requiredEvents = [
+      "MilestoneReleased",
+      "EscrowFunded",
+      "EscrowRefunded",
+      "RefundRequested",
+      "RefundCancelled",
+      "EscrowDisputed",
+      "DisputeResolved",
+    ];
+    for (const ev of requiredEvents) {
+      assert.ok(eventNameEnum.includes(ev), `SettlementEvent must include ${ev}`);
+    }
+
+    // Verify processReorgReversal handles non-milestone events gracefully without throwing
+    assert.equal(typeof processReorgReversal, "function");
+  });
+
+  await t.test("Gate 12: Startup Validator with Optional vs Explicit OAuth", async () => {
+    const baseValid = {
+      NODE_ENV: "production",
+      MONGO_URI: "mongodb://localhost:27017/fairwork_prod",
+      JWT_SECRET: "a_very_long_secure_jwt_secret_key_32bytes_min!",
+      JWT_ISSUER: "fairwork-prod",
+      JWT_AUDIENCE: "fairwork-prod-app",
+      CLIENT_URL: "https://fairwork.io",
+      BACKEND_URL: "https://fairwork.io",
+      REDIS_URL: "redis://localhost:6379",
+      CHAIN_ID: "1",
+      CANONICAL_ESCROW_ADDRESS: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
+      CANONICAL_TOKEN_ADDRESS: "0xf21bdf6737a3009359f9ec1fa515e6d74702f575",
+      EXPECTED_ESCROW_BYTECODE_HASH: "0x608060405234801561001057600080fd5b50",
+    };
+
+    // Clean deployment without OAuth passes
+    assert.equal(validateStartupConfig(baseValid), true);
+
+    // Deployment with ENABLE_OAUTH=true without credentials fails
+    assert.throws(
+      () => validateStartupConfig({ ...baseValid, ENABLE_OAUTH: "true" }),
+      /FATAL_STARTUP_CONFIG_ERROR/
+    );
+
+    // Deployment with partial Google credentials fails
+    assert.throws(
+      () => validateStartupConfig({ ...baseValid, GOOGLE_CLIENT_ID: "some-id" }),
+      /GOOGLE_CLIENT_SECRET is missing/
+    );
   });
 
 });

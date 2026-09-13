@@ -1,5 +1,5 @@
 const { createPublicClient, http } = require("viem");
-const { sepolia } = require("viem/chains");
+const { resolveViemChain, getRpcUrl } = require("./chainResolver");
 
 const ESCROW_ABI = [
   {
@@ -18,10 +18,10 @@ const ESCROW_ABI = [
 ];
 
 function getClient() {
-  const rpcUrl = process.env.SEPOLIA_RPC_URL;
+  const rpcUrl = getRpcUrl();
   if (!rpcUrl) return null;
   try {
-    return createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+    return createPublicClient({ chain: resolveViemChain(), transport: http(rpcUrl) });
   } catch {
     return null;
   }

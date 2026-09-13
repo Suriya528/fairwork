@@ -96,7 +96,7 @@ function createServerApp(config = {}) {
   app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
   app.get("/readyz", (req, res) => {
     const dbReady = mongoose.connection.readyState === 1;
-    let listenerStatus = { started: false, healthy: true };
+    let listenerStatus = { started: false, healthy: true, halted: false };
     try {
       const { getListenerStatus } = require("./services/blockchainListener");
       listenerStatus = getListenerStatus();
@@ -104,12 +104,34 @@ function createServerApp(config = {}) {
       // listener not loaded or disabled
     }
 
-    // Listener must not be halted or unhealthy when active
-    const listenerUnhealthy = listenerStatus.started && (!listenerStatus.healthy || listenerStatus.halted);
-    const isReady = dbReady && !listenerUnhealthy;
+    // In production, the pod is only ready once the database is connected AND
+    // the blockchain indexing listener has successfully initialized and is healthy.
+    let isReady = false;
+    let notReadyReason = null;
+
+    if (!dbReady) {
+      notReadyReason = "database_disconnected";
+    } else if (isProd) {
+      if (!listenerStatus.started) {
+        notReadyReason = "listener_starting_up";
+      } else if (!listenerStatus.healthy || listenerStatus.halted) {
+        notReadyReason = "listener_halted_or_unhealthy";
+      } else {
+        isReady = true;
+      }
+    } else {
+      // Non-production / dev / test: allow readiness before listener boots if listener hasn't errored
+      const listenerUnhealthy = listenerStatus.started && (!listenerStatus.healthy || listenerStatus.halted);
+      if (listenerUnhealthy) {
+        notReadyReason = "listener_halted_or_unhealthy";
+      } else {
+        isReady = true;
+      }
+    }
 
     res.status(isReady ? 200 : 503).json({
       ready: isReady,
+      ...(notReadyReason ? { reason: notReadyReason } : {}),
       database: dbReady ? "connected" : "disconnected",
       blockchainListener: listenerStatus,
       timestamp: new Date().toISOString(),

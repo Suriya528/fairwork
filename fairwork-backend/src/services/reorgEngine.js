@@ -95,20 +95,79 @@ async function processReorgReversal({ chainId, contractAddress, orphanedBlockSta
         { session }
       );
 
-      // Reverse milestone projection ONLY if currently attributed to THIS event (atomic predicate)
-      await Project.updateOne(
-        {
-          _id: event.projectId,
-          [`milestones.${event.milestoneIndex}.settlementEventId`]: event._id,
-        },
-        {
-          $set: {
-            [`milestones.${event.milestoneIndex}.paymentReleased`]: false,
-            [`milestones.${event.milestoneIndex}.settlementEventId`]: null,
+      // Event-specific state reversal
+      if (!event.eventName || event.eventName === "MilestoneReleased") {
+        // Reverse milestone projection ONLY if currently attributed to THIS event (atomic predicate)
+        const milestoneResult = await Project.updateOne(
+          {
+            _id: event.projectId,
+            [`milestones.${event.milestoneIndex}.settlementEventId`]: event._id,
           },
-        },
-        { session }
-      );
+          {
+            $set: {
+              [`milestones.${event.milestoneIndex}.paymentReleased`]: false,
+              [`milestones.${event.milestoneIndex}.settlementEventId`]: null,
+              [`milestones.${event.milestoneIndex}.status`]: "in_progress",
+            },
+            $unset: {
+              [`milestones.${event.milestoneIndex}.releaseTxnHash`]: "",
+              [`milestones.${event.milestoneIndex}.releasedAt`]: "",
+            },
+          },
+          { session }
+        );
+
+        if (milestoneResult.modifiedCount > 0) {
+          // If project status had transitioned to completed, revert to in_progress
+          await Project.updateOne(
+            { _id: event.projectId, status: "completed", escrowCompleted: true },
+            { $set: { status: "in_progress", escrowCompleted: false } },
+            { session }
+          );
+        }
+      } else if (event.eventName === "EscrowFunded") {
+        await Project.updateOne(
+          { _id: event.projectId, escrowTxnHash: event.transactionHash },
+          {
+            $set: { escrowFunded: false, status: "open" },
+            $unset: { escrowTxnHash: "" },
+          },
+          { session }
+        );
+      } else if (event.eventName === "EscrowRefunded") {
+        await Project.updateOne(
+          { _id: event.projectId, escrowCompleted: true },
+          { $set: { escrowCompleted: false, status: "in_progress" } },
+          { session }
+        );
+      } else if (event.eventName === "RefundRequested") {
+        await Project.updateOne(
+          { _id: event.projectId, refundRequested: true },
+          {
+            $set: { refundRequested: false },
+            $unset: { refundRequestedAt: "" },
+          },
+          { session }
+        );
+      } else if (event.eventName === "RefundCancelled") {
+        await Project.updateOne(
+          { _id: event.projectId, refundRequested: false },
+          { $set: { refundRequested: true } },
+          { session }
+        );
+      } else if (event.eventName === "EscrowDisputed") {
+        await Project.updateOne(
+          { _id: event.projectId, status: "disputed" },
+          { $set: { status: "in_progress" } },
+          { session }
+        );
+      } else if (event.eventName === "DisputeResolved") {
+        await Project.updateOne(
+          { _id: event.projectId, escrowCompleted: true },
+          { $set: { escrowCompleted: false, status: "disputed" } },
+          { session }
+        );
+      }
 
       // Cancel PENDING or PROCESSING outbox entries
       await OutboxEvent.updateMany(

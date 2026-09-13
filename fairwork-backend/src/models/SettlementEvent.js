@@ -27,27 +27,39 @@ const settlementEventSchema = new mongoose.Schema(
       trim: true,
       match: /^0x[a-f0-9]{64}$/,
     },
-    eventName: { type: String, required: true, enum: ["MilestoneReleased", "EscrowFunded"] },
-    projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true },
-    milestoneIndex: { type: Number, required: true, min: 0 },
-    freelancerAddress: {
+    eventName: {
       type: String,
       required: true,
+      enum: [
+        "MilestoneReleased",
+        "EscrowFunded",
+        "EscrowRefunded",
+        "RefundRequested",
+        "RefundCancelled",
+        "EscrowDisputed",
+        "DisputeResolved",
+      ],
+    },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true },
+    milestoneIndex: { type: Number, min: 0, default: null },
+    freelancerAddress: {
+      type: String,
       lowercase: true,
       trim: true,
       match: /^0x[a-f0-9]{40}$/,
+      default: null,
     },
     tokenAddress: {
       type: String,
-      required: true,
       lowercase: true,
       trim: true,
       match: /^0x[a-f0-9]{40}$/,
+      default: null,
     },
     amountUnits: {
       type: String,
-      required: true,
       match: /^[0-9]+$/,
+      default: null,
     },
     status: {
       type: String,
@@ -66,7 +78,11 @@ settlementEventSchema.index(
 
 settlementEventSchema.index(
   { chainId: 1, contractAddress: 1, projectId: 1, milestoneIndex: 1 },
-  { unique: true, partialFilterExpression: { status: "ACTIVE" } }
+  { unique: true, partialFilterExpression: { status: "ACTIVE", eventName: "MilestoneReleased" } }
+);
+
+settlementEventSchema.index(
+  { chainId: 1, contractAddress: 1, blockNumber: 1, status: 1 }
 );
 
 module.exports = mongoose.models.SettlementEvent || mongoose.model("SettlementEvent", settlementEventSchema);

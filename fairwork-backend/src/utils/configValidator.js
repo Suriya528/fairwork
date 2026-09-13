@@ -46,11 +46,29 @@ function validateStartupConfig(env = process.env) {
     errors.push("EXPECTED_ESCROW_BYTECODE_HASH is missing in staging/production");
   }
 
-  // OAuth Provider Configuration
-  if (isProdOrStaging && !env.GOOGLE_CLIENT_ID) errors.push("GOOGLE_CLIENT_ID is missing in staging/production");
-  if (isProdOrStaging && !env.GOOGLE_CLIENT_SECRET) errors.push("GOOGLE_CLIENT_SECRET is missing in staging/production");
-  if (isProdOrStaging && !env.GITHUB_CLIENT_ID) errors.push("GITHUB_CLIENT_ID is missing in staging/production");
-  if (isProdOrStaging && !env.GITHUB_CLIENT_SECRET) errors.push("GITHUB_CLIENT_SECRET is missing in staging/production");
+  // OAuth Provider Configuration (enforced when ENABLE_OAUTH=true or when credentials are provided)
+  const oauthExplicitlyEnabled = env.ENABLE_OAUTH === "true" || env.REQUIRE_OAUTH === "true";
+  if (oauthExplicitlyEnabled) {
+    if (!env.GOOGLE_CLIENT_ID) errors.push("GOOGLE_CLIENT_ID is missing with OAuth enabled");
+    if (!env.GOOGLE_CLIENT_SECRET) errors.push("GOOGLE_CLIENT_SECRET is missing with OAuth enabled");
+    if (!env.GITHUB_CLIENT_ID) errors.push("GITHUB_CLIENT_ID is missing with OAuth enabled");
+    if (!env.GITHUB_CLIENT_SECRET) errors.push("GITHUB_CLIENT_SECRET is missing with OAuth enabled");
+  } else if (isProdOrStaging) {
+    // If any Google OAuth var is provided, require both
+    if (env.GOOGLE_CLIENT_ID && !env.GOOGLE_CLIENT_SECRET) {
+      errors.push("GOOGLE_CLIENT_SECRET is missing for configured GOOGLE_CLIENT_ID");
+    }
+    if (env.GOOGLE_CLIENT_SECRET && !env.GOOGLE_CLIENT_ID) {
+      errors.push("GOOGLE_CLIENT_ID is missing for configured GOOGLE_CLIENT_SECRET");
+    }
+    // If any GitHub OAuth var is provided, require both
+    if (env.GITHUB_CLIENT_ID && !env.GITHUB_CLIENT_SECRET) {
+      errors.push("GITHUB_CLIENT_SECRET is missing for configured GITHUB_CLIENT_ID");
+    }
+    if (env.GITHUB_CLIENT_SECRET && !env.GITHUB_CLIENT_ID) {
+      errors.push("GITHUB_CLIENT_ID is missing for configured GITHUB_CLIENT_SECRET");
+    }
+  }
   if (isProdOrStaging && !env.BACKEND_URL) errors.push("BACKEND_URL is missing in staging/production");
   if (isProdOrStaging && !env.CHAIN_ID) errors.push("CHAIN_ID is missing in staging/production");
 
