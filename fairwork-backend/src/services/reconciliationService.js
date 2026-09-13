@@ -51,6 +51,42 @@ if (!ESCROW_ABI.length) {
       ],
     },
     {
+      type: 'event', name: 'EscrowRefunded',
+      inputs: [
+        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'address', name: 'client', indexed: true },
+        { type: 'uint256', name: 'amount', indexed: false },
+      ],
+    },
+    {
+      type: 'event', name: 'RefundRequested',
+      inputs: [
+        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'address', name: 'client', indexed: true },
+        { type: 'uint256', name: 'executeAfter', indexed: false },
+      ],
+    },
+    {
+      type: 'event', name: 'RefundCancelled',
+      inputs: [
+        { type: 'string', name: 'projectId', indexed: true },
+      ],
+    },
+    {
+      type: 'event', name: 'EscrowDisputed',
+      inputs: [
+        { type: 'string', name: 'projectId', indexed: true },
+      ],
+    },
+    {
+      type: 'event', name: 'DisputeResolved',
+      inputs: [
+        { type: 'string', name: 'projectId', indexed: true },
+        { type: 'address', name: 'winner', indexed: true },
+        { type: 'uint256', name: 'amount', indexed: false },
+      ],
+    },
+    {
       type: "function",
       name: "escrows",
       stateMutability: "view",
@@ -70,6 +106,12 @@ if (!ESCROW_ABI.length) {
 }
 
 const MILESTONE_RELEASED_TOPIC = keccak256(toHex("MilestoneReleased(string,uint256,address,uint256)"));
+const ESCROW_FUNDED_TOPIC = keccak256(toHex('EscrowFunded(string,address,uint256)'));
+const ESCROW_REFUNDED_TOPIC = keccak256(toHex('EscrowRefunded(string,address,uint256)'));
+const REFUND_REQUESTED_TOPIC = keccak256(toHex('RefundRequested(string,address,uint256)'));
+const REFUND_CANCELLED_TOPIC = keccak256(toHex('RefundCancelled(string)'));
+const ESCROW_DISPUTED_TOPIC = keccak256(toHex('EscrowDisputed(string)'));
+const DISPUTE_RESOLVED_TOPIC = keccak256(toHex('DisputeResolved(string,address,uint256)'));
 
 function isValidEthAddress(address) {
   return typeof address === "string" && /^0x[a-fA-F0-9]{40}$/.test(address.trim());
@@ -111,9 +153,17 @@ function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAd
     throw new Error("ESCROW_CONTRACT_ADDRESS_MISMATCH");
   }
 
-  if (rawLog.topics[0] !== MILESTONE_RELEASED_TOPIC) {
-    return null;
-  }
+  const TOPIC_TO_EVENT = {
+    [MILESTONE_RELEASED_TOPIC]: 'MilestoneReleased',
+    [ESCROW_FUNDED_TOPIC]: 'EscrowFunded',
+    [ESCROW_REFUNDED_TOPIC]: 'EscrowRefunded',
+    [REFUND_REQUESTED_TOPIC]: 'RefundRequested',
+    [REFUND_CANCELLED_TOPIC]: 'RefundCancelled',
+    [ESCROW_DISPUTED_TOPIC]: 'EscrowDisputed',
+    [DISPUTE_RESOLVED_TOPIC]: 'DisputeResolved',
+  };
+  const eventName = TOPIC_TO_EVENT[rawLog.topics[0]];
+  if (!eventName) return null; // Unknown event, skip
 
   const chainId = assertNonNegativeSafeInteger(expectedChainId, "expectedChainId");
   const transactionHash = rawLog.transactionHash;
@@ -129,7 +179,7 @@ function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAd
     topics: rawLog.topics,
   });
 
-  if (!parsed || parsed.eventName !== "MilestoneReleased") {
+  if (!parsed || parsed.eventName !== eventName) {
     throw new Error("INVALID_EVENT_SIGNATURE");
   }
 
@@ -138,26 +188,36 @@ function decodeRawLogToVerifiedEvent({ rawLog, expectedChainId, expectedEscrowAd
     throw new Error("INVALID_PROJECT_ID_IN_LOG");
   }
 
-  const milestoneIndex = assertNonNegativeSafeInteger(parsed.args.milestoneIndex, "milestoneIndex");
-  const freelancerAddress = parsed.args.freelancer;
-  if (!isValidEthAddress(freelancerAddress)) throw new Error("INVALID_FREELANCER_ADDRESS_IN_LOG");
-
-  const onChainAmountUnits = BigInt(parsed.args.amount.toString());
-  if (onChainAmountUnits <= 0n) throw new Error("NON_POSITIVE_AMOUNT_UNITS");
-
-  return {
+  const baseEvent = {
     chainId,
     contractAddress: contractAddress.toLowerCase(),
     transactionHash: transactionHash.toLowerCase(),
     logIndex,
     blockNumber,
     blockHash,
-    eventName: "MilestoneReleased",
+    eventName,
     projectId: String(rawProjId),
-    milestoneIndex,
-    freelancerAddress: freelancerAddress.toLowerCase(),
-    onChainAmountUnits,
   };
+
+  if (eventName === "MilestoneReleased") {
+    const milestoneIndex = assertNonNegativeSafeInteger(parsed.args.milestoneIndex, "milestoneIndex");
+    const freelancerAddress = parsed.args.freelancer;
+    if (!isValidEthAddress(freelancerAddress)) throw new Error("INVALID_FREELANCER_ADDRESS_IN_LOG");
+
+    const onChainAmountUnits = BigInt(parsed.args.amount.toString());
+    if (onChainAmountUnits <= 0n) throw new Error("NON_POSITIVE_AMOUNT_UNITS");
+
+    return {
+      ...baseEvent,
+      milestoneIndex,
+      freelancerAddress: freelancerAddress.toLowerCase(),
+      onChainAmountUnits,
+    };
+  }
+
+  const extraArgs = { ...parsed.args };
+  delete extraArgs.projectId;
+  return { ...baseEvent, ...extraArgs };
 }
 
 /**
@@ -296,8 +356,15 @@ async function reconcileVerifiedBlockchainEvent({
       updateOpts
     );
 
-    if (updateResult.matchedCount !== 1 || updateResult.modifiedCount !== 1) {
-      throw new Error("SETTLEMENT_PROJECTION_FAILED: Milestone was already released or not found.");
+    if (updateResult.modifiedCount !== 1) {
+      // Check if this is an idempotent re-processing (milestone already released)
+      const recheck = await ProjectModel.findById(projectId).select(`milestones.${milestoneIndex}.paymentReleased`).session(useSession);
+      if (recheck?.milestones?.[milestoneIndex]?.paymentReleased === true) {
+        // Already processed by REST or a previous listener run — safe to skip
+        if (isSelfManaged && useSession?.inTransaction?.()) await useSession.abortTransaction();
+        return 'ALREADY_PROCESSED';
+      }
+      throw new Error('SETTLEMENT_PROJECTION_FAILED: Milestone not found or unexpected state.');
     }
 
     // 6. Enqueue Outbox Event in same ACID transaction
@@ -350,122 +417,164 @@ function getResolvedContractAddress(canonicalKey, legacyAliasKey) {
  * REST reconciliation for on-chain escrow funding.
  */
 async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
-  if (!projectId) throw new Error("PROJECT_ID_REQUIRED");
-  if (!isValidTxHash(txnHash)) throw new Error("INVALID_TRANSACTION_HASH");
+  if (!projectId) throw new Error('PROJECT_ID_REQUIRED');
+  if (!isValidTxHash(txnHash)) throw new Error('INVALID_TRANSACTION_HASH');
 
   const project = await Project.findById(projectId);
-  if (!project) throw new Error("PROJECT_NOT_FOUND");
+  if (!project) throw new Error('PROJECT_NOT_FOUND');
 
   if (callerUserId && String(project.clientId) !== String(callerUserId)) {
-    const err = new Error("UNAUTHORIZED_CALLER: Only the project client can reconcile funding");
+    const err = new Error('UNAUTHORIZED_CALLER: Only the project client can reconcile funding');
     err.status = 403;
     throw err;
   }
 
+  // Idempotent early return
   if (project.escrowFunded && project.escrowTxnHash === txnHash) {
     return project;
   }
 
-  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || "https://rpc.sepolia.org";
+  // Phase 1: Verify on-chain receipt OUTSIDE transaction
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://rpc.sepolia.org';
   const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
-  const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
+  const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
 
   try {
     const receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
     if (!receipt) {
-      const err = new Error("TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation");
+      const err = new Error('TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation');
       err.status = 202;
       throw err;
     }
-    if (receipt.status !== "success" && receipt.status !== 1) {
-      throw new Error("TRANSACTION_REVERTED_ON_CHAIN");
+    if (receipt.status !== 'success' && receipt.status !== 1) {
+      throw new Error('TRANSACTION_REVERTED_ON_CHAIN');
     }
-
     if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
-      throw new Error("TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract");
+      throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
   } catch (rpcErr) {
-    if (rpcErr.message && (rpcErr.message.includes("TRANSACTION_REVERTED") || rpcErr.message.includes("TRANSACTION_RECIPIENT_MISMATCH") || rpcErr.status === 202)) {
+    if (rpcErr.message && (rpcErr.message.includes('TRANSACTION_REVERTED') || rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') || rpcErr.status === 202)) {
       throw rpcErr;
     }
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === 'production') {
       throw new Error(`ON_CHAIN_RECEIPT_FETCH_FAILED: ${rpcErr.message}`);
     }
   }
 
-  project.escrowFunded = true;
-  project.escrowTxnHash = txnHash;
-  if (project.status === "open") {
-    project.status = "in_progress";
+  // Phase 2: ACID mutation with CAS predicate
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const updateResult = await Project.updateOne(
+      { _id: projectId, escrowFunded: { $ne: true } },
+      { $set: { escrowFunded: true, escrowTxnHash: txnHash, ...(project.status === 'open' ? { status: 'in_progress' } : {}) } },
+      { session }
+    );
+    await session.commitTransaction();
+
+    if (updateResult.modifiedCount === 0) {
+      // Already funded — idempotent
+      return await Project.findById(projectId);
+    }
+    return await Project.findById(projectId);
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
   }
-  await project.save();
-  return project;
 }
 
 /**
  * REST reconciliation for on-chain milestone release.
  */
 async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, callerUserId = null) {
-  if (!projectId) throw new Error("PROJECT_ID_REQUIRED");
-  assertNonNegativeSafeInteger(milestoneIndex, "milestoneIndex");
-  if (!isValidTxHash(txnHash)) throw new Error("INVALID_TRANSACTION_HASH");
+  if (!projectId) throw new Error('PROJECT_ID_REQUIRED');
+  assertNonNegativeSafeInteger(milestoneIndex, 'milestoneIndex');
+  if (!isValidTxHash(txnHash)) throw new Error('INVALID_TRANSACTION_HASH');
 
   const project = await Project.findById(projectId);
-  if (!project) throw new Error("PROJECT_NOT_FOUND");
+  if (!project) throw new Error('PROJECT_NOT_FOUND');
 
   if (callerUserId && String(project.clientId) !== String(callerUserId)) {
-    const err = new Error("UNAUTHORIZED_CALLER: Only the project client can release milestone escrow");
+    const err = new Error('UNAUTHORIZED_CALLER: Only the project client can release milestone escrow');
     err.status = 403;
     throw err;
   }
 
   if (!project.milestones || !project.milestones[milestoneIndex]) {
-    throw new Error("MILESTONE_INDEX_OUT_OF_BOUNDS");
+    throw new Error('MILESTONE_INDEX_OUT_OF_BOUNDS');
   }
 
+  // Idempotent early return
   if (project.milestones[milestoneIndex].paymentReleased) {
     return project;
   }
 
-  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || "https://rpc.sepolia.org";
+  // Phase 1: Verify on-chain receipt OUTSIDE transaction
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || process.env.RPC_URL || 'https://rpc.sepolia.org';
   const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
-  const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
+  const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
 
   try {
     const receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
     if (!receipt) {
-      const err = new Error("TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation");
+      const err = new Error('TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation');
       err.status = 202;
       throw err;
     }
-    if (receipt.status !== "success" && receipt.status !== 1) {
-      throw new Error("TRANSACTION_REVERTED_ON_CHAIN");
+    if (receipt.status !== 'success' && receipt.status !== 1) {
+      throw new Error('TRANSACTION_REVERTED_ON_CHAIN');
     }
-
     if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
-      throw new Error("TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract");
+      throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
   } catch (rpcErr) {
-    if (rpcErr.message && (rpcErr.message.includes("TRANSACTION_REVERTED") || rpcErr.message.includes("TRANSACTION_RECIPIENT_MISMATCH") || rpcErr.status === 202)) {
+    if (rpcErr.message && (rpcErr.message.includes('TRANSACTION_REVERTED') || rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') || rpcErr.status === 202)) {
       throw rpcErr;
     }
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === 'production') {
       throw new Error(`ON_CHAIN_RECEIPT_FETCH_FAILED: ${rpcErr.message}`);
     }
   }
 
-  project.milestones[milestoneIndex].paymentReleased = true;
-  project.milestones[milestoneIndex].status = "completed";
-  project.milestones[milestoneIndex].releasedAt = new Date();
+  // Phase 2: ACID mutation with CAS predicate
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
 
-  const allReleased = project.milestones.every((m) => m.paymentReleased);
-  if (allReleased) {
-    project.status = "completed";
-    project.escrowCompleted = true;
+    const updateFields = {
+      [`milestones.${milestoneIndex}.paymentReleased`]: true,
+      [`milestones.${milestoneIndex}.status`]: 'completed',
+      [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
+    };
+
+    const updateResult = await Project.updateOne(
+      { _id: projectId, [`milestones.${milestoneIndex}.paymentReleased`]: false },
+      { $set: updateFields },
+      { session }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      // Check if all milestones are now released
+      const updated = await Project.findById(projectId).session(session);
+      if (updated && updated.milestones.every(m => m.paymentReleased)) {
+        await Project.updateOne(
+          { _id: projectId },
+          { $set: { status: 'completed', escrowCompleted: true } },
+          { session }
+        );
+      }
+    }
+
+    await session.commitTransaction();
+    return await Project.findById(projectId);
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    throw err;
+  } finally {
+    await session.endSession();
   }
-
-  await project.save();
-  return project;
 }
 
 module.exports = {

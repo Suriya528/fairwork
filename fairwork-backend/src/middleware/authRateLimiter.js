@@ -11,6 +11,8 @@ const AUTH_MAX_ATTEMPTS = 10;
 const REGISTER_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const REGISTER_MAX_ATTEMPTS = 5;
 
+const { logger } = require("../utils/logger");
+
 // ── Redis client (lazy singleton) ──
 let redisClient = null;
 let redisReady = false;
@@ -31,13 +33,13 @@ function getRedisClient() {
     redisClient.on("ready", () => { redisReady = true; });
     redisClient.on("error", (err) => {
       redisReady = false;
-      console.error("Redis rate-limiter error:", err.message);
+      logger.error("Redis rate-limiter error:", err.message);
     });
     redisClient.on("close", () => { redisReady = false; });
 
     return redisClient;
   } catch (err) {
-    console.error("Failed to initialize Redis for rate limiting:", err.message);
+    logger.error("Failed to initialize Redis for rate limiting:", err.message);
     return null;
   }
 }
@@ -79,7 +81,7 @@ async function redisRateCheck(key, windowMs, maxAttempts) {
     }
     return { limited: false };
   } catch (err) {
-    console.error("Redis rate check error:", err.message);
+    logger.error("Redis rate check error:", err.message);
     return null; // Signal Redis unavailable
   }
 }
@@ -143,7 +145,7 @@ async function authRateLimiter(req, res, next) {
 
   if (result === null) {
     // FAIL CLOSED — Redis unavailable in production
-    console.error("CRITICAL: Redis unavailable for auth rate limiting in production");
+    logger.error("CRITICAL: Redis unavailable for auth rate limiting in production");
     return res.status(503).json({
       message: "Service temporarily unavailable. Please try again later.",
       code: "RATE_LIMIT_BACKEND_UNAVAILABLE",
@@ -172,7 +174,7 @@ async function registerRateLimiter(req, res, next) {
   const result = await rateCheck(key, REGISTER_WINDOW_MS, REGISTER_MAX_ATTEMPTS);
 
   if (result === null) {
-    console.error("CRITICAL: Redis unavailable for auth rate limiting in production");
+    logger.error("CRITICAL: Redis unavailable for auth rate limiting in production");
     return res.status(503).json({
       message: "Service temporarily unavailable. Please try again later.",
       code: "RATE_LIMIT_BACKEND_UNAVAILABLE",

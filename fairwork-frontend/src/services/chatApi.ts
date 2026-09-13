@@ -111,6 +111,28 @@ export async function markRead(projectId: string, token: string, readAt?: string
   })
 }
 
+// H-4: Singleton Socket.IO connection — prevents connection leaks
+let _socket: Socket | null = null
+let _socketToken: string | null = null
+
 export function connectChat(token: string): Socket {
-  return io(API_URL.replace(/\/api$/, ""), { auth: { token } })
+  // Reuse existing socket if token hasn't changed
+  if (_socket && _socketToken === token && _socket.connected) {
+    return _socket
+  }
+  // Disconnect old socket if token changed
+  if (_socket) {
+    _socket.disconnect()
+  }
+  _socket = io(API_URL.replace(/\/api$/, ""), { auth: { token } })
+  _socketToken = token
+  return _socket
+}
+
+export function disconnectChat(): void {
+  if (_socket) {
+    _socket.disconnect()
+    _socket = null
+    _socketToken = null
+  }
 }

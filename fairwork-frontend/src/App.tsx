@@ -14,38 +14,57 @@ import { AiAssistantDrawer } from "@/components/ai/AiAssistantDrawer"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 
+// H-3R: Chunk load retry with reload protection (prevents infinite loops)
+function lazyRetry(factory: () => Promise<any>) {
+  return lazy(() =>
+    factory().catch((err: Error) => {
+      if (
+        err?.message?.includes("Failed to fetch dynamically imported module") ||
+        err?.name === "ChunkLoadError"
+      ) {
+        if (!sessionStorage.getItem("chunk_reload_attempted")) {
+          sessionStorage.setItem("chunk_reload_attempted", "1")
+          window.location.reload()
+          return new Promise(() => {}) // Page reloads, never resolves
+        }
+      }
+      throw err // Falls through to ErrorBoundary
+    }),
+  )
+}
+
 // Dynamic code-split page imports (mapped for named exports)
-const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })))
-const LandingPage = lazy(() => import("@/pages/LandingPage").then((m) => ({ default: m.LandingPage })))
-const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })))
-const ProjectsPage = lazy(() => import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })))
-const CreateProjectPage = lazy(() => import("@/pages/CreateProjectPage").then((m) => ({ default: m.CreateProjectPage })))
-const ProjectDetailPage = lazy(() => import("@/pages/ProjectDetailPage").then((m) => ({ default: m.ProjectDetailPage })))
-const MyProjectsPage = lazy(() => import("@/pages/MyProjectsPage").then((m) => ({ default: m.MyProjectsPage })))
-const MyApplicationsPage = lazy(() => import("@/pages/MyApplicationsPage").then((m) => ({ default: m.MyApplicationsPage })))
-const ContractsPage = lazy(() => import("@/pages/ContractsPage").then((m) => ({ default: m.ContractsPage })))
-const MilestonesPage = lazy(() => import("@/pages/MilestonesPage").then((m) => ({ default: m.MilestonesPage })))
-const EscrowPage = lazy(() => import("@/pages/EscrowPage").then((m) => ({ default: m.EscrowPage })))
-const DisputesPage = lazy(() => import("@/pages/DisputesPage").then((m) => ({ default: m.DisputesPage })))
-const ActivityPage = lazy(() => import("@/pages/ActivityPage").then((m) => ({ default: m.ActivityPage })))
-const ProfilePage = lazy(() => import("@/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })))
-const WalletPage = lazy(() => import("@/pages/WalletPage").then((m) => ({ default: m.WalletPage })))
-const SettingsPage = lazy(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })))
-const NotificationsPage = lazy(() => import("@/pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })))
-const TransactionsPage = lazy(() => import("@/pages/TransactionsPage").then((m) => ({ default: m.TransactionsPage })))
-const HelpCenterPage = lazy(() => import("@/pages/HelpCenterPage").then((m) => ({ default: m.HelpCenterPage })))
-const ChatPage = lazy(() => import("@/pages/ChatPage").then((m) => ({ default: m.ChatPage })))
-const AdminDashboardPage = lazy(() => import("@/pages/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })))
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })))
-const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })))
-const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })))
-const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage })))
-const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })))
-const VerifyEmailPage = lazy(() => import("@/pages/auth/VerifyEmailPage").then((m) => ({ default: m.VerifyEmailPage })))
-const AuthCallbackPage = lazy(() => import("@/pages/auth/AuthCallbackPage").then((m) => ({ default: m.AuthCallbackPage })))
-const SelectRolePage = lazy(() => import("@/pages/auth/SelectRolePage").then((m) => ({ default: m.SelectRolePage })))
-const TermsPage = lazy(() => import("@/pages/legal/TermsPage").then((m) => ({ default: m.TermsPage })))
-const PrivacyPage = lazy(() => import("@/pages/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })))
+const DashboardPage = lazyRetry(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })))
+const LandingPage = lazyRetry(() => import("@/pages/LandingPage").then((m) => ({ default: m.LandingPage })))
+const AnalyticsPage = lazyRetry(() => import("@/pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })))
+const ProjectsPage = lazyRetry(() => import("@/pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })))
+const CreateProjectPage = lazyRetry(() => import("@/pages/CreateProjectPage").then((m) => ({ default: m.CreateProjectPage })))
+const ProjectDetailPage = lazyRetry(() => import("@/pages/ProjectDetailPage").then((m) => ({ default: m.ProjectDetailPage })))
+const MyProjectsPage = lazyRetry(() => import("@/pages/MyProjectsPage").then((m) => ({ default: m.MyProjectsPage })))
+const MyApplicationsPage = lazyRetry(() => import("@/pages/MyApplicationsPage").then((m) => ({ default: m.MyApplicationsPage })))
+const ContractsPage = lazyRetry(() => import("@/pages/ContractsPage").then((m) => ({ default: m.ContractsPage })))
+const MilestonesPage = lazyRetry(() => import("@/pages/MilestonesPage").then((m) => ({ default: m.MilestonesPage })))
+const EscrowPage = lazyRetry(() => import("@/pages/EscrowPage").then((m) => ({ default: m.EscrowPage })))
+const DisputesPage = lazyRetry(() => import("@/pages/DisputesPage").then((m) => ({ default: m.DisputesPage })))
+const ActivityPage = lazyRetry(() => import("@/pages/ActivityPage").then((m) => ({ default: m.ActivityPage })))
+const ProfilePage = lazyRetry(() => import("@/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })))
+const WalletPage = lazyRetry(() => import("@/pages/WalletPage").then((m) => ({ default: m.WalletPage })))
+const SettingsPage = lazyRetry(() => import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })))
+const NotificationsPage = lazyRetry(() => import("@/pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })))
+const TransactionsPage = lazyRetry(() => import("@/pages/TransactionsPage").then((m) => ({ default: m.TransactionsPage })))
+const HelpCenterPage = lazyRetry(() => import("@/pages/HelpCenterPage").then((m) => ({ default: m.HelpCenterPage })))
+const ChatPage = lazyRetry(() => import("@/pages/ChatPage").then((m) => ({ default: m.ChatPage })))
+const AdminDashboardPage = lazyRetry(() => import("@/pages/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })))
+const NotFoundPage = lazyRetry(() => import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })))
+const LoginPage = lazyRetry(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })))
+const RegisterPage = lazyRetry(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })))
+const ForgotPasswordPage = lazyRetry(() => import("@/pages/auth/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazyRetry(() => import("@/pages/auth/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })))
+const VerifyEmailPage = lazyRetry(() => import("@/pages/auth/VerifyEmailPage").then((m) => ({ default: m.VerifyEmailPage })))
+const AuthCallbackPage = lazyRetry(() => import("@/pages/auth/AuthCallbackPage").then((m) => ({ default: m.AuthCallbackPage })))
+const SelectRolePage = lazyRetry(() => import("@/pages/auth/SelectRolePage").then((m) => ({ default: m.SelectRolePage })))
+const TermsPage = lazyRetry(() => import("@/pages/legal/TermsPage").then((m) => ({ default: m.TermsPage })))
+const PrivacyPage = lazyRetry(() => import("@/pages/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })))
 
 function PageFallback() {
   return (
@@ -112,6 +131,8 @@ function SmartHelpPage() {
 export function App() {
   useEffect(() => {
     setupGlobalErrorListeners()
+    // H-3R: Clear chunk retry flag on successful app mount
+    sessionStorage.removeItem("chunk_reload_attempted")
   }, [])
 
   return (

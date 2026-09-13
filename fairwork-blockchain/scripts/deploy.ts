@@ -13,9 +13,11 @@ async function main() {
   const escrow = await viem.deployContract("EscrowContract");
   console.log("EscrowContract deployed to:", escrow.address);
 
-  const reputation = await viem.deployContract("ReputationContract");
+  // ReputationContract requires escrow address for access control
+  const reputation = await viem.deployContract("ReputationContract", [escrow.address]);
   console.log("ReputationContract deployed to:", reputation.address);
 
+  // DisputeContract: Ownable (deployer=owner), settable arbitrator
   const dispute = await viem.deployContract("DisputeContract", [escrow.address, arbitratorAddress]);
   console.log("DisputeContract deployed to:", dispute.address);
 

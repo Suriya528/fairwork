@@ -10,9 +10,10 @@ describe("FairWork ERC-20 milestone escrow", async () => {
     const [owner, client, freelancer, arbitrator, outsider] = await viem.getWalletClients();
     const token = await viem.deployContract("MockERC20");
     const escrow = await viem.deployContract("EscrowContract");
+    const reputation = await viem.deployContract("ReputationContract", [escrow.address]);
     const dispute = await viem.deployContract("DisputeContract", [escrow.address, arbitrator.account.address]);
     if (wireDispute) await escrow.write.setDisputeContract([dispute.address]);
-    return { owner, client, freelancer, arbitrator, outsider, token, escrow, dispute };
+    return { owner, client, freelancer, arbitrator, outsider, token, escrow, dispute, reputation };
   }
 
   async function fundedFixture() {
@@ -162,6 +163,64 @@ describe("FairWork ERC-20 milestone escrow", async () => {
       "EnforcedPause",
     );
     assert.deepEqual((await dispute.read.getDisputeStatus(["project-1"])).slice(0, 2), [0, 0]);
+  });
+
+  it("submits rating successfully for participants of completed projects and reverts for others", async () => {
+    const { client, freelancer, outsider, escrow, reputation } = await fundedFixture();
+    
+    // Project not completed yet
+    await viem.assertions.revertWith(
+      reputation.write.submitRating(["project-1", freelancer.account.address, 5, "Great"], { account: client.account }),
+      "Project not completed"
+    );
+
+    // Complete the project
+    await escrow.write.releaseMilestone(["project-1", 0n], { account: client.account });
+    await escrow.write.releaseMilestone(["project-1", 1n], { account: client.account });
+
+    // Non-participants cannot rate
+    await viem.assertions.revertWith(
+      reputation.write.submitRating(["project-1", freelancer.account.address, 5, "Great"], { account: outsider.account }),
+      "Not a project participant"
+    );
+
+    // Participants can rate
+    await reputation.write.submitRating(["project-1", freelancer.account.address, 5, "Great"], { account: client.account });
+    
+    // Check reputation updated
+    const stats = await reputation.read.getReputation([freelancer.account.address]);
+    assert.equal(stats[0], 500n);
+    assert.equal(stats[1], 1n);
+  });
+
+  it("allows owner to set a new arbitrator and new arbitrator can resolve disputes", async () => {
+    const { owner, client, freelancer, arbitrator, outsider, token, escrow, dispute } = await fundedFixture();
+    
+    // Set arbitrator works for owner and reverts for non-owner
+    await viem.assertions.revertWithCustomError(
+      dispute.write.setArbitrator([outsider.account.address], { account: outsider.account }),
+      dispute,
+      "OwnableUnauthorizedAccount"
+    );
+    
+    await dispute.write.setArbitrator([outsider.account.address], { account: owner.account });
+
+    // Raise dispute
+    await dispute.write.raiseDispute(["project-1", "reason"], { account: client.account });
+
+    // Old arbitrator can't resolve anymore
+    await viem.assertions.revertWith(
+      dispute.write.resolveByArbitrator(["project-1", 1], { account: arbitrator.account }),
+      "Not authorized"
+    );
+
+    // New arbitrator resolves
+    await dispute.write.resolveByArbitrator(["project-1", 1], { account: outsider.account });
+    
+    // Check resolution
+    assert.equal(await token.read.balanceOf([client.account.address]), 300n);
+    const parties = await escrow.read.getEscrowParties(["project-1"]);
+    assert.equal(parties[4], true); // completed
   });
 
   // `publicClient` is intentionally initialized above: this keeps the test

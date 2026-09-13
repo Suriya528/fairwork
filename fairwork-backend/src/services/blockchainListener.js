@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { logger } = require("../utils/logger");
 const { createPublicClient, http } = require("viem");
 const { sepolia } = require("viem/chains");
 const Project = require("../models/Project.js");
@@ -81,7 +82,7 @@ async function startBlockchainListener(config = {}) {
   const chainId = config.chainId || parseInt(process.env.CHAIN_ID || "11155111", 10);
 
   if (!escrowAddress) {
-    console.warn("WARNING: Escrow address unconfigured. Blockchain listener paused.");
+    logger.warn("WARNING: Escrow address unconfigured. Blockchain listener paused.");
     return;
   }
 
@@ -92,18 +93,32 @@ async function startBlockchainListener(config = {}) {
   let currentLease = await acquireLease(podId, syncKey);
 
   if (!currentLease) {
-    console.log(`[Indexer ${podId}] Lease active by another pod or active takeover. Retrying in 15s...`);
+    logger.info(`[Indexer ${podId}] Lease active by another pod or active takeover. Retrying in 15s...`);
   }
 
-  // Polling loop
-  const pollIntervalId = setInterval(async () => {
+  // H-2R: Drain-aware polling via self-scheduling setTimeout chain
+  let shuttingDown = false;
+  let shutdownResolve;
+  const shutdownPromise = new Promise((resolve) => { shutdownResolve = resolve; });
+  let pollTimeoutId;
+
+  async function poll() {
+    if (shuttingDown) { shutdownResolve(); return; }
     try {
       if (!currentLease) {
         currentLease = await acquireLease(podId, syncKey);
-        if (!currentLease) return;
+        if (!currentLease) {
+          if (!shuttingDown) pollTimeoutId = setTimeout(poll, 15000);
+          else shutdownResolve();
+          return;
+        }
       } else {
         currentLease = await renewLease(podId, currentLease.leaseGeneration, syncKey);
-        if (!currentLease) return; // Lease lost or stolen
+        if (!currentLease) {
+          if (!shuttingDown) pollTimeoutId = setTimeout(poll, 15000);
+          else shutdownResolve();
+          return;
+        }
       }
 
       // Check for reorgs before chunk processing
@@ -116,7 +131,7 @@ async function startBlockchainListener(config = {}) {
       });
 
       if (reorgCheck.hasReorg) {
-        console.warn(`[Indexer ${podId}] Reorg detected! Depth: ${reorgCheck.reorgDepth}, Ancestor: ${reorgCheck.commonAncestorBlock}`);
+        logger.warn(`[Indexer ${podId}] Reorg detected! Depth: ${reorgCheck.reorgDepth}, Ancestor: ${reorgCheck.commonAncestorBlock}`);
         await processReorgReversal({
           chainId,
           contractAddress: escrowAddress,
@@ -185,70 +200,99 @@ async function startBlockchainListener(config = {}) {
           continue;
         }
 
-        if (!verifiedEvent) continue; // Not a MilestoneReleased event
+        if (!verifiedEvent) continue; // Unknown event type, skipped
 
-        // On-chain escrow state read for reconciliation
+        const eventName = verifiedEvent.eventName;
+        const needsOnChainRead = ['MilestoneReleased', 'EscrowFunded', 'EscrowRefunded', 'DisputeResolved'].includes(eventName);
+
         let onChainEscrowState;
-        try {
-          const escrowData = await executeWithFullJitter(() =>
-            publicClient.readContract({
-              address: escrowAddress,
-              abi: [{
-                type: "function", name: "escrows", stateMutability: "view",
-                inputs: [{ type: "string", name: "projectId" }],
-                outputs: [
-                  { type: "address", name: "client" },
-                  { type: "address", name: "freelancer" },
-                  { type: "address", name: "token" },
-                  { type: "uint256", name: "totalAmount" },
-                  { type: "uint256", name: "releasedAmount" },
-                  { type: "bool", name: "isFunded" },
-                  { type: "bool", name: "isDisputed" },
-                  { type: "bool", name: "isCompleted" },
-                ],
-              }],
-              functionName: "escrows",
-              args: [verifiedEvent.projectId],
-            })
-          );
-          onChainEscrowState = {
-            client: escrowData[0],
-            freelancer: escrowData[1],
-            token: escrowData[2],
-            totalBudget: escrowData[3],
-            releasedAmount: escrowData[4],
-            funded: Boolean(escrowData[5]),
-            isDisputed: Boolean(escrowData[6]),
-            completed: Boolean(escrowData[7]),
-          };
-        } catch (readErr) {
-          await QuarantineEvent.create({
-            category: "ON_CHAIN_READ_FAILURE",
-            errorMessage: readErr.message,
-            rawEventData: JSON.stringify(verifiedEvent),
-          });
-          continue;
+        if (needsOnChainRead) {
+          try {
+            const escrowData = await executeWithFullJitter(() =>
+              publicClient.readContract({
+                address: escrowAddress,
+                abi: [{
+                  type: "function", name: "escrows", stateMutability: "view",
+                  inputs: [{ type: "string", name: "projectId" }],
+                  outputs: [
+                    { type: "address", name: "client" },
+                    { type: "address", name: "freelancer" },
+                    { type: "address", name: "token" },
+                    { type: "uint256", name: "totalAmount" },
+                    { type: "uint256", name: "releasedAmount" },
+                    { type: "bool", name: "isFunded" },
+                    { type: "bool", name: "isDisputed" },
+                    { type: "bool", name: "isCompleted" },
+                  ],
+                }],
+                functionName: "escrows",
+                args: [verifiedEvent.projectId],
+              })
+            );
+            onChainEscrowState = {
+              client: escrowData[0],
+              freelancer: escrowData[1],
+              token: escrowData[2],
+              totalBudget: escrowData[3],
+              releasedAmount: escrowData[4],
+              funded: Boolean(escrowData[5]),
+              isDisputed: Boolean(escrowData[6]),
+              completed: Boolean(escrowData[7]),
+            };
+          } catch (readErr) {
+            await QuarantineEvent.create({
+              category: "ON_CHAIN_READ_FAILURE",
+              errorMessage: readErr.message,
+              rawEventData: JSON.stringify(verifiedEvent),
+            });
+            continue;
+          }
         }
 
         // Reconcile event within an ACID transaction with generation fencing
         try {
-          await reconcileVerifiedBlockchainEvent({
-            verifiedEvent,
-            onChainEscrowState,
-            expectedTokenAddress: tokenAddress,
-            fenceState: {
-              syncKey,
-              podId,
-              currentGeneration: currentLease.leaseGeneration,
-            },
-          });
+          if (eventName === "MilestoneReleased") {
+            await reconcileVerifiedBlockchainEvent({
+              verifiedEvent,
+              onChainEscrowState,
+              expectedTokenAddress: tokenAddress,
+              fenceState: {
+                syncKey,
+                podId,
+                currentGeneration: currentLease.leaseGeneration,
+              },
+            });
+          } else {
+            const { handleEscrowFunded, handleEscrowRefunded, handleRefundRequested, handleRefundCancelled, handleEscrowDisputed, handleDisputeResolved } = require('./eventHandlers');
+            const mongoose = require("mongoose");
+            
+            const session = await mongoose.startSession();
+            try {
+              session.startTransaction();
+              await validateFence(syncKey, podId, currentLease.leaseGeneration, session);
+              
+              if (eventName === 'EscrowFunded') await handleEscrowFunded({ verifiedEvent, onChainEscrowState, session });
+              else if (eventName === 'EscrowRefunded') await handleEscrowRefunded({ verifiedEvent, session });
+              else if (eventName === 'RefundRequested') await handleRefundRequested({ verifiedEvent, session });
+              else if (eventName === 'RefundCancelled') await handleRefundCancelled({ verifiedEvent, session });
+              else if (eventName === 'EscrowDisputed') await handleEscrowDisputed({ verifiedEvent, session });
+              else if (eventName === 'DisputeResolved') await handleDisputeResolved({ verifiedEvent, onChainEscrowState, session });
+
+              await session.commitTransaction();
+            } catch (err) {
+              if (session.inTransaction()) await session.abortTransaction();
+              throw err;
+            } finally {
+              await session.endSession();
+            }
+          }
         } catch (reconcileErr) {
           if (reconcileErr.message === "STALE_GENERATION_FENCE_VIOLATION") {
-            console.warn(`[Indexer ${podId}] Fence violation — lease stolen. Stopping.`);
+            logger.warn(`[Indexer ${podId}] Fence violation — lease stolen. Stopping.`);
             currentLease = null;
             return;
           }
-          console.error(`[Indexer ${podId}] Reconciliation error for event ${verifiedEvent.transactionHash}:${verifiedEvent.logIndex}:`, reconcileErr.message);
+          logger.error(`[Indexer ${podId}] Reconciliation error for event ${verifiedEvent.transactionHash}:${verifiedEvent.logIndex}:`, reconcileErr.message);
         }
       }
 
@@ -270,19 +314,39 @@ async function startBlockchainListener(config = {}) {
 
     } catch (err) {
       if (err.message?.includes("REORG_HISTORY_UNAVAILABLE") || err.message?.includes("REORG_EXCEEDS_MAX_DEPTH")) {
-        console.error(`CRITICAL INDEXER HALT: ${err.message}`);
+        logger.error(`CRITICAL INDEXER HALT: ${err.message}`);
         await QuarantineEvent.create({
           category: "OPERATOR_REVIEW",
           errorMessage: err.message,
           stackTrace: err.stack,
         });
       } else {
-        console.error(`[Indexer ${podId}] Error in loop:`, err.message);
+        logger.error(`[Indexer ${podId}] Error in loop:`, err.message);
       }
     }
-  }, 15000);
 
-  return { pollIntervalId, podId, syncKey };
+    // Schedule next iteration
+    if (!shuttingDown) {
+      pollTimeoutId = setTimeout(poll, 15000);
+    } else {
+      shutdownResolve();
+    }
+  }
+
+  // Start the first iteration
+  pollTimeoutId = setTimeout(poll, 1000);
+
+  return {
+    pollTimeoutId,
+    podId,
+    syncKey,
+    async shutdown() {
+      shuttingDown = true;
+      clearTimeout(pollTimeoutId);
+      await shutdownPromise;
+      logger.info(`[Indexer ${podId}] Shutdown complete — in-flight work drained.`);
+    },
+  };
 }
 
 module.exports = {

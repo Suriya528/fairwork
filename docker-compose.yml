@@ -7,11 +7,14 @@ services:
     command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-fairwork_admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-changeme_in_production}
     volumes:
       - mongo_data:/data/db
     healthcheck:
       test: >
-        mongosh --eval "
+        mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "
           try {
             rs.status().ok
           } catch (e) {
@@ -54,7 +57,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGO_URI=mongodb://mongo:27017/fairwork?replicaSet=rs0
+      - MONGO_URI=mongodb://${MONGO_ROOT_USER:-fairwork_admin}:${MONGO_ROOT_PASSWORD:-changeme_in_production}@mongo:27017/fairwork?replicaSet=rs0&authSource=admin
       - REDIS_URL=redis://redis:6379
       - CLIENT_URL=http://localhost:3000
       - JWT_SECRET=${JWT_SECRET:-fairwork_production_jwt_secret_key_minimum_32_chars}

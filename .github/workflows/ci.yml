@@ -29,6 +29,11 @@ jobs:
         working-directory: ./fairwork-backend
         run: npm test
 
+      - name: Security Audit
+        working-directory: ./fairwork-backend
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
   frontend-gate:
     name: Frontend Typecheck & Build Gate
     runs-on: ubuntu-latest
@@ -54,3 +59,34 @@ jobs:
       - name: Vite Production Build
         working-directory: ./fairwork-frontend
         run: npm run build
+
+      - name: Security Audit
+        working-directory: ./fairwork-frontend
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  blockchain-gate:
+    name: Smart Contract Compile & Test Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: fairwork-blockchain/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./fairwork-blockchain
+        run: npm ci
+
+      - name: Compile Solidity Contracts
+        working-directory: ./fairwork-blockchain
+        run: npx hardhat compile
+
+      - name: Run Contract Tests
+        working-directory: ./fairwork-blockchain
+        run: npx hardhat test

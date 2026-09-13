@@ -5,7 +5,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 require("dotenv").config();
-
+const { logger, asyncStore } = require('./utils/logger');
+const crypto = require('crypto');
 const Project = require("./models/Project");
 const Message = require("./models/Message");
 const User = require("./models/User");
@@ -63,6 +64,30 @@ function createServerApp(config = {}) {
   app.use(helmet());
   app.use(express.json({ limit: "1mb" }));
 
+  // Request correlation ID middleware
+  app.use((req, res, next) => {
+    const requestId = req.headers['x-request-id'] || crypto.randomUUID();
+    res.setHeader('x-request-id', requestId);
+    asyncStore.run({ requestId, userId: null }, () => {
+      next();
+    });
+  });
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const store = asyncStore.getStore();
+      logger.info({
+        method: req.method,
+        path: req.originalUrl,
+        status: res.statusCode,
+        durationMs: Date.now() - start,
+        userId: store?.userId,
+      }, `${req.method} ${req.originalUrl} ${res.statusCode}`);
+    });
+    next();
+  });
+
   // Trust first proxy hop (Nginx/Docker/cloud LB) so req.ip returns the real client IP.
   // Critical for: rate limiter accuracy, secure cookie transport, accurate logging.
   if (isProd) app.set("trust proxy", 1);
@@ -111,7 +136,7 @@ function createServerApp(config = {}) {
 
   // Global Express Error Handler
   app.use((err, req, res, next) => {
-    console.error("Unhandled API error:", err);
+    logger.error("Unhandled API error:", err);
     res.status(err.statusCode || err.status || 500).json({
       code: err.code || "INTERNAL_SERVER_ERROR",
       message: isProd ? "Internal server error" : err.message,
@@ -121,6 +146,20 @@ function createServerApp(config = {}) {
   // Socket Gateway Configuration
   const io = new Server(httpServer, { cors: corsOptions });
 
+  // C-4: Redis adapter for horizontal scaling (chat across multiple pods)
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    try {
+      const { createAdapter } = require("@socket.io/redis-adapter");
+      const Redis = require("ioredis");
+      const pubClient = new Redis(redisUrl);
+      const subClient = pubClient.duplicate();
+      io.adapter(createAdapter(pubClient, subClient));
+      logger.info("Socket.IO Redis adapter connected — cross-pod chat enabled");
+    } catch (adapterErr) {
+      logger.warn({ err: adapterErr.message }, "Socket.IO Redis adapter failed — falling back to in-memory adapter");
+    }
+  }
   io.use(socketAuthMiddleware(config));
 
   io.on("connection", async (socket) => {
@@ -251,30 +290,43 @@ function createServerApp(config = {}) {
 
 // Global process initialization when run directly
 if (require.main === module) {
-  const { app, httpServer } = createServerApp();
+  const { app, httpServer, io } = createServerApp();
   
   mongoose
     .connect(process.env.MONGO_URI)
     .then(() => {
-      console.log("MongoDB connected");
-      require("./services/blockchainListener").startBlockchainListener().then(handle => { if (handle) global.__listenerHandle = handle; }).catch((err) => console.error("Blockchain listener failed:", err.message));
+      logger.info("MongoDB connected");
+      require("./services/blockchainListener").startBlockchainListener({ io }).then(handle => { if (handle) global.__listenerHandle = handle; }).catch((err) => logger.error("Blockchain listener failed:", err.message));
       httpServer.listen(process.env.PORT || 5000, () =>
-        console.log(`Server running on port ${process.env.PORT || 5000}`)
+        logger.info(`Server running on port ${process.env.PORT || 5000}`)
       );
     })
     .catch((err) => {
-      console.error("Fatal MongoDB connection error:", err.message);
+      logger.error("Fatal MongoDB connection error:", err.message);
       process.exit(1);
     });
 
   // Graceful shutdown handling
-  const gracefulShutdown = (signal) => {
-    console.log(`Received ${signal}. Shutting down gracefully...`);
+  const gracefulShutdown = async (signal) => {
+    logger.info(`Received ${signal}. Shutting down gracefully...`);
+
+    // Safety net: force exit after 10 seconds if drain stalls
+    const forceTimer = setTimeout(() => {
+      logger.error("Forced exit — drain timeout exceeded (10s).");
+      process.exit(1);
+    }, 10000);
+    forceTimer.unref();
+
     httpServer.close(async () => {
-      console.log("HTTP server closed.");
-      if (global.__listenerHandle?.pollIntervalId) clearInterval(global.__listenerHandle.pollIntervalId);
+      logger.info("HTTP server closed.");
+      // Wait for blockchain listener to finish in-flight work
+      if (global.__listenerHandle?.shutdown) {
+        await global.__listenerHandle.shutdown();
+      } else if (global.__listenerHandle?.pollTimeoutId) {
+        clearTimeout(global.__listenerHandle.pollTimeoutId);
+      }
       await mongoose.connection.close();
-      console.log("MongoDB connection closed.");
+      logger.info("MongoDB connection closed.");
       process.exit(0);
     });
   };
@@ -284,12 +336,12 @@ if (require.main === module) {
 
   // Prevent silent crashes in production
   process.on("unhandledRejection", (reason, promise) => {
-    console.error("UNHANDLED_REJECTION at:", promise, "reason:", reason);
+    logger.error("UNHANDLED_REJECTION at:", promise, "reason:", reason);
     // Don't crash the process — log and continue serving
   });
 
   process.on("uncaughtException", (err) => {
-    console.error("UNCAUGHT_EXCEPTION — shutting down:", err);
+    logger.error("UNCAUGHT_EXCEPTION — shutting down:", err);
     // Force exit after uncaught — process state is unreliable
     process.exit(1);
   });
