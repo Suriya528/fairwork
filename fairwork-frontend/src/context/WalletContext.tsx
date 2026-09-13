@@ -8,10 +8,10 @@ import {
   type ReactNode,
 } from "react"
 import { createWalletClient, custom } from "viem"
-import { sepolia } from "viem/chains"
 import { useAuth } from "./AuthContext"
 import { getWalletNonce, verifyWallet as apiVerifyWallet } from "@/services/authApi"
 import { NoWalletModal } from "@/components/wallet/NoWalletModal"
+import { targetChain } from "@/services/web3"
 
 export const OFFICIAL_METAMASK_INSTALL_URL = "https://metamask.io/download/"
 
@@ -53,7 +53,7 @@ interface WalletContextValue {
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined)
 
-const TARGET_CHAIN_ID = sepolia.id // 11155111
+const TARGET_CHAIN_ID = targetChain.id
 const TARGET_CHAIN_HEX = `0x${TARGET_CHAIN_ID.toString(16)}`
 
 /**
@@ -261,7 +261,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletState("CONNECTING")
 
     try {
-      const wallet = createWalletClient({ chain: sepolia, transport: custom(provider) })
+      const wallet = createWalletClient({ chain: targetChain, transport: custom(provider) })
       const [account] = await wallet.requestAddresses()
       const currentChain = await wallet.getChainId()
 
@@ -271,7 +271,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       if (currentChain !== TARGET_CHAIN_ID) {
         setErrorState("WRONG_NETWORK")
-        setErrorMessage("Connected to incorrect network. Please switch to Sepolia.")
+        setErrorMessage(`Connected to incorrect network. Please switch to ${targetChain.name}.`)
         try {
           await wallet.switchChain({ id: TARGET_CHAIN_ID })
           setChainId(TARGET_CHAIN_ID)
@@ -316,7 +316,29 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setErrorState(null)
       setErrorMessage("")
       return true
-    } catch (err: unknown) {
+    } catch (err: any) {
+      if (err?.code === 4902 || (typeof err?.message === "string" && err.message.includes("Unrecognized chain"))) {
+        try {
+          await provider.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: TARGET_CHAIN_HEX,
+                chainName: targetChain.name,
+                nativeCurrency: targetChain.nativeCurrency,
+                rpcUrls: targetChain.rpcUrls?.default?.http || [],
+                blockExplorerUrls: targetChain.blockExplorers?.default?.url ? [targetChain.blockExplorers.default.url] : [],
+              },
+            ],
+          })
+          setChainId(TARGET_CHAIN_ID)
+          setErrorState(null)
+          setErrorMessage("")
+          return true
+        } catch {
+          // ignore and fall through
+        }
+      }
       const msg = err instanceof Error ? err.message : "Network switch failed"
       setErrorState("WRONG_NETWORK")
       setErrorMessage(msg.includes("rejected") ? "Network switch request was cancelled." : msg)
@@ -352,7 +374,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletState("VERIFYING")
 
     try {
-      const wallet = createWalletClient({ chain: sepolia, transport: custom(provider) })
+      const wallet = createWalletClient({ chain: targetChain, transport: custom(provider) })
       const currentChain = await wallet.getChainId()
 
       if (currentChain !== TARGET_CHAIN_ID) {
@@ -361,7 +383,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setChainId(TARGET_CHAIN_ID)
         } catch {
           setErrorState("WRONG_NETWORK")
-          setErrorMessage("Please switch to the Sepolia test network to complete verification.")
+          setErrorMessage(`Please switch to the ${targetChain.name} network to complete verification.`)
           setWalletState("CONNECTED")
           return false
         }

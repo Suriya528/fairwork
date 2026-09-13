@@ -51,10 +51,26 @@ async function handleEscrowFunded({ verifiedEvent, onChainEscrowState, session }
   const { projectId, transactionHash } = verifiedEvent;
   const result = await Project.updateOne(
     { _id: projectId, escrowFunded: { $ne: true } },
-    { $set: { escrowFunded: true, escrowTxnHash: transactionHash, status: 'in_progress' } },
+    {
+      $set: {
+        escrowFunded: true,
+        escrowTxnHash: transactionHash,
+        status: 'in_progress',
+        'settlement.fundingLockedAt': new Date(),
+      },
+    },
     { session }
   );
-  if (result.modifiedCount === 1) {
+
+  const sourceEventKey = buildBlockchainEventKey({
+    chainId: verifiedEvent.chainId,
+    contractAddress: verifiedEvent.contractAddress,
+    transactionHash: verifiedEvent.transactionHash,
+    logIndex: verifiedEvent.logIndex,
+  });
+
+  const existing = await SettlementEvent.findOne({ sourceEventKey }).session(session);
+  if (!existing) {
     try {
       await recordSettlementAndOutbox({
         verifiedEvent,
@@ -65,23 +81,40 @@ async function handleEscrowFunded({ verifiedEvent, onChainEscrowState, session }
           amountUnits: verifiedEvent.amount ? verifiedEvent.amount.toString() : (onChainEscrowState?.totalBudget ? onChainEscrowState.totalBudget.toString() : null),
         },
       });
+      return 'MUTATED';
     } catch (err) {
       if (err.code === 11000) return 'ALREADY_PROCESSED';
       throw err;
     }
-    return 'MUTATED';
   }
-  return 'ALREADY_PROCESSED';
+
+  return result.modifiedCount === 1 ? 'MUTATED' : 'ALREADY_PROCESSED';
 }
 
 async function handleEscrowRefunded({ verifiedEvent, session }) {
   const { projectId } = verifiedEvent;
   const result = await Project.updateOne(
     { _id: projectId, escrowCompleted: { $ne: true } },
-    { $set: { escrowCompleted: true, status: 'completed' } },
+    {
+      $set: {
+        escrowCompleted: true,
+        status: 'refunded',
+        refundRequested: false,
+      },
+      $unset: { refundRequestedAt: '', refundTxnHash: '' },
+    },
     { session }
   );
-  if (result.modifiedCount === 1) {
+
+  const sourceEventKey = buildBlockchainEventKey({
+    chainId: verifiedEvent.chainId,
+    contractAddress: verifiedEvent.contractAddress,
+    transactionHash: verifiedEvent.transactionHash,
+    logIndex: verifiedEvent.logIndex,
+  });
+
+  const existing = await SettlementEvent.findOne({ sourceEventKey }).session(session);
+  if (!existing) {
     try {
       await recordSettlementAndOutbox({
         verifiedEvent,
@@ -91,92 +124,185 @@ async function handleEscrowRefunded({ verifiedEvent, session }) {
           amountUnits: verifiedEvent.amount ? verifiedEvent.amount.toString() : null,
         },
       });
+      return 'MUTATED';
     } catch (err) {
       if (err.code === 11000) return 'ALREADY_PROCESSED';
       throw err;
     }
-    return 'MUTATED';
   }
-  return 'ALREADY_PROCESSED';
+
+  return result.modifiedCount === 1 ? 'MUTATED' : 'ALREADY_PROCESSED';
 }
 
 async function handleRefundRequested({ verifiedEvent, session }) {
   const { projectId } = verifiedEvent;
   const result = await Project.updateOne(
     { _id: projectId, refundRequested: { $ne: true } },
-    { $set: { refundRequested: true, refundRequestedAt: new Date() } },
+    {
+      $set: {
+        refundRequested: true,
+        refundRequestedAt: new Date(),
+        refundTxnHash: verifiedEvent.transactionHash,
+      },
+    },
     { session }
   );
-  if (result.modifiedCount === 1) {
+
+  const sourceEventKey = buildBlockchainEventKey({
+    chainId: verifiedEvent.chainId,
+    contractAddress: verifiedEvent.contractAddress,
+    transactionHash: verifiedEvent.transactionHash,
+    logIndex: verifiedEvent.logIndex,
+  });
+
+  const existing = await SettlementEvent.findOne({ sourceEventKey }).session(session);
+  if (!existing) {
     try {
       await recordSettlementAndOutbox({
         verifiedEvent,
         session,
         content: 'A refund request was submitted on-chain with a 48-hour timelock.',
       });
+      return 'MUTATED';
     } catch (err) {
       if (err.code === 11000) return 'ALREADY_PROCESSED';
       throw err;
     }
-    return 'MUTATED';
   }
-  return 'ALREADY_PROCESSED';
+
+  return result.modifiedCount === 1 ? 'MUTATED' : 'ALREADY_PROCESSED';
 }
 
 async function handleRefundCancelled({ verifiedEvent, session }) {
   const { projectId } = verifiedEvent;
   const result = await Project.updateOne(
     { _id: projectId, refundRequested: true },
-    { $set: { refundRequested: false }, $unset: { refundRequestedAt: '' } },
+    {
+      $set: { refundRequested: false, refundTxnHash: '' },
+      $unset: { refundRequestedAt: '' },
+    },
     { session }
   );
-  if (result.modifiedCount === 1) {
+
+  const sourceEventKey = buildBlockchainEventKey({
+    chainId: verifiedEvent.chainId,
+    contractAddress: verifiedEvent.contractAddress,
+    transactionHash: verifiedEvent.transactionHash,
+    logIndex: verifiedEvent.logIndex,
+  });
+
+  const existing = await SettlementEvent.findOne({ sourceEventKey }).session(session);
+  if (!existing) {
     try {
       await recordSettlementAndOutbox({
         verifiedEvent,
         session,
         content: 'Refund request was cancelled on-chain.',
       });
+      return 'MUTATED';
     } catch (err) {
       if (err.code === 11000) return 'ALREADY_PROCESSED';
       throw err;
     }
-    return 'MUTATED';
   }
-  return 'ALREADY_PROCESSED';
+
+  return result.modifiedCount === 1 ? 'MUTATED' : 'ALREADY_PROCESSED';
 }
 
 async function handleEscrowDisputed({ verifiedEvent, session }) {
   const { projectId } = verifiedEvent;
   const result = await Project.updateOne(
     { _id: projectId, status: { $ne: 'disputed' } },
-    { $set: { status: 'disputed', refundRequested: false }, $unset: { refundRequestedAt: '' } },
+    {
+      $set: {
+        status: 'disputed',
+        escrowDisputed: true,
+        refundRequested: false,
+        refundTxnHash: '',
+      },
+      $unset: { refundRequestedAt: '' },
+    },
     { session }
   );
-  if (result.modifiedCount === 1) {
+
+  const Dispute = require('../models/Dispute');
+  const existingDispute = await Dispute.findOne({ projectId, status: 'pending' }).session(session);
+  if (!existingDispute) {
+    await Dispute.create(
+      [
+        {
+          projectId,
+          raisedBy: null,
+          reason: 'On-chain dispute opened',
+          status: 'pending',
+        },
+      ],
+      { session }
+    );
+  }
+
+  const sourceEventKey = buildBlockchainEventKey({
+    chainId: verifiedEvent.chainId,
+    contractAddress: verifiedEvent.contractAddress,
+    transactionHash: verifiedEvent.transactionHash,
+    logIndex: verifiedEvent.logIndex,
+  });
+
+  const existing = await SettlementEvent.findOne({ sourceEventKey }).session(session);
+  if (!existing) {
     try {
       await recordSettlementAndOutbox({
         verifiedEvent,
         session,
         content: 'Escrow was frozen under on-chain dispute.',
       });
+      return 'MUTATED';
     } catch (err) {
       if (err.code === 11000) return 'ALREADY_PROCESSED';
       throw err;
     }
-    return 'MUTATED';
   }
-  return 'ALREADY_PROCESSED';
+
+  return result.modifiedCount === 1 ? 'MUTATED' : 'ALREADY_PROCESSED';
 }
 
 async function handleDisputeResolved({ verifiedEvent, onChainEscrowState, session }) {
   const { projectId } = verifiedEvent;
+  const project = await Project.findById(projectId).session(session);
+  const isClientWinner = verifiedEvent.winner && (
+    (project?.clientWalletAddress && verifiedEvent.winner.toLowerCase() === project.clientWalletAddress.toLowerCase()) ||
+    (onChainEscrowState?.client && verifiedEvent.winner.toLowerCase() === onChainEscrowState.client.toLowerCase())
+  );
+  const resolvedStatus = isClientWinner ? 'refunded' : 'completed';
+
   const result = await Project.updateOne(
     { _id: projectId, escrowCompleted: { $ne: true } },
-    { $set: { escrowCompleted: true, status: 'completed' } },
+    {
+      $set: {
+        escrowCompleted: true,
+        escrowDisputed: false,
+        status: resolvedStatus,
+      },
+    },
     { session }
   );
-  if (result.modifiedCount === 1) {
+
+  const Dispute = require('../models/Dispute');
+  await Dispute.updateOne(
+    { projectId, status: 'pending' },
+    { $set: { status: 'resolved', winner: isClientWinner ? 'client' : 'freelancer' } },
+    { session }
+  );
+
+  const sourceEventKey = buildBlockchainEventKey({
+    chainId: verifiedEvent.chainId,
+    contractAddress: verifiedEvent.contractAddress,
+    transactionHash: verifiedEvent.transactionHash,
+    logIndex: verifiedEvent.logIndex,
+  });
+
+  const existing = await SettlementEvent.findOne({ sourceEventKey }).session(session);
+  if (!existing) {
     try {
       await recordSettlementAndOutbox({
         verifiedEvent,
@@ -186,13 +312,14 @@ async function handleDisputeResolved({ verifiedEvent, onChainEscrowState, sessio
           amountUnits: verifiedEvent.amount ? verifiedEvent.amount.toString() : null,
         },
       });
+      return 'MUTATED';
     } catch (err) {
       if (err.code === 11000) return 'ALREADY_PROCESSED';
       throw err;
     }
-    return 'MUTATED';
   }
-  return 'ALREADY_PROCESSED';
+
+  return result.modifiedCount === 1 ? 'MUTATED' : 'ALREADY_PROCESSED';
 }
 
 module.exports = {

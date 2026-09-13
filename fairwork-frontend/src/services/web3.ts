@@ -62,6 +62,10 @@ export const ESCROW_ABI = [
   { type: "function", name: "fund", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }], outputs: [] },
   { type: "function", name: "releaseMilestone", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }, { type: "uint256", name: "index" }], outputs: [] },
   { type: "function", name: "getEscrowParties", stateMutability: "view", inputs: [{ type: "string", name: "projectId" }], outputs: [{ type: "address", name: "client" }, { type: "address", name: "freelancer" }, { type: "bool", name: "isFunded" }, { type: "bool", name: "isDisputed" }, { type: "bool", name: "isCompleted" }] },
+  { type: "function", name: "requestRefund", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }], outputs: [] },
+  { type: "function", name: "cancelRefund", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }], outputs: [] },
+  { type: "function", name: "refund", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }], outputs: [] },
+  { type: "function", name: "refundRequestedAt", stateMutability: "view", inputs: [{ type: "string", name: "projectId" }], outputs: [{ type: "uint256" }] },
 ] as const
 
 export const DISPUTE_ABI = [
@@ -258,4 +262,49 @@ export async function raiseEscrowDispute(projectId: string, reason: string, veri
       args: [projectId, reason],
     }),
   )
+}
+
+export async function requestEscrowRefund(projectId: string, verifiedWallet: string) {
+  const c = configured()
+  const { wallet, account } = await connectWallet()
+  requireVerifiedAccount(account, verifiedWallet)
+  const txHash = await wallet.writeContract({
+    account,
+    address: c.escrowAddress,
+    abi: ESCROW_ABI,
+    functionName: "requestRefund",
+    args: [projectId],
+  })
+  await confirm(txHash)
+  return txHash
+}
+
+export async function cancelEscrowRefund(projectId: string, verifiedWallet: string) {
+  const c = configured()
+  const { wallet, account } = await connectWallet()
+  requireVerifiedAccount(account, verifiedWallet)
+  const txHash = await wallet.writeContract({
+    account,
+    address: c.escrowAddress,
+    abi: ESCROW_ABI,
+    functionName: "cancelRefund",
+    args: [projectId],
+  })
+  await confirm(txHash)
+  return txHash
+}
+
+export async function claimEscrowRefund(projectId: string, verifiedWallet: string) {
+  const c = configured()
+  const { wallet, account } = await connectWallet()
+  requireVerifiedAccount(account, verifiedWallet)
+  const txHash = await wallet.writeContract({
+    account,
+    address: c.escrowAddress,
+    abi: ESCROW_ABI,
+    functionName: "refund",
+    args: [projectId],
+  })
+  await confirm(txHash)
+  return txHash
 }

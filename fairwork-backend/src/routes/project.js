@@ -32,6 +32,6 @@ router.post("/:id/milestones/:milestoneId/request-revision", auth, requireVerifi
 router.post("/:id/milestones/:milestoneId/approve", auth, requireVerifiedEmail, approveMilestone);
 router.get("/:id", auth, getProject);
 router.put("/:id/assign", auth, requireVerifiedEmail, assignFreelancer);
-router.put("/:id/complete", auth, requireVerifiedEmail, completeProject);
+router.put("/:id/complete", auth({ bypassCache: true }), requireVerifiedEmail, completeProject);
 
 module.exports = router;

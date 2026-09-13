@@ -495,6 +495,34 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
       throw err;
     }
 
+    let verifiedEvent = null;
+    let onChainEscrowState = null;
+    const chainId = Number(process.env.CHAIN_ID || 11155111);
+
+    if (receipt && receipt.logs && receipt.logs.length > 0) {
+      for (const log of receipt.logs) {
+        if (!escrowAddress || (log.address && log.address.toLowerCase() === escrowAddress.toLowerCase())) {
+          try {
+            const decoded = decodeRawLogToVerifiedEvent({
+              rawLog: log,
+              expectedChainId: chainId,
+              expectedEscrowAddress: escrowAddress,
+            });
+            if (
+              decoded &&
+              decoded.eventName === 'EscrowFunded' &&
+              String(decoded.projectId) === String(projectId)
+            ) {
+              verifiedEvent = decoded;
+              break;
+            }
+          } catch {
+            // ignore non-matching log
+          }
+        }
+      }
+    }
+
     // Verify on-chain contract state directly
     if (escrowAddress) {
       const escrowData = await publicClient.readContract({
@@ -527,6 +555,29 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
       if (project.clientWalletAddress && onChainClient.toLowerCase() !== project.clientWalletAddress.toLowerCase()) {
         throw new Error("CLIENT_WALLET_MISMATCH: On-chain client does not match project client wallet.");
       }
+
+      if (project.settlement?.expectedTotalUnits) {
+        const onChainTotal = BigInt(escrowData[3].toString());
+        const expectedTotal = BigInt(project.settlement.expectedTotalUnits);
+        if (onChainTotal !== expectedTotal) {
+          throw new Error(`ESCROW_FUNDING_AMOUNT_MISMATCH: On-chain amount (${onChainTotal}) does not match expected project budget (${expectedTotal}).`);
+        }
+      }
+
+      if (project.settlement?.tokenAddress && escrowData[2].toLowerCase() !== project.settlement.tokenAddress.toLowerCase()) {
+        throw new Error("ESCROW_TOKEN_ADDRESS_MISMATCH: On-chain escrow token does not match expected project token.");
+      }
+
+      onChainEscrowState = {
+        client: onChainClient,
+        freelancer: escrowData[1],
+        token: escrowData[2],
+        totalBudget: escrowData[3],
+        releasedAmount: escrowData[4],
+        funded: isFunded,
+        isDisputed: Boolean(escrowData[6]),
+        completed: Boolean(escrowData[7]),
+      };
     }
   } catch (rpcErr) {
     if (rpcErr.message && (
@@ -534,6 +585,9 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
       rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') ||
       rpcErr.message.includes('ESCROW_NOT_FUNDED_ON_CHAIN') ||
       rpcErr.message.includes('CLIENT_WALLET_MISMATCH') ||
+      rpcErr.message.includes('ESCROW_FUNDING_AMOUNT_MISMATCH') ||
+      rpcErr.message.includes('ESCROW_TOKEN_ADDRESS_MISMATCH') ||
+      rpcErr.message.includes('TRANSACTION_AWAITING_FINALITY') ||
       rpcErr.status === 202
     )) {
       throw rpcErr;
@@ -543,21 +597,42 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     }
   }
 
-  // Phase 2: ACID mutation with CAS predicate
+  // Phase 2: ACID mutation with CAS predicate and event trace
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
-    const updateResult = await Project.updateOne(
-      { _id: projectId, escrowFunded: { $ne: true } },
-      { $set: { escrowFunded: true, escrowTxnHash: txnHash, ...(project.status === 'open' ? { status: 'in_progress' } : {}) } },
-      { session }
-    );
-    await session.commitTransaction();
 
-    if (updateResult.modifiedCount === 0) {
-      // Already funded — idempotent
-      return await Project.findById(projectId);
+    if (!verifiedEvent && escrowAddress && onChainEscrowState) {
+      verifiedEvent = {
+        chainId,
+        contractAddress: escrowAddress.toLowerCase(),
+        transactionHash: txnHash.toLowerCase(),
+        logIndex: 0,
+        blockNumber: Number(receipt?.blockNumber || 0),
+        blockHash: receipt?.blockHash ? String(receipt.blockHash).toLowerCase() : "0x" + "0".repeat(64),
+        eventName: 'EscrowFunded',
+        projectId: String(projectId),
+        amount: onChainEscrowState.totalBudget,
+        client: onChainEscrowState.client,
+      };
     }
+
+    if (verifiedEvent) {
+      const { handleEscrowFunded } = require('./eventHandlers');
+      await handleEscrowFunded({
+        verifiedEvent,
+        onChainEscrowState,
+        session,
+      });
+    } else {
+      await Project.updateOne(
+        { _id: projectId, escrowFunded: { $ne: true } },
+        { $set: { escrowFunded: true, escrowTxnHash: txnHash, ...(project.status === 'open' ? { status: 'in_progress' } : {}) } },
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
     return await Project.findById(projectId);
   } catch (err) {
     if (session.inTransaction()) await session.abortTransaction();

@@ -43,14 +43,19 @@ interface BackendProject {
   customCategory?: string
   budget: number
   milestones: BackendMilestone[]
-  status: "open" | "in_progress" | "completed" | "disputed"
+  status: "open" | "in_progress" | "completed" | "disputed" | "refunded" | "cancelled"
   clientId: BackendPopulatedUser | string
+  clientWalletAddress?: string
   freelancerId: BackendPopulatedUser | string | null
+  freelancerWalletAddress?: string
   escrowTxnHash: string
   escrowFunded?: boolean
   escrowCompleted?: boolean
   escrowDisputed?: boolean
   escrowToken?: string
+  refundRequested?: boolean
+  refundRequestedAt?: string | null
+  refundTxnHash?: string
   contractId: string | null
   deadlineAt?: string
   durationDays?: number
@@ -74,7 +79,7 @@ interface BackendDeliverable {
 
 // --- Frontend-facing shape (real, adapted) --------------------------------
 
-export type ApiProjectStatus = "open" | "in_progress" | "completed" | "disputed"
+export type ApiProjectStatus = "open" | "in_progress" | "completed" | "disputed" | "refunded" | "cancelled"
 export type ApiMilestoneStatus = "pending" | "in_progress" | "submitted" | "revision_requested" | "completed"
 
 export interface ApiMilestone {
@@ -114,6 +119,9 @@ export interface ApiProject {
   escrowCompleted: boolean
   escrowDisputed: boolean
   escrowToken: string
+  refundRequested?: boolean
+  refundRequestedAt?: string | null
+  refundTxnHash?: string
   deadlineAt: string | null
   durationDays: number | null
   deadlineMode: "duration" | "exact"
@@ -189,10 +197,10 @@ function toProject(p: BackendProject): ApiProject {
     status: p.status || "open",
     clientId: personId(p.clientId) ?? "",
     clientName: personName(p.clientId),
-    clientWalletAddress: personWallet(p.clientId),
+    clientWalletAddress: (p as any).clientWalletAddress || personWallet(p.clientId),
     freelancerId: personId(p.freelancerId),
     freelancerName: personName(p.freelancerId),
-    freelancerWalletAddress: personWallet(p.freelancerId),
+    freelancerWalletAddress: (p as any).freelancerWalletAddress || personWallet(p.freelancerId),
     milestones: (p.milestones || []).map((m, i) => toMilestone(m, projId, i)),
     escrowTxnHash: p.escrowTxnHash || "",
     contractId: p.contractId || null,
@@ -200,6 +208,9 @@ function toProject(p: BackendProject): ApiProject {
     escrowCompleted: Boolean(p.escrowCompleted),
     escrowDisputed: Boolean(p.escrowDisputed),
     escrowToken: p.escrowToken || "",
+    refundRequested: Boolean((p as any).refundRequested),
+    refundRequestedAt: (p as any).refundRequestedAt || null,
+    refundTxnHash: (p as any).refundTxnHash || "",
     deadlineAt: p.deadlineAt || null,
     durationDays: typeof p.durationDays === "number" ? p.durationDays : null,
     deadlineMode: p.deadlineMode === "exact" ? "exact" : "duration",

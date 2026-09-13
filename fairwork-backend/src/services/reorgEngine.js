@@ -126,7 +126,7 @@ async function processReorgReversal({ chainId, contractAddress, orphanedBlockSta
         await Project.updateOne(
           { _id: event.projectId, escrowTxnHash: event.transactionHash },
           {
-            $set: { escrowFunded: false, status: "open" },
+            $set: { escrowFunded: false, status: "open", "settlement.fundingLockedAt": null },
             $unset: { escrowTxnHash: "" },
           },
           { session }
@@ -142,7 +142,7 @@ async function processReorgReversal({ chainId, contractAddress, orphanedBlockSta
           { _id: event.projectId, refundRequested: true },
           {
             $set: { refundRequested: false },
-            $unset: { refundRequestedAt: "" },
+            $unset: { refundRequestedAt: "", refundTxnHash: "" },
           },
           { session }
         );
@@ -155,13 +155,24 @@ async function processReorgReversal({ chainId, contractAddress, orphanedBlockSta
       } else if (event.eventName === "EscrowDisputed") {
         await Project.updateOne(
           { _id: event.projectId, status: "disputed" },
-          { $set: { status: "in_progress" } },
+          { $set: { status: "in_progress", escrowDisputed: false } },
+          { session }
+        );
+        const Dispute = require("../models/Dispute");
+        await Dispute.deleteOne(
+          { projectId: event.projectId, status: "pending", reason: "On-chain dispute opened" },
           { session }
         );
       } else if (event.eventName === "DisputeResolved") {
         await Project.updateOne(
           { _id: event.projectId, escrowCompleted: true },
-          { $set: { escrowCompleted: false, status: "disputed" } },
+          { $set: { escrowCompleted: false, status: "disputed", escrowDisputed: true } },
+          { session }
+        );
+        const Dispute = require("../models/Dispute");
+        await Dispute.updateOne(
+          { projectId: event.projectId, status: "resolved" },
+          { $set: { status: "pending", winner: null } },
           { session }
         );
       }

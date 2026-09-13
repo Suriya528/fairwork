@@ -70,7 +70,7 @@ import {
   signContract,
   type ApiContract,
 } from "@/services/contractsApi"
-import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone } from "@/services/web3"
+import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone, requestEscrowRefund, cancelEscrowRefund, claimEscrowRefund } from "@/services/web3"
 import { depositEscrow, releaseEscrowPayment } from "@/services/escrowApi"
 import { raiseDispute } from "@/services/disputesApi"
 import { getReleasedAmount, getUnreleasedAmount } from "@/lib/financial"
@@ -813,12 +813,13 @@ export function ProjectDetailPage() {
       if (!user?.walletAddress) {
         throw new Error("Verify your client wallet first to fund escrow.")
       }
-      if (!project.freelancerWalletAddress) {
+      const targetFreelancerWallet = (project.freelancerWalletAddress || (typeof project.freelancerId === 'object' && project.freelancerId !== null ? (project.freelancerId as any).walletAddress : undefined)) as string | undefined
+      if (!targetFreelancerWallet) {
         throw new Error("Assigned freelancer does not have a verified wallet address.")
       }
       const fundTxHash = await fundEscrow(
         project.id,
-        project.freelancerWalletAddress as `0x${string}`,
+        targetFreelancerWallet as `0x${string}`,
         (project.milestones || []).map((m) => String(m.amount)),
         user.walletAddress,
         (stage) => setActionState(stage),
@@ -858,6 +859,63 @@ export function ProjectDetailPage() {
       setActionState("Dispute opened.")
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to raise dispute.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
+    }
+  }
+
+  const handleRequestRefund = async () => {
+    if (!token || !project) return
+    setActionError("")
+    if (!user?.walletAddress) {
+      setActionError("Verify your client wallet to request an escrow refund.")
+      return
+    }
+    setActionState("Submitting on-chain refund request (48-hour timelock)...")
+    try {
+      await requestEscrowRefund(project.id, user.walletAddress)
+      setActionState("Refund request submitted! Reloading project state...")
+      await loadProject()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to request refund.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
+    }
+  }
+
+  const handleCancelRefund = async () => {
+    if (!token || !project) return
+    setActionError("")
+    if (!user?.walletAddress) {
+      setActionError("Verify your client wallet to cancel your refund request.")
+      return
+    }
+    setActionState("Cancelling on-chain refund request...")
+    try {
+      await cancelEscrowRefund(project.id, user.walletAddress)
+      setActionState("Refund request cancelled! Reloading project state...")
+      await loadProject()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to cancel refund.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
+    }
+  }
+
+  const handleClaimRefund = async () => {
+    if (!token || !project) return
+    setActionError("")
+    if (!user?.walletAddress) {
+      setActionError("Verify your client wallet to execute escrow refund.")
+      return
+    }
+    setActionState("Executing on-chain refund...")
+    try {
+      await claimEscrowRefund(project.id, user.walletAddress)
+      setActionState("Refund claimed successfully! Reloading project state...")
+      await loadProject()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to claim refund. Note: 48-hour timelock must elapse.")
     } finally {
       setTimeout(() => setActionState(""), 3000)
     }
@@ -1589,7 +1647,7 @@ export function ProjectDetailPage() {
 
                 {isClient && (
                   <Button
-                    disabled={!project.freelancerWalletAddress || project.escrowFunded || Boolean(actionState)}
+                    disabled={(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) || project.escrowFunded || Boolean(actionState)}
                     loading={Boolean(actionState)}
                     onClick={fund}
                     leftIcon={<FiLock className="h-4 w-4" />}
@@ -1606,6 +1664,42 @@ export function ProjectDetailPage() {
                 >
                   Raise a dispute
                 </Button>
+
+                {isClient && escrowActive && !project.refundRequested && (
+                  <Button
+                    variant="outline"
+                    disabled={Boolean(actionState)}
+                    onClick={handleRequestRefund}
+                  >
+                    Request refund (48h lock)
+                  </Button>
+                )}
+
+                {isClient && escrowActive && project.refundRequested && (
+                  <div className="flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
+                    <p className="text-xs font-semibold text-warning">
+                      Refund Requested (48-hour timelock active)
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={Boolean(actionState)}
+                        onClick={handleCancelRefund}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={Boolean(actionState)}
+                        onClick={handleClaimRefund}
+                      >
+                        Claim Refund
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {escrowActive && <Badge tone="success">Payment protected by escrow</Badge>}
                 {actionState && <p className="text-xs text-muted">{actionState}</p>}

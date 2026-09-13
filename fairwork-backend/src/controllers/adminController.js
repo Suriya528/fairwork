@@ -280,6 +280,9 @@ exports.suspendUser = async (req, res) => {
     targetUser.suspendedReason = reasonText;
     await targetUser.save();
 
+    const { invalidateAuthCache } = require("../middleware/auth");
+    await invalidateAuthCache(targetUser._id);
+
     await logAudit(req, {
       action: "SUSPEND_USER",
       targetType: "User",
@@ -324,6 +327,9 @@ exports.unsuspendUser = async (req, res) => {
     targetUser.suspendedAt = undefined;
     targetUser.suspendedReason = "";
     await targetUser.save();
+
+    const { invalidateAuthCache } = require("../middleware/auth");
+    await invalidateAuthCache(targetUser._id);
 
     await logAudit(req, {
       action: "UNSUSPEND_USER",
@@ -925,6 +931,20 @@ exports.replayQuarantineEvent = async (req, res) => {
       }
 
       if (typeof rawData === "object" && rawData !== null) {
+        if (!rawData.eventName && rawData.topics && rawData.data) {
+          const { decodeRawLogToVerifiedEvent } = require("../services/reconciliationService");
+          try {
+            const decoded = decodeRawLogToVerifiedEvent({
+              rawLog: rawData,
+              expectedChainId: quarantineEvent.chainId,
+              expectedEscrowAddress: quarantineEvent.contractAddress,
+            });
+            if (decoded) rawData = decoded;
+          } catch {
+            // keep rawData
+          }
+        }
+
         const eventName = rawData.eventName;
         if (!eventName || eventName === "MilestoneReleased") {
           const outcome = await reconcileVerifiedBlockchainEvent({

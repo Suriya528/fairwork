@@ -244,6 +244,9 @@ exports.updateProfile = async (req, res) => {
 
     await user.save();
 
+    const { invalidateAuthCache } = require("../middleware/auth");
+    await invalidateAuthCache(user._id);
+
     res.json({
       message: "Profile updated successfully.",
       user: {

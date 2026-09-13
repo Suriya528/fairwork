@@ -51,6 +51,17 @@ async function setCachedAuthState(userId, state) {
   }
 }
 
+async function invalidateAuthCache(userId) {
+  if (!userId) return;
+  const client = getRedisClient();
+  if (!client) return;
+  try {
+    await client.del(`auth:${userId}`);
+  } catch {
+    // Non-fatal
+  }
+}
+
 function authenticate(optionsOrReq, maybeRes, maybeNext) {
   // Support both authenticate and authenticate({ bypassCache: true }) usage
   if (optionsOrReq && typeof optionsOrReq === "object" && !optionsOrReq.headers) {
@@ -146,3 +157,4 @@ module.exports = authenticate;
 module.exports.authenticate = authenticate;
 module.exports.authenticateToken = authenticate;
 module.exports.requireAdmin = requireAdmin;
+module.exports.invalidateAuthCache = invalidateAuthCache;

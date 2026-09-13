@@ -113,10 +113,18 @@ async function pollAndProcessOutboxBatch(workerId = "worker-1", batchSize = 10, 
   const now = new Date();
 
   const entries = await OutboxEvent.find({
-    status: { $in: ["PENDING"] },
     $or: [
-      { nextAttemptAt: null },
-      { nextAttemptAt: { $lte: now } },
+      {
+        status: "PENDING",
+        $or: [
+          { nextAttemptAt: null },
+          { nextAttemptAt: { $lte: now } },
+        ],
+      },
+      {
+        status: "PROCESSING",
+        lockedUntil: { $lt: now },
+      },
     ],
   })
     .limit(batchSize)
@@ -126,7 +134,13 @@ async function pollAndProcessOutboxBatch(workerId = "worker-1", batchSize = 10, 
   for (const rawEntry of entries) {
     const claimToken = crypto.randomUUID();
     const claimed = await OutboxEvent.findOneAndUpdate(
-      { _id: rawEntry._id, status: "PENDING" },
+      {
+        _id: rawEntry._id,
+        $or: [
+          { status: "PENDING" },
+          { status: "PROCESSING", lockedUntil: { $lt: now } },
+        ],
+      },
       {
         $set: {
           status: "PROCESSING",

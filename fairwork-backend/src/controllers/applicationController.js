@@ -140,10 +140,18 @@ exports.acceptApplication = async (req, res) => {
       return res.status(403).json({ message: "Only the project client can accept an application" });
     }
 
+    // Fetch freelancer's wallet address to ensure on-chain escrow can be created
+    const User = require("../models/User");
+    const freelancerUser = await User.findById(application.freelancerId).select("walletAddress");
+
     // Atomic single-hire invariant check: update project ONLY if freelancerId is currently null & status is open
     const updatedProject = await Project.findOneAndUpdate(
       { _id: project._id, clientId: req.user.id, freelancerId: null, status: "open" },
-      { freelancerId: application.freelancerId, status: "in_progress" },
+      {
+        freelancerId: application.freelancerId,
+        freelancerWalletAddress: freelancerUser?.walletAddress || undefined,
+        status: "in_progress",
+      },
       { returnDocument: "after" }
     );
 

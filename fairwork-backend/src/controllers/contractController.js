@@ -105,7 +105,12 @@ Either party may initiate dispute resolution or contract termination through the
       aiGeneratedText,
     });
 
-    await Project.findByIdAndUpdate(projectId, { contractId: created._id, freelancerId });
+    const freelancerUser = await User.findById(freelancerId).select("walletAddress");
+    await Project.findByIdAndUpdate(projectId, {
+      contractId: created._id,
+      freelancerId,
+      ...(freelancerUser?.walletAddress ? { freelancerWalletAddress: freelancerUser.walletAddress } : {}),
+    });
 
     const contract = await populateContractQuery(Contract.findById(created._id));
 

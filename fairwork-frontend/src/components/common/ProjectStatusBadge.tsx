@@ -19,6 +19,8 @@ const STATUS_META: Record<ApiProjectStatus, { label: string; tone: BadgeTone }> 
   in_progress: { label: "In progress", tone: "warning" },
   completed: { label: "Completed", tone: "success" },
   disputed: { label: "Disputed", tone: "danger" },
+  refunded: { label: "Refunded", tone: "neutral" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
 }
 
 export function ProjectStatusBadge({ status }: { status: ApiProjectStatus }) {

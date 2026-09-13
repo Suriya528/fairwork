@@ -263,6 +263,9 @@ exports.resetPassword = async (req, res) => {
     user.tokenVersion = (user.tokenVersion || 0) + 1; // Invalidate all existing sessions
     await user.save();
 
+    const { invalidateAuthCache } = require("../middleware/auth");
+    await invalidateAuthCache(user._id);
+
     res.json({ message: "Password reset successfully. You can now sign in with your new password." });
   } catch (err) {
     console.error("[Auth] resetPassword error:", err);
@@ -293,6 +296,8 @@ exports.verifyWallet = async (req, res) => {
     const consumed = await WalletNonce.findOneAndDelete({ _id: record._id, userId: req.user.id, sessionId: req.user.sessionId, nonce });
     if (!consumed) return res.status(400).json({ message: "Wallet verification nonce is expired or invalid" });
     const user = await User.findByIdAndUpdate(req.user.id, { walletAddress: claimed }, { returnDocument: "after", runValidators: true }).select("-password");
+    const { invalidateAuthCache } = require("../middleware/auth");
+    await invalidateAuthCache(user._id);
     recordActivitySafely({ userIds: [user._id], eventKey: `wallet-verified:${user._id}:${claimed}`, actorId: user._id, type: "wallet_verified", title: "Wallet verified", message: "Your wallet ownership was verified." });
     res.json(user);
   } catch (err) {
