@@ -25,10 +25,22 @@ async function main() {
   await escrow.write.setDisputeContract([dispute.address]);
   console.log("DisputeContract successfully linked to EscrowContract.");
 
+  // Optional: Transfer ownership to multi-sig governance or TimelockController
+  const governanceAddress = process.env.GOVERNANCE_MULTISIG_ADDRESS as `0x${string}` | undefined;
+  if (governanceAddress) {
+    console.log(`\nTransferring contract ownership to Governance Multi-Sig: ${governanceAddress}`);
+    await escrow.write.transferOwnership([governanceAddress]);
+    await dispute.write.transferOwnership([governanceAddress]);
+    console.log("Ownership transferred to Governance Multi-Sig successfully.");
+  }
+
   console.log("\n--- Copy these to your backend .env ---");
   console.log(`CANONICAL_ESCROW_ADDRESS=${escrow.address}`);
   console.log(`REPUTATION_CONTRACT_ADDRESS=${reputation.address}`);
   console.log(`DISPUTE_CONTRACT_ADDRESS=${dispute.address}`);
+  if (governanceAddress) {
+    console.log(`GOVERNANCE_MULTISIG_ADDRESS=${governanceAddress}`);
+  }
 }
 
 main()

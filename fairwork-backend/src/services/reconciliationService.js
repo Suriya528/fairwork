@@ -470,6 +470,18 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
 
+    // Enforce minimum confirmation depth for finality
+    const currentBlock = await publicClient.getBlockNumber();
+    const confirmations = currentBlock >= receipt.blockNumber ? (currentBlock - receipt.blockNumber + 1n) : 0n;
+    const minConfirmations = BigInt(process.env.MIN_CONFIRMATIONS || (process.env.NODE_ENV === 'production' ? 6 : 1));
+    if (confirmations < minConfirmations) {
+      const err = new Error(`TRANSACTION_AWAITING_FINALITY: Current confirmations (${confirmations}) below minimum required (${minConfirmations})`);
+      err.status = 202;
+      err.confirmations = Number(confirmations);
+      err.requiredConfirmations = Number(minConfirmations);
+      throw err;
+    }
+
     // Verify on-chain contract state directly
     if (escrowAddress) {
       const escrowData = await publicClient.readContract({
@@ -596,6 +608,18 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
 
+    // Enforce minimum confirmation depth for finality
+    const currentBlock = await publicClient.getBlockNumber();
+    const confirmations = currentBlock >= receipt.blockNumber ? (currentBlock - receipt.blockNumber + 1n) : 0n;
+    const minConfirmations = BigInt(process.env.MIN_CONFIRMATIONS || (process.env.NODE_ENV === 'production' ? 6 : 1));
+    if (confirmations < minConfirmations) {
+      const err = new Error(`TRANSACTION_AWAITING_FINALITY: Current confirmations (${confirmations}) below minimum required (${minConfirmations})`);
+      err.status = 202;
+      err.confirmations = Number(confirmations);
+      err.requiredConfirmations = Number(minConfirmations);
+      throw err;
+    }
+
     let verifiedEvent = null;
     let onChainEscrowState = null;
     const chainId = Number(process.env.CHAIN_ID || 11155111);
@@ -682,6 +706,7 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
       rpcErr.message.includes('TRANSACTION_REVERTED') ||
       rpcErr.message.includes('TRANSACTION_RECIPIENT_MISMATCH') ||
       rpcErr.message.includes('MILESTONE_NOT_RELEASED_ON_CHAIN') ||
+      rpcErr.message.includes('TRANSACTION_AWAITING_FINALITY') ||
       rpcErr.status === 202
     )) {
       throw rpcErr;
@@ -691,44 +716,35 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     }
   }
 
+  if (!verifiedEvent || !onChainEscrowState) {
+    const err = new Error("ON_CHAIN_VERIFICATION_REQUIRED: Milestone release requires a confirmed on-chain MilestoneReleased event log and valid escrow state. Direct database modification is prohibited.");
+    err.status = 422;
+    throw err;
+  }
+
   // Phase 2: ACID mutation with CAS predicate and reorg-traceable SettlementEvent
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
 
-    if (verifiedEvent && onChainEscrowState) {
-      await reconcileVerifiedBlockchainEvent({
-        verifiedEvent,
-        onChainEscrowState,
-        expectedTokenAddress: onChainEscrowState.token,
-        externalSession: session,
-      });
+    await reconcileVerifiedBlockchainEvent({
+      verifiedEvent,
+      onChainEscrowState,
+      expectedTokenAddress: onChainEscrowState.token,
+      externalSession: session,
+    });
 
-      await Project.updateOne(
-        { _id: projectId },
-        {
-          $set: {
-            [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
-            [`milestones.${milestoneIndex}.status`]: 'completed',
-            [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
-          },
+    await Project.updateOne(
+      { _id: projectId },
+      {
+        $set: {
+          [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
+          [`milestones.${milestoneIndex}.status`]: 'completed',
+          [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
         },
-        { session }
-      );
-    } else {
-      const updateFields = {
-        [`milestones.${milestoneIndex}.paymentReleased`]: true,
-        [`milestones.${milestoneIndex}.releaseTxnHash`]: txnHash,
-        [`milestones.${milestoneIndex}.status`]: 'completed',
-        [`milestones.${milestoneIndex}.releasedAt`]: new Date(),
-      };
-
-      await Project.updateOne(
-        { _id: projectId, [`milestones.${milestoneIndex}.paymentReleased`]: false },
-        { $set: updateFields },
-        { session }
-      );
-    }
+      },
+      { session }
+    );
 
     // Check if all milestones are now released
     const updated = await Project.findById(projectId).session(session);

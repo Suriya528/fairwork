@@ -1,0 +1,177 @@
+# Production Docker Compose Runtime Configuration for FairWork
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+services:
+  # Internal MongoDB Single-Node Replica Set with ACID Support
+  mongo:
+    image: mongo:7.0
+    container_name: fairwork-mongo-prod
+    restart: always
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:?MONGO_ROOT_USER is required}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD is required}
+    volumes:
+      - mongo_prod_data:/data/db
+    networks:
+      - fairwork_backend_net
+    healthcheck:
+      test: >
+        mongosh -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "rs.status().ok" ||
+        mongosh -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok" ||
+        mongosh --eval "rs.status().ok" ||
+        mongosh --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          memory: 1024M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Internal Redis Store & Sliding-Window Rate Limiter
+  redis:
+    image: redis:7-alpine
+    container_name: fairwork-redis-prod
+    restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - fairwork_backend_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # FairWork Node.js API Backend
+  backend:
+    build:
+      context: ./fairwork-backend
+      dockerfile: Dockerfile
+    container_name: fairwork-backend-prod
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/fairwork?replicaSet=rs0&authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - CLIENT_URL=${CLIENT_URL:?CLIENT_URL is required}
+      - BACKEND_URL=${BACKEND_URL:?BACKEND_URL is required}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - JWT_ISSUER=${JWT_ISSUER:?JWT_ISSUER is required}
+      - JWT_AUDIENCE=${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      - RPC_URL=${RPC_URL:?RPC_URL is required}
+      - SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL:-${RPC_URL}}
+      - CHAIN_ID=${CHAIN_ID:?CHAIN_ID is required}
+      - CONFIRMATION_DEPTH=${CONFIRMATION_DEPTH:-6}
+      - MIN_CONFIRMATIONS=${MIN_CONFIRMATIONS:-6}
+      - CANONICAL_ESCROW_ADDRESS=${CANONICAL_ESCROW_ADDRESS:?CANONICAL_ESCROW_ADDRESS is required}
+      - CANONICAL_TOKEN_ADDRESS=${CANONICAL_TOKEN_ADDRESS:?CANONICAL_TOKEN_ADDRESS is required}
+      - DISPUTE_CONTRACT_ADDRESS=${DISPUTE_CONTRACT_ADDRESS:?DISPUTE_CONTRACT_ADDRESS is required}
+      - REPUTATION_CONTRACT_ADDRESS=${REPUTATION_CONTRACT_ADDRESS:?REPUTATION_CONTRACT_ADDRESS is required}
+      - START_BLOCK=${START_BLOCK:?START_BLOCK is required}
+      - SMTP_HOST=${SMTP_HOST:?SMTP_HOST is required in production}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:?SMTP_USER is required in production}
+      - SMTP_PASS=${SMTP_PASS:?SMTP_PASS is required in production}
+      - EMAIL_FROM=${EMAIL_FROM:-"FairWork" <noreply@fairwork.io>}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+    networks:
+      - fairwork_backend_net
+      - fairwork_frontend_net
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # FairWork Frontend (Vite SPA + Nginx with TLS Termination)
+  frontend:
+    build:
+      context: ./fairwork-frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+        - VITE_CHAIN_ID=${CHAIN_ID:?CHAIN_ID is required}
+        - VITE_RPC_URL=${RPC_URL:?RPC_URL is required}
+        - VITE_SEPOLIA_RPC_URL=${SEPOLIA_RPC_URL:-${RPC_URL}}
+        - VITE_ESCROW_CONTRACT_ADDRESS=${CANONICAL_ESCROW_ADDRESS:?CANONICAL_ESCROW_ADDRESS is required}
+        - VITE_DISPUTE_CONTRACT_ADDRESS=${DISPUTE_CONTRACT_ADDRESS:?DISPUTE_CONTRACT_ADDRESS is required}
+        - VITE_TOKEN_ADDRESS=${CANONICAL_TOKEN_ADDRESS:?CANONICAL_TOKEN_ADDRESS is required}
+    container_name: fairwork-frontend-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./fairwork-frontend/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${SSL_CERTS_DIR:-./certs}:/etc/nginx/certs:ro
+    networks:
+      - fairwork_frontend_net
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  fairwork_backend_net:
+    internal: true
+  fairwork_frontend_net:
+
+volumes:
+  mongo_prod_data:
+  redis_prod_data:

@@ -35,12 +35,16 @@ const allowedMimeTypes = [
 ];
 
 const allowedExtensionsRegex = /\.(zip|tar|gz|7z|rar|pdf|docx?|xlsx?|csv|png|jpe?g|webp|gif|svg|mp4|mov|webm|txt|md|json|apk|aab|fig|psd|ai|step|stl|obj|fbx)$/i;
+const dangerousExtensionsRegex = /\.(exe|bat|cmd|sh|php|pl|cgi|vbs|jar|msi|dll|scr|pif|com|reg|ps1|py|rb|js|mjs)$/i;
 
 module.exports = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB safety limit
   fileFilter: (req, file, cb) => {
-    if (allowedMimeTypes.includes(file.mimetype) || allowedExtensionsRegex.test(file.originalname)) {
+    if (dangerousExtensionsRegex.test(file.originalname)) {
+      return cb(new Error("EXECUTABLE_UPLOAD_REJECTED: Executable files are strictly prohibited."));
+    }
+    if (allowedMimeTypes.includes(file.mimetype) && allowedExtensionsRegex.test(file.originalname)) {
       cb(null, true);
     } else {
       cb(new Error("File type not allowed. Please upload a valid document, image, design, archive, or video deliverable."));

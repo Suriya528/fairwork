@@ -46,14 +46,17 @@ async function sendMail({ to, subject, html, text }) {
     });
   }
 
-  // Fallback for development / staging / test when SMTP is unconfigured
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`\n───────────────────────────────────────────────────`);
-    console.log(`[DEV EMAIL DISPATCH] To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Content:\n${text}`);
-    console.log(`───────────────────────────────────────────────────\n`);
+  // Fail fast in production if SMTP credentials are not configured
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("EMAIL_TRANSPORT_UNAVAILABLE: SMTP credentials are not configured in production environment.");
   }
+
+  // Fallback for development / staging / test when SMTP is unconfigured
+  console.log(`\n───────────────────────────────────────────────────`);
+  console.log(`[DEV EMAIL DISPATCH] To: ${to}`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Content:\n${text}`);
+  console.log(`───────────────────────────────────────────────────\n`);
   return { messageId: `mock-${Date.now()}`, mocked: true };
 }
 

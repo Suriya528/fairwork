@@ -19,6 +19,20 @@ const {
   getResolvedContractAddress,
 } = require("./reconciliationService");
 
+const listenerStatus = {
+  started: false,
+  healthy: true,
+  halted: false,
+  lastPollTimestamp: null,
+  lastProcessedBlock: null,
+  consecutiveFailures: 0,
+  lastError: null,
+};
+
+function getListenerStatus() {
+  return { ...listenerStatus };
+}
+
 function isRetryableRpcError(error) {
   if (!error) return false;
   const status = error.status || error.statusCode || (error.response && error.response.status);
@@ -150,18 +164,22 @@ async function startBlockchainListener(config = {}) {
 
       // ── Core Block Processing: fetch new logs and reconcile ──
       const CHUNK_SIZE = config.chunkSize || 500;
+      const CONFIRMATION_DEPTH = BigInt(process.env.CONFIRMATION_DEPTH || (process.env.NODE_ENV === "production" ? 3 : 1));
       const fromBlock = BigInt(currentLease.lastProcessedBlock + 1);
       const latestBlock = await executeWithFullJitter(() => publicClient.getBlockNumber());
+      const safeHeadBlock = latestBlock >= CONFIRMATION_DEPTH ? latestBlock - CONFIRMATION_DEPTH : 0n;
 
-      if (latestBlock < fromBlock) {
-        // No new blocks — just process outbox
+      if (safeHeadBlock < fromBlock) {
+        // No newly confirmed blocks — just process outbox
         await pollAndProcessOutboxBatch(podId, 10, config.io);
+        listenerStatus.healthy = true;
+        listenerStatus.consecutiveFailures = 0;
         return;
       }
 
-      const toBlock = latestBlock - fromBlock > BigInt(CHUNK_SIZE)
+      const toBlock = safeHeadBlock - fromBlock > BigInt(CHUNK_SIZE)
         ? fromBlock + BigInt(CHUNK_SIZE) - 1n
-        : latestBlock;
+        : safeHeadBlock;
 
       // Fetch logs from the escrow contract in the block range
       const logs = await executeWithFullJitter(() =>
@@ -309,11 +327,21 @@ async function startBlockchainListener(config = {}) {
         { $set: { lastProcessedBlock: lastBlockNum, lastProcessedBlockHash: lastBlockHash } }
       );
 
+      listenerStatus.healthy = true;
+      listenerStatus.halted = false;
+      listenerStatus.consecutiveFailures = 0;
+      listenerStatus.lastError = null;
+      listenerStatus.lastProcessedBlock = lastBlockNum;
+
       // Run background Outbox Event Worker batch
       await pollAndProcessOutboxBatch(podId, 10, config.io);
 
     } catch (err) {
-      if (err.message?.includes("REORG_HISTORY_UNAVAILABLE") || err.message?.includes("REORG_EXCEEDS_MAX_DEPTH")) {
+      listenerStatus.consecutiveFailures++;
+      listenerStatus.lastError = err.message;
+      if (err.message?.includes("REORG_HISTORY_UNAVAILABLE") || err.message?.includes("REORG_EXCEEDS_MAX_DEPTH") || listenerStatus.consecutiveFailures >= 5) {
+        listenerStatus.healthy = false;
+        listenerStatus.halted = true;
         logger.error(`CRITICAL INDEXER HALT: ${err.message}`);
         await QuarantineEvent.create({
           category: "OPERATOR_REVIEW",
@@ -334,6 +362,7 @@ async function startBlockchainListener(config = {}) {
   }
 
   // Start the first iteration
+  listenerStatus.started = true;
   pollTimeoutId = setTimeout(poll, 1000);
 
   return {
@@ -342,6 +371,8 @@ async function startBlockchainListener(config = {}) {
     syncKey,
     async shutdown() {
       shuttingDown = true;
+      listenerStatus.healthy = false;
+      listenerStatus.halted = true;
       clearTimeout(pollTimeoutId);
       await shutdownPromise;
       logger.info(`[Indexer ${podId}] Shutdown complete — in-flight work drained.`);
@@ -351,6 +382,7 @@ async function startBlockchainListener(config = {}) {
 
 module.exports = {
   startBlockchainListener,
+  getListenerStatus,
   isRetryableRpcError,
   executeWithFullJitter,
 };

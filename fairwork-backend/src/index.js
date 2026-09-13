@@ -95,10 +95,23 @@ function createServerApp(config = {}) {
   // Health and Readiness Check Endpoints
   app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
   app.get("/readyz", (req, res) => {
-    const ready = mongoose.connection.readyState === 1;
-    res.status(ready ? 200 : 503).json({
-      ready,
-      database: ready ? "connected" : "disconnected",
+    const dbReady = mongoose.connection.readyState === 1;
+    let listenerStatus = { started: false, healthy: true };
+    try {
+      const { getListenerStatus } = require("./services/blockchainListener");
+      listenerStatus = getListenerStatus();
+    } catch {
+      // listener not loaded or disabled
+    }
+
+    // Listener must not be halted or unhealthy when active
+    const listenerUnhealthy = listenerStatus.started && (!listenerStatus.healthy || listenerStatus.halted);
+    const isReady = dbReady && !listenerUnhealthy;
+
+    res.status(isReady ? 200 : 503).json({
+      ready: isReady,
+      database: dbReady ? "connected" : "disconnected",
+      blockchainListener: listenerStatus,
       timestamp: new Date().toISOString(),
     });
   });
