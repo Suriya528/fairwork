@@ -239,6 +239,37 @@ export function ProjectsPage() {
         </div>
       </div>
 
+      {/* Category Quick Filter Pills (Amazon / Airbnb Style) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setSelectedCategory("")}
+          className={cn(
+            "rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors border cursor-pointer",
+            selectedCategory === ""
+              ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
+              : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground",
+          )}
+        >
+          All Disciplines
+        </button>
+        {PROJECT_CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setSelectedCategory(selectedCategory === cat ? "" : cat)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors border cursor-pointer",
+              selectedCategory === cat
+                ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
+                : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground",
+            )}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       {!loading && !error && (
         <div className="flex items-center justify-between text-xs text-subtle">
           <span>

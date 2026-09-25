@@ -1,22 +1,28 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import {
-  FiGitPullRequest,
-  FiGitMerge,
-  FiCheck,
+  FiShield,
+  FiCheckCircle,
   FiArrowRight,
-  FiTerminal,
+  FiSearch,
+  FiLock,
+  FiZap,
+  FiLayers,
+  FiCheck,
+  FiDollarSign,
 } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 
-const quickTechFilters = [
-  "Smart Contract Escrow",
-  "React Web Applications",
-  "Design Systems",
-  "AI Autonomous Agents",
-  "Mobile Engineering",
+const quickCategories = [
+  { label: "Smart Contracts", query: "Smart Contracts" },
+  { label: "Full-Stack Web", query: "Full-Stack" },
+  { label: "Design Systems", query: "Design System" },
+  { label: "AI Autonomous Agents", query: "AI Agent" },
+  { label: "Mobile Apps", query: "Mobile" },
 ] as const
+
+type StudioTab = "escrow" | "deliverables" | "settlement"
 
 export function HeroSection() {
   const { status } = useAuth()
@@ -26,209 +32,411 @@ export function HeroSection() {
   const destination = isAuthed ? "/projects" : "/register"
 
   const [inputQuery, setInputQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [activeTab, setActiveTab] = useState<StudioTab>("escrow")
 
-  function handleStartProject(e: React.FormEvent) {
+  function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (inputQuery.trim()) {
-      navigate(`/projects?search=${encodeURIComponent(inputQuery.trim())}`)
-    } else {
-      navigate(destination)
-    }
+    const params = new URLSearchParams()
+    if (inputQuery.trim()) params.set("search", inputQuery.trim())
+    if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory)
+    const queryString = params.toString()
+    navigate(queryString ? `/projects?${queryString}` : "/projects")
   }
 
   return (
-    <section className="relative w-full bg-base border-b border-border/40 pt-24 pb-16 sm:pt-32 sm:pb-24 overflow-hidden">
-      {/* GitHub Hero Ambient Lighting */}
+    <section className="relative w-full bg-base border-b border-border/40 pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
+      {/* Ambient background glow & radial grid */}
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-b from-blue-500/10 via-emerald-500/5 to-transparent blur-3xl" />
-        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-purple-600/5 blur-3xl" />
+        <div className="absolute left-1/2 top-0 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-b from-primary/10 via-emerald-500/5 to-transparent blur-3xl" />
+        <div className="absolute right-1/4 top-1/3 h-[420px] w-[420px] rounded-full bg-purple-500/5 blur-3xl" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* GitHub Signature Vertical Spine Container */}
-        <div className="relative pl-6 sm:pl-10">
-          {/* Vertical Glowing Spine Line (Spans the entire height) */}
-          <div
-            className="pointer-events-none absolute left-0 top-2 bottom-0 w-[2px] bg-gradient-to-b from-purple-500 via-emerald-500 to-blue-500"
-            aria-hidden
-          />
-
-          {/* Node 1: Purple Git Pull Request Node on Spine */}
-          <div className="absolute -left-[11px] top-0 flex h-6 w-6 items-center justify-center rounded-full border border-purple-400 bg-base text-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.5)]">
-            <FiGitPullRequest className="h-3 w-3" />
+        {/* Centered Hero Content Header */}
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          {/* Centered Trust Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/90 px-4 py-1.5 text-xs font-mono text-muted mb-8 shadow-xs">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold text-foreground">Non-Custodial Escrow</span>
+            <span className="text-subtle">•</span>
+            <span>Milestone-Verified Settlement</span>
           </div>
 
-          {/* Hero Content Header */}
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono text-muted mb-6">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Milestone-Verified Software Development</span>
+          {/* Centered Monumental Title */}
+          <h1 className="text-balance text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[1.08]">
+            Where ambitious projects get built.{" "}
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-400">
+              Guaranteed by milestone escrow.
+            </span>
+          </h1>
+
+          {/* Centered Subtitle */}
+          <p className="mt-6 text-base text-muted sm:text-xl leading-relaxed max-w-2xl font-normal">
+            Commission verified specialists, inspect deliverables against clear milestone criteria, and release payments directly to creator wallets with 0% platform fee deduction.
+          </p>
+
+          {/* Amazon / Airbnb Style Universal Department & Search Bar */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="mt-10 w-full max-w-3xl rounded-2xl border border-border bg-surface p-2 shadow-xl shadow-black/5 dark:shadow-black/20 flex flex-col sm:flex-row items-stretch gap-2"
+          >
+            {/* Department Dropdown Selector */}
+            <div className="relative sm:w-48 shrink-0">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                aria-label="Select discipline"
+                className="h-12 w-full appearance-none rounded-xl border-0 bg-elevated/70 px-3.5 pr-8 text-xs font-semibold text-foreground focus:bg-elevated focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Disciplines</option>
+                <option value="Smart Contracts">Smart Contracts</option>
+                <option value="Web Development">Full-Stack Web</option>
+                <option value="Design Systems">UI/UX &amp; Design</option>
+                <option value="AI Engineering">AI &amp; Autonomous</option>
+                <option value="Mobile Engineering">Mobile Apps</option>
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-subtle text-xs">
+                ▼
+              </div>
             </div>
 
-            <h1 className="text-balance text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[1.06]">
-              Where the world builds software.{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">
-                And settles every milestone.
-              </span>
-            </h1>
+            {/* Keyword Search Input */}
+            <div className="relative flex-1">
+              <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+              <input
+                type="text"
+                value={inputQuery}
+                onChange={(e) => setInputQuery(e.target.value)}
+                placeholder="Search deliverable packages, audits, apps, tokens..."
+                className="h-12 w-full rounded-xl border-0 bg-transparent pl-10 pr-4 text-xs sm:text-sm text-foreground placeholder:text-subtle focus:outline-none"
+                aria-label="Search query"
+              />
+            </div>
 
-            <p className="mt-6 text-base text-muted sm:text-xl leading-relaxed max-w-2xl font-sans">
-              Scope technical deliverables, review working code through verified pull requests, and release non-custodial smart contract escrow without middleman hold or fees.
-            </p>
+            {/* High-conversion Search CTA */}
+            <button
+              type="submit"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-6 text-xs sm:text-sm font-bold text-white shadow-sm transition-all shrink-0 cursor-pointer"
+            >
+              <span>Explore Briefs</span>
+              <FiArrowRight className="h-4 w-4" />
+            </button>
+          </form>
 
-            {/* GitHub-style Dual Action Search Form */}
-            <form onSubmit={handleStartProject} className="mt-8 flex flex-col sm:flex-row items-stretch gap-3 max-w-2xl">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={inputQuery}
-                  onChange={(e) => setInputQuery(e.target.value)}
-                  placeholder="Enter a project brief or skill (e.g. Next.js, Solidity, Foundry)..."
-                  className="h-12 w-full rounded-md border border-border-strong bg-surface px-4 text-xs sm:text-sm text-foreground placeholder:text-subtle focus:border-emerald-500 focus:outline-none transition-all font-mono"
-                  aria-label="Project brief input"
-                />
-              </div>
-
-              {/* GitHub signature green button */}
+          {/* Quick Department Filter Pills */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+            <span className="text-subtle font-mono text-[11px]">Popular:</span>
+            {quickCategories.map((item) => (
               <button
-                type="submit"
-                className="flex h-12 items-center justify-center gap-2 rounded-md bg-[#238636] hover:bg-[#2ea043] px-6 text-xs sm:text-sm font-bold text-white shadow-sm transition-colors shrink-0"
+                key={item.label}
+                type="button"
+                onClick={() => navigate(`/projects?search=${encodeURIComponent(item.query)}`)}
+                className="rounded-full border border-border bg-surface/80 px-3 py-1 text-[11px] font-medium text-muted hover:border-primary/60 hover:text-foreground transition-colors cursor-pointer"
               >
-                <span>Start a project</span>
-                <FiArrowRight className="h-4 w-4" />
+                {item.label}
               </button>
+            ))}
+          </div>
 
-              <Link
-                to={destination}
-                className="flex h-12 items-center justify-center rounded-md border border-border-strong bg-surface px-5 text-xs sm:text-sm font-semibold text-foreground hover:bg-elevated transition-colors shrink-0"
+          {/* Hero Feature Badges */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted font-mono">
+            <span className="inline-flex items-center gap-1.5">
+              <FiShield className="h-3.5 w-3.5 text-emerald-400" />
+              100% Escrow Protection
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <FiZap className="h-3.5 w-3.5 text-blue-400" />
+              Instant Wallet Payout
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <FiDollarSign className="h-3.5 w-3.5 text-purple-400" />
+              0% Platform Commission
+            </span>
+          </div>
+        </div>
+
+        {/* Centered Smart Contract Escrow & Deliverable Studio (Linear + Stripe Precision) */}
+        <div className="mt-14 max-w-5xl mx-auto overflow-hidden rounded-2xl border border-border bg-surface/90 shadow-2xl backdrop-blur-xl">
+          {/* Studio Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border bg-elevated/40 px-5 py-3.5 gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <FiLock className="h-3.5 w-3.5" />
+              </span>
+              <div>
+                <span className="text-xs font-bold text-foreground">Interactive Escrow Studio</span>
+                <span className="text-[11px] text-subtle font-mono block sm:inline sm:ml-2">
+                  Vault ID: #FW-8842-SEPOLIA
+                </span>
+              </div>
+            </div>
+
+            {/* Studio Navigation Tabs */}
+            <div className="flex items-center rounded-lg border border-border bg-surface p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab("escrow")}
+                className={`rounded-md px-3 py-1 font-medium transition-colors cursor-pointer ${
+                  activeTab === "escrow"
+                    ? "bg-elevated text-foreground shadow-xs font-semibold"
+                    : "text-muted hover:text-foreground"
+                }`}
               >
-                Browse briefs
-              </Link>
-            </form>
-
-            {/* Quick Tech Chips */}
-            <div className="mt-4 flex flex-wrap items-center gap-1.5 text-xs text-subtle font-mono">
-              <span className="text-muted">Trending stacks:</span>
-              {quickTechFilters.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => navigate(`/projects?search=${encodeURIComponent(chip)}`)}
-                  className="rounded border border-border/80 bg-surface/70 px-2 py-0.5 text-[11px] text-muted hover:border-emerald-500 hover:text-foreground transition-colors cursor-pointer"
-                >
-                  {chip}
-                </button>
-              ))}
+                Escrow Ledger
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("deliverables")}
+                className={`rounded-md px-3 py-1 font-medium transition-colors cursor-pointer ${
+                  activeTab === "deliverables"
+                    ? "bg-elevated text-foreground shadow-xs font-semibold"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Inspection Checklist
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("settlement")}
+                className={`rounded-md px-3 py-1 font-medium transition-colors cursor-pointer ${
+                  activeTab === "settlement"
+                    ? "bg-elevated text-foreground shadow-xs font-semibold"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                Settlement Flow
+              </button>
             </div>
           </div>
 
-          {/* GitHub PR & Milestone Review Interface Window */}
-          <div className="mt-12 max-w-5xl overflow-hidden rounded-xl border border-border-strong bg-[#0d1117] shadow-2xl">
-            {/* Window Titlebar */}
-            <div className="flex items-center justify-between border-b border-border bg-[#161b22] px-4 py-2.5 text-xs">
-              <div className="flex items-center gap-2 font-mono text-muted">
-                <FiTerminal className="h-3.5 w-3.5 text-subtle" />
-                <span className="text-foreground font-semibold">fairwork</span>
-                <span>/</span>
-                <span className="text-foreground font-semibold">escrow-milestone-review</span>
-              </div>
-
-              <div className="flex items-center gap-2 font-mono text-[11px] text-subtle">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span>Deterministic Execution</span>
-              </div>
+          {/* 4-Stage Visual Settlement Pipeline */}
+          <div className="border-b border-border/80 bg-surface/50 p-4 sm:p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              {[
+                {
+                  step: "01",
+                  title: "Deposit Locked",
+                  desc: "USDC secured in vault",
+                  status: "completed",
+                },
+                {
+                  step: "02",
+                  title: "Milestone Execution",
+                  desc: "Work in staging review",
+                  status: "completed",
+                },
+                {
+                  step: "03",
+                  title: "Deliverable Signoff",
+                  desc: "Client review window",
+                  status: "active",
+                },
+                {
+                  step: "04",
+                  title: "Direct Payout",
+                  desc: "0% fee straight to creator",
+                  status: "ready",
+                },
+              ].map((stage) => {
+                const isCompleted = stage.status === "completed"
+                const isActive = stage.status === "active"
+                return (
+                  <div
+                    key={stage.step}
+                    className={`rounded-xl border p-3.5 transition-all ${
+                      isActive
+                        ? "border-emerald-500/50 bg-emerald-500/10 shadow-xs"
+                        : isCompleted
+                          ? "border-border bg-elevated/40"
+                          : "border-border/60 bg-surface/40 opacity-75"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs font-mono mb-1">
+                      <span className="text-subtle font-bold">{stage.step}</span>
+                      {isCompleted ? (
+                        <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : isActive ? (
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      ) : (
+                        <span className="h-2 w-2 rounded-full bg-subtle" />
+                      )}
+                    </div>
+                    <p className="text-xs font-bold text-foreground">{stage.title}</p>
+                    <p className="text-[11px] text-muted mt-0.5">{stage.desc}</p>
+                  </div>
+                )
+              })}
             </div>
+          </div>
 
-            {/* Pull Request Header Banner */}
-            <div className="border-b border-border/80 p-5 sm:p-6 bg-[#0d1117]">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {/* GitHub Merged Purple Pill */}
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#8957e5] px-3 py-1 text-xs font-semibold text-white">
-                    <FiGitMerge className="h-3.5 w-3.5" />
-                    Merged
-                  </span>
-
+          {/* Tab 1 Content: Escrow Ledger */}
+          {activeTab === "escrow" && (
+            <div className="p-5 sm:p-7 grid gap-6 md:grid-cols-12 items-center">
+              <div className="md:col-span-7 space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
                   <div>
-                    <h2 className="text-sm sm:text-base font-bold text-foreground">
-                      Milestone 02: Production dApp Interface &amp; Invariant Testing{" "}
-                      <span className="text-subtle font-normal font-mono">#42</span>
-                    </h2>
+                    <h3 className="text-sm sm:text-base font-bold text-foreground">
+                      Milestone 02: Production dApp Interface &amp; Invariant Tests
+                    </h3>
+                    <p className="text-xs text-muted mt-0.5">
+                      Client committed deposit • Mutual 48-hour timelock active
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-mono text-xs font-bold text-emerald-400">
+                    Vault Funded
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                  <div className="rounded-lg border border-border bg-elevated/50 p-3">
+                    <span className="text-[10px] text-subtle uppercase block">Secured Balance</span>
+                    <span className="text-base font-bold text-foreground mt-0.5 block">
+                      {formatAmount(240000)}
+                    </span>
+                    <span className="text-[10px] text-emerald-400">Locked on-chain</span>
+                  </div>
+                  <div className="rounded-lg border border-border bg-elevated/50 p-3">
+                    <span className="text-[10px] text-subtle uppercase block">Platform Deduction</span>
+                    <span className="text-base font-bold text-emerald-400 mt-0.5 block">$0.00</span>
+                    <span className="text-[10px] text-subtle">100% to creator</span>
                   </div>
                 </div>
 
-                <div className="font-mono text-xs">
-                  <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-400 font-bold">
-                    Escrow Settled: {formatAmount(180000)}
-                  </span>
-                </div>
+                <p className="text-xs text-muted leading-relaxed font-sans">
+                  The client has funded this milestone into the smart contract escrow lockbox. Funds are completely protected from unilateral withdrawal while deliverables are submitted and reviewed.
+                </p>
               </div>
 
-              {/* PR Sub-bar */}
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-subtle">
-                <span>
-                  <strong className="text-foreground font-semibold">@alex-dev</strong> merged 8 commits into{" "}
-                  <code className="rounded bg-surface px-1 py-0.5 text-foreground text-[11px]">main</code>
-                </span>
-                <span>•</span>
-                <span>12 files changed</span>
-                <span>•</span>
-                <span className="text-emerald-400 font-semibold">+840 lines</span>
+              <div className="md:col-span-5 rounded-xl border border-border bg-elevated/70 p-4 font-mono text-xs space-y-2.5">
+                <div className="flex items-center justify-between pb-2 border-b border-border/60 text-[11px] text-subtle">
+                  <span>Smart Contract State</span>
+                  <span className="text-emerald-400">Verified</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-subtle">Contract Address:</span>
+                  <span className="text-foreground">0x71C...a89B</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-subtle">Dispute Arbiter:</span>
+                  <span className="text-foreground">Decentralized</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-subtle">Release Trigger:</span>
+                  <span className="text-foreground font-semibold">Client Wallet Sig</span>
+                </div>
+                <div className="pt-2 border-t border-border/60">
+                  <Link
+                    to={destination}
+                    className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-sans text-xs font-bold text-white transition-colors"
+                  >
+                    <span>Commission Similar Milestone</span>
+                    <FiArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* GitHub Actions Checks Box */}
-            <div className="border-b border-border/80 bg-[#161b22]/70 p-5 font-mono text-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#238636] text-white">
-                    <FiCheck className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="font-bold text-foreground">
-                    All milestone verification checks have passed
-                  </span>
-                </div>
-                <span className="text-subtle text-[11px]">4 successful checks</span>
+          {/* Tab 2 Content: Inspection Checklist */}
+          {activeTab === "deliverables" && (
+            <div className="p-5 sm:p-7 space-y-4">
+              <div className="border-b border-border pb-3">
+                <h3 className="text-sm sm:text-base font-bold text-foreground">
+                  Deliverable Inspection Criteria
+                </h3>
+                <p className="text-xs text-muted mt-0.5">
+                  Clear specifications verified prior to milestone escrow release.
+                </p>
               </div>
 
-              <div className="mt-3 divide-y divide-border/40">
+              <div className="divide-y divide-border/60 rounded-xl border border-border bg-elevated/40 text-xs">
                 {[
-                  { name: "Continuous Integration / Typecheck & Unit Tests", detail: "Passed in 14s", status: "success" },
-                  { name: "Slither Security Analysis / Invariant Verification", detail: "0 high/medium vulnerabilities", status: "success" },
-                  { name: "Escrow Deposit Lockbox Verification", detail: "1,800 USDC locked in contract storage", status: "success" },
-                  { name: "Client Deliverable Review & Atomic Settlement", detail: "Signed on-chain • Payout transferred", status: "success" },
-                ].map((check) => (
-                  <div key={check.name} className="flex items-center justify-between py-2 text-[11px]">
-                    <div className="flex items-center gap-2">
-                      <FiCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-foreground">{check.name}</span>
+                  {
+                    name: "Automated Test Suite & Typecheck",
+                    detail: "100% unit tests pass with zero runtime regressions",
+                    status: "passed",
+                  },
+                  {
+                    name: "Staging Preview Deployment",
+                    detail: "Responsive UI preview live on custom verification URL",
+                    status: "passed",
+                  },
+                  {
+                    name: "Security Analysis & Invariant Testing",
+                    detail: "Automated security report generated with 0 high/critical issues",
+                    status: "passed",
+                  },
+                  {
+                    name: "Client Deliverable Review",
+                    detail: "Client inspection window open for signoff and release",
+                    status: "pending",
+                  },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center justify-between p-3.5">
+                    <div className="flex items-center gap-2.5">
+                      {item.status === "passed" ? (
+                        <FiCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <FiLayers className="h-4 w-4 text-blue-400 shrink-0" />
+                      )}
+                      <div>
+                        <p className="font-semibold text-foreground">{item.name}</p>
+                        <p className="text-[11px] text-muted">{item.detail}</p>
+                      </div>
                     </div>
-                    <span className="text-subtle">{check.detail}</span>
+                    <span
+                      className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
+                        item.status === "passed"
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-blue-500/10 text-blue-400"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* Real Diff View Box */}
-            <div className="bg-[#0d1117] p-4 sm:p-5 font-mono text-xs">
-              <div className="flex items-center justify-between pb-2 mb-2 text-subtle text-[11px] border-b border-border/50">
-                <span>diff --git a/contracts/EscrowSettlement.sol</span>
-                <span className="text-emerald-400">100% P2P Payout</span>
+          {/* Tab 3 Content: Settlement Flow */}
+          {activeTab === "settlement" && (
+            <div className="p-5 sm:p-7 grid gap-6 md:grid-cols-12 items-center">
+              <div className="md:col-span-6 space-y-3">
+                <h3 className="text-sm sm:text-base font-bold text-foreground">
+                  Direct Wallet-to-Wallet Settlement
+                </h3>
+                <p className="text-xs text-muted leading-relaxed">
+                  When the client confirms the deliverable, FairWork executes the smart contract release. Funds transfer directly to the creator&apos;s wallet without intermediary custody or holding periods.
+                </p>
+                <div className="rounded-lg border border-border bg-elevated/40 p-3 font-mono text-xs space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-subtle">Milestone Total:</span>
+                    <span className="text-foreground font-bold">{formatAmount(240000)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-subtle">Platform Fee:</span>
+                    <span className="text-emerald-400 font-bold">$0.00 (0%)</span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-border/60">
+                    <span className="text-subtle">Creator Net:</span>
+                    <span className="text-emerald-400 font-bold">{formatAmount(240000)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1 text-[11px]">
-                <div className="text-subtle">@@ -142,6 +142,8 @@ function releaseMilestone() @@</div>
-                <div className="rounded bg-rose-500/10 px-2 py-0.5 text-rose-300">
-                  - e.milestones[index].status = MilestoneStatus.Locked;
+
+              <div className="md:col-span-6 flex flex-col justify-center items-center text-center p-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+                <div className="h-12 w-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
+                  <FiZap className="h-6 w-6" />
                 </div>
-                <div className="rounded bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
-                  + e.milestones[index].status = MilestoneStatus.Released;
-                </div>
-                <div className="rounded bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
-                  + IERC20(token).safeTransfer(freelancer, 1800 * 1e6); // Direct to wallet
-                </div>
+                <h4 className="text-sm font-bold text-foreground">Instant Finality</h4>
+                <p className="text-xs text-muted mt-1 max-w-xs">
+                  Zero withdrawal delays. The moment a milestone is released, tokens arrive directly in creator storage.
+                </p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </section>

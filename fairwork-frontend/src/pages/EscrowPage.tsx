@@ -30,6 +30,31 @@ export function EscrowPage() {
               : "Track smart contract payment protection backing your assigned projects."
           }
         />
+
+        {/* Visual Escrow Pipeline Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <span className="text-[10px] font-mono font-bold text-subtle uppercase block">Stage 1</span>
+            <p className="text-xs font-bold text-foreground mt-1">Non-Custodial Deposit</p>
+            <p className="text-[11px] text-muted mt-1 leading-relaxed">
+              Funds locked directly in smart contract storage. FairWork never holds your balance.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <span className="text-[10px] font-mono font-bold text-subtle uppercase block">Stage 2</span>
+            <p className="text-xs font-bold text-foreground mt-1">Mutual Review Window</p>
+            <p className="text-[11px] text-muted mt-1 leading-relaxed">
+              Built-in contract timelocks prevent unilateral withdrawals during deliverable review.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase block">Stage 3</span>
+            <p className="text-xs font-bold text-foreground mt-1">Instant Direct Release</p>
+            <p className="text-[11px] text-muted mt-1 leading-relaxed">
+              Client signs approval; funds transfer immediately to creator wallet with $0 platform fee.
+            </p>
+          </div>
+        </div>
         <Web3WalletCard
           title="Escrow Web3 Wallet Verification"
           description={

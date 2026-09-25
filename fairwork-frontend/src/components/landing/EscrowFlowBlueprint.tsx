@@ -1,49 +1,55 @@
 import { useState } from "react"
-import { FiCheck, FiGitBranch, FiTerminal } from "react-icons/fi"
+import { FiCheck, FiShield, FiLock, FiCheckCircle, FiZap, FiLayers } from "react-icons/fi"
 import { cn } from "@/lib/utils"
 
 interface WorkflowStage {
   id: string
+  step: string
   name: string
-  jobFile: string
+  badge: string
   executionTime: string
   status: "completed" | "in_progress" | "pending"
   summary: string
-  logs: string[]
+  telemetry: string[]
+  contractAction: string
   codeSnippet: string
 }
 
 const workflowStages: WorkflowStage[] = [
   {
     id: "scope",
-    name: "1. Scope Milestone",
-    jobFile: ".github/workflows/milestone-init.yml",
+    step: "01",
+    name: "Milestone Specification",
+    badge: "Criteria Defined",
     executionTime: "0.8s",
     status: "completed",
-    summary: "Milestone scope, acceptance tests, and budget committed to smart contract.",
-    logs: [
-      "✓ Parsed deliverable specifications",
-      "✓ Milestone amount verified: 1,500 USDC",
-      "✓ Project participants initialized",
+    summary: "Milestone scope, acceptance criteria, and budget are formalized into smart contract storage.",
+    telemetry: [
+      "✓ Parsed deliverable acceptance criteria",
+      "✓ Verified milestone valuation: 1,800 USDC",
+      "✓ Project creator & client wallets bound",
     ],
+    contractAction: "Escrow Contract Initialization",
     codeSnippet: `// Initialize project and commit milestone values
 function createProject(string calldata projectId, uint256[] calldata milestoneAmounts) external {
-    require(milestoneAmounts.length > 0, "NO_MILESTONES");
-    // State committed directly on-chain
+    require(milestoneAmounts.length > 0, "INVALID_MILESTONES");
+    // Parameters locked directly in contract storage
 }`,
   },
   {
     id: "deposit",
-    name: "2. Lock Escrow",
-    jobFile: ".github/workflows/escrow-deposit.yml",
+    step: "02",
+    name: "Non-Custodial Lockbox",
+    badge: "Escrow Secured",
     executionTime: "1.2s",
     status: "completed",
-    summary: "Milestone funds transferred directly into non-custodial smart contract lockbox.",
-    logs: [
+    summary: "Milestone funds are transferred directly into an immutable smart contract lockbox. Zero custodial intermediary.",
+    telemetry: [
       "✓ Verified client wallet balance",
-      "✓ Transfer authorized to EscrowContract",
-      "✓ 48-hour mutual timelock enabled",
+      "✓ Transfer authorized to Smart Contract Lockbox",
+      "✓ 48-hour mutual timelock active",
     ],
+    contractAction: "Token Deposit & State Lock",
     codeSnippet: `// Non-custodial escrow deposit
 IERC20(token).safeTransferFrom(msg.sender, address(this), totalAmount);
 escrow.isFunded = true;
@@ -51,33 +57,37 @@ emit EscrowFunded(projectId, msg.sender, totalAmount);`,
   },
   {
     id: "verify",
-    name: "3. Deliverable Review",
-    jobFile: ".github/workflows/review-inspection.yml",
+    step: "03",
+    name: "Deliverable Inspection",
+    badge: "Active Review",
     executionTime: "Live",
     status: "in_progress",
-    summary: "Engineer submits completed code, Figma tokens, or audits for client signoff.",
-    logs: [
-      "✓ Pull request linked to Milestone 02",
-      "✓ Automated test suite passed: 100% green",
-      "⏳ Client review window open",
+    summary: "Specialist submits completed deliverables. Client inspects work in staging with clear criteria signoff.",
+    telemetry: [
+      "✓ Milestone deliverable submitted by creator",
+      "✓ Automated test suites & staging preview verified",
+      "⏳ Client inspection window open",
     ],
-    codeSnippet: `// Link deliverable artifact
+    contractAction: "Milestone Deliverable Submitted",
+    codeSnippet: `// Link deliverable submission
 emit DeliverableSubmitted(projectId, milestoneIndex, proofHash);
 // Client review window active (unilateral cancellation locked)`,
   },
   {
     id: "settle",
-    name: "4. Atomic Release",
-    jobFile: ".github/workflows/payout-settle.yml",
+    step: "04",
+    name: "Instant Direct Release",
+    badge: "Atomic Payout",
     executionTime: "0.4s",
     status: "pending",
-    summary: "Client signs milestone release; contract sends 100% of payment directly to creator.",
-    logs: [
+    summary: "Client signs approval. The smart contract immediately sends 100% of milestone funds straight to creator wallet.",
+    telemetry: [
       "⏳ Awaiting client signature",
       "✓ 0% platform fee deduction",
-      "✓ Direct wallet transfer ready",
+      "✓ Direct wallet-to-wallet transfer ready",
     ],
-    codeSnippet: `// Instant settlement directly to recipient
+    contractAction: "Atomic Settlement Transfer",
+    codeSnippet: `// Instant settlement directly to recipient wallet
 e.milestones[index].released = true;
 IERC20(e.token).safeTransfer(e.freelancer, m.amount);
 emit MilestoneReleased(projectId, index, e.freelancer, m.amount);`,
@@ -91,114 +101,125 @@ export function EscrowFlowBlueprint() {
   return (
     <section id="workflow-pipeline" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Continuous GitHub Vertical Spine Container */}
-        <div className="relative pl-6 sm:pl-10">
-          <div
-            className="pointer-events-none absolute left-0 top-2 bottom-0 w-[2px] bg-gradient-to-b from-blue-500 via-emerald-500 to-purple-500"
-            aria-hidden
-          />
-
-          {/* Node on Spine */}
-          <div className="absolute -left-[11px] top-0 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400 bg-base text-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]">
-            <FiGitBranch className="h-3 w-3" />
+        {/* Centered Section Header */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-14">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
+            <FiShield className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="font-semibold text-foreground">Escrow Lifecycle</span>
           </div>
 
-          {/* Header */}
-          <div className="max-w-3xl mb-12">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-              Automated Workflow
-            </span>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-              Accelerate every milestone from brief to payout.
-            </h2>
-            <p className="mt-4 text-base text-muted sm:text-lg">
-              Every deliverable is verified through clear repository checkpoints and settled on-chain without human middlemen.
-            </p>
-          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl leading-tight">
+            Accelerate every deliverable from brief to payout.
+          </h2>
 
-          {/* GitHub Actions Pipeline Visualizer */}
-          <div className="overflow-hidden rounded-xl border border-border-strong bg-[#0d1117] shadow-xl">
-            {/* Top Pipeline Flow Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border bg-[#161b22]">
-              {workflowStages.map((stage) => {
-                const isSelected = activeStageId === stage.id
-                return (
-                  <button
-                    key={stage.id}
-                    type="button"
-                    onClick={() => setActiveStageId(stage.id)}
+          <p className="mt-4 text-base text-muted sm:text-lg max-w-2xl">
+            Every deliverable is verified against transparent milestone specifications and settled on-chain without human middlemen or hidden deductions.
+          </p>
+        </div>
+
+        {/* 4-Stage Interactive Pipeline Card */}
+        <div className="max-w-5xl mx-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
+          {/* Top Pipeline Stepper Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border bg-elevated/40">
+            {workflowStages.map((stage) => {
+              const isSelected = activeStageId === stage.id
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onClick={() => setActiveStageId(stage.id)}
+                  className={cn(
+                    "flex flex-col p-4 sm:p-5 text-left border-r border-border last:border-r-0 transition-colors cursor-pointer",
+                    isSelected ? "bg-surface shadow-xs" : "hover:bg-elevated/70",
+                  )}
+                >
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-subtle font-bold">{stage.step}</span>
+                    {stage.status === "completed" ? (
+                      <FiCheck className="h-4 w-4 text-emerald-400" />
+                    ) : stage.status === "in_progress" ? (
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-subtle" />
+                    )}
+                  </div>
+                  <span
                     className={cn(
-                      "flex flex-col p-4 text-left border-r border-border last:border-r-0 transition-colors cursor-pointer",
-                      isSelected ? "bg-[#0d1117]" : "hover:bg-[#161b22]/70",
+                      "mt-2 text-xs font-bold leading-tight",
+                      isSelected ? "text-primary" : "text-foreground",
                     )}
                   >
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className={cn("font-bold", isSelected ? "text-emerald-400" : "text-muted")}>
-                        {stage.name}
-                      </span>
-                      {stage.status === "completed" ? (
-                        <FiCheck className="h-3.5 w-3.5 text-emerald-400" />
-                      ) : stage.status === "in_progress" ? (
-                        <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
-                      ) : (
-                        <span className="h-2 w-2 rounded-full bg-subtle" />
-                      )}
-                    </div>
-                    <span className="mt-1 text-[11px] font-mono text-subtle truncate">
-                      {stage.executionTime}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+                    {stage.name}
+                  </span>
+                  <span className="mt-1 text-[11px] font-mono text-subtle">
+                    {stage.badge}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-            {/* Workflow Stage Details Workspace */}
-            <div className="grid gap-6 md:grid-cols-12 p-5 sm:p-7">
-              {/* Left Column: Job Spec & Console Logs */}
-              <div className="md:col-span-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 font-mono text-xs text-subtle mb-3">
-                    <FiTerminal className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>{currentStage.jobFile}</span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-foreground">
-                    {currentStage.name}
-                  </h3>
-                  <p className="mt-2 text-xs text-muted leading-relaxed">
-                    {currentStage.summary}
-                  </p>
-
-                  <div className="mt-5 rounded-lg border border-border bg-[#161b22] p-3.5 font-mono text-xs">
-                    <span className="text-[10px] text-subtle uppercase tracking-wider block mb-2 font-bold">
-                      Execution Telemetry:
-                    </span>
-                    <ul className="space-y-1.5 text-[11px]">
-                      {currentStage.logs.map((log) => (
-                        <li key={log} className="text-muted">
-                          {log}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+          {/* Workflow Stage Details Workspace */}
+          <div className="grid gap-6 md:grid-cols-12 p-6 sm:p-8">
+            {/* Left Column: Stage Spec & Telemetry */}
+            <div className="md:col-span-6 flex flex-col justify-between space-y-6">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-md border border-border bg-elevated px-2.5 py-1 font-mono text-xs text-subtle mb-3">
+                  <FiLock className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-foreground font-semibold">{currentStage.contractAction}</span>
                 </div>
 
-                <div className="mt-6 pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-subtle">
-                  <span>Status: Deterministic</span>
-                  <span className="text-emerald-400 font-semibold">0% Take-Rate</span>
+                <h3 className="text-lg font-bold text-foreground">
+                  {currentStage.name}
+                </h3>
+                <p className="mt-2 text-xs text-muted leading-relaxed">
+                  {currentStage.summary}
+                </p>
+
+                <div className="mt-5 rounded-xl border border-border bg-elevated/50 p-4 font-mono text-xs">
+                  <span className="text-[10px] text-subtle uppercase tracking-wider block mb-2.5 font-bold">
+                    Verification Telemetry:
+                  </span>
+                  <ul className="space-y-2 text-[11px]">
+                    {currentStage.telemetry.map((log) => (
+                      <li key={log} className="text-foreground/90 flex items-center gap-1.5">
+                        {log}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
-              {/* Right Column: Solidity Contract Execution Logic */}
-              <div className="md:col-span-7">
-                <div className="rounded-lg border border-border bg-[#161b22] p-4 font-mono text-xs overflow-x-auto text-muted">
-                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-border/60 text-[10px] text-subtle">
-                    <span>contracts/EscrowSettlement.sol</span>
-                    <span className="text-emerald-400">Smart Contract Verifiable</span>
+              <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-mono text-subtle">
+                <span className="flex items-center gap-1.5">
+                  <FiZap className="h-3.5 w-3.5 text-emerald-400" />
+                  Finality: {currentStage.executionTime}
+                </span>
+                <span className="text-emerald-400 font-semibold">0% Platform Fee</span>
+              </div>
+            </div>
+
+            {/* Right Column: Smart Contract Verifiable Execution */}
+            <div className="md:col-span-6">
+              <div className="h-full flex flex-col justify-between rounded-xl border border-border bg-elevated/70 p-5 font-mono text-xs overflow-x-auto text-muted">
+                <div>
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60 text-[11px] text-subtle">
+                    <span className="flex items-center gap-1.5">
+                      <FiLayers className="h-3.5 w-3.5 text-primary" />
+                      Smart Contract Verification
+                    </span>
+                    <span className="text-emerald-400 font-semibold">Deterministic</span>
                   </div>
                   <pre className="text-foreground/90 leading-relaxed text-[11px]">
                     <code>{currentStage.codeSnippet}</code>
                   </pre>
+                </div>
+
+                <div className="mt-6 pt-3 border-t border-border/60 flex items-center justify-between text-[11px] text-subtle">
+                  <span>Settlement Security: High</span>
+                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                    <FiCheckCircle className="h-3 w-3" /> Non-Custodial
+                  </span>
                 </div>
               </div>
             </div>

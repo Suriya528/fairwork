@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { FiMenu, FiX, FiArrowRight, FiGithub, FiGlobe, FiSearch } from "react-icons/fi"
+import { FiMenu, FiX, FiArrowRight, FiGlobe, FiSearch } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { Logo } from "@/components/common/Logo"
 import { useAuth } from "@/context/AuthContext"
@@ -8,11 +8,11 @@ import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { label: "Workflow", href: "#workflow-pipeline" },
-  { label: "Contributors", href: "#verified-contributors" },
-  { label: "Milestone Composer", href: "#milestone-composer" },
-  { label: "Security", href: "#security-guardrails" },
-  { label: "Explore", href: "/projects", isRoute: true },
+  { label: "Escrow Pipeline", href: "#workflow-pipeline" },
+  { label: "Specialists", href: "#verified-specialists" },
+  { label: "Milestone Studio", href: "#milestone-composer" },
+  { label: "Buyer Protection", href: "#security-guardrails" },
+  { label: "Explore Projects", href: "/projects", isRoute: true },
 ] as const
 
 export function LandingHeader() {
@@ -67,19 +67,19 @@ export function LandingHeader() {
         className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
         aria-label="Global"
       >
-        {/* Left: Brand & GitHub-style Primary Nav Links */}
-        <div className="flex items-center gap-6">
+        {/* Left: Brand & Nav Links */}
+        <div className="flex items-center gap-7">
           <Link to="/" aria-label="FairWork Home" className="flex items-center gap-2">
             <Logo size="md" showWordmark={true} />
           </Link>
 
-          <div className="hidden lg:flex items-center gap-5">
+          <div className="hidden lg:flex items-center gap-6">
             {navItems.map((item) =>
               "isRoute" in item && item.isRoute ? (
                 <Link
                   key={item.label}
                   to={item.href}
-                  className="text-xs font-semibold text-muted hover:text-foreground transition-colors"
+                  className="text-xs font-medium text-muted hover:text-foreground transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -87,7 +87,7 @@ export function LandingHeader() {
                 <a
                   key={item.label}
                   href={item.href}
-                  className="text-xs font-semibold text-muted hover:text-foreground transition-colors"
+                  className="text-xs font-medium text-muted hover:text-foreground transition-colors"
                 >
                   {item.label}
                 </a>
@@ -96,7 +96,7 @@ export function LandingHeader() {
           </div>
         </div>
 
-        {/* Right: GitHub-style Search Input with [/] Keycap + Auth Controls */}
+        {/* Right: Search + Currency Switcher + Theme Toggle + Auth Controls */}
         <div className="hidden md:flex items-center gap-3">
           <form onSubmit={handleHeaderSearch} className="relative flex items-center">
             <FiSearch className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-subtle" />
@@ -104,8 +104,8 @@ export function LandingHeader() {
               type="search"
               value={quickSearch}
               onChange={(e) => setQuickSearch(e.target.value)}
-              placeholder="Type / to search projects..."
-              className="h-8 w-52 rounded-md border border-border bg-surface/90 pl-8 pr-7 text-xs text-foreground placeholder:text-subtle focus:w-64 focus:border-primary focus:outline-none transition-all font-mono"
+              placeholder="Search deliverables, skills..."
+              className="h-8 w-48 rounded-lg border border-border bg-surface/90 pl-8 pr-7 text-xs text-foreground placeholder:text-subtle focus:w-60 focus:border-primary focus:outline-none transition-all"
               aria-label="Search or jump to"
             />
             <kbd className="pointer-events-none absolute right-2 flex h-4 w-4 items-center justify-center rounded border border-border-strong bg-base text-[10px] font-mono text-subtle">
@@ -118,30 +118,18 @@ export function LandingHeader() {
             type="button"
             onClick={() => setCurrency(currency === "USD" ? "INR" : "USD")}
             title="Switch currency"
-            className="flex items-center gap-1 rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-mono font-medium text-muted hover:border-border-strong hover:text-foreground transition-colors"
+            className="flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-mono font-medium text-muted hover:border-border-strong hover:text-foreground transition-colors"
           >
             <FiGlobe className="h-3 w-3" />
             <span>{currency}</span>
           </button>
-
-          {/* GitHub Repo Link */}
-          <a
-            href="https://github.com/Suriya528/fairwork"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Source Repository"
-            aria-label="GitHub Repository"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-muted hover:border-border-strong hover:text-foreground transition-colors"
-          >
-            <FiGithub className="h-4 w-4" aria-hidden />
-          </a>
 
           <ThemeToggle />
 
           {isAuthed ? (
             <Link
               to="/dashboard"
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 text-xs font-semibold text-white transition-colors"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 text-xs font-semibold text-white transition-colors shadow-xs"
             >
               <span>Dashboard</span>
               <FiArrowRight className="h-3 w-3" />
@@ -158,12 +146,11 @@ export function LandingHeader() {
                 Sign in
               </Link>
 
-              {/* Signature GitHub Bordered Sign Up Button */}
               <Link
                 to="/register"
-                className="inline-flex h-8 items-center justify-center rounded-md border border-border-strong bg-surface hover:border-foreground/60 px-3 text-xs font-semibold text-foreground transition-all"
+                className="inline-flex h-8 items-center justify-center rounded-lg bg-primary hover:bg-primary-hover px-3.5 text-xs font-semibold text-white transition-all shadow-xs"
               >
-                Sign up
+                Get Started
               </Link>
             </>
           )}
