@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { FiMenu, FiX, FiArrowRight, FiGlobe, FiSearch } from "react-icons/fi"
+import { FiMenu, FiX, FiArrowRight, FiSearch } from "react-icons/fi"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { Logo } from "@/components/common/Logo"
 import { useAuth } from "@/context/AuthContext"
-import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -17,7 +16,6 @@ const navItems = [
 
 export function LandingHeader() {
   const { status } = useAuth()
-  const { currency, setCurrency } = useCurrency()
   const location = useLocation()
   const navigate = useNavigate()
   const isAuthed = status === "authenticated"
@@ -112,17 +110,6 @@ export function LandingHeader() {
               /
             </kbd>
           </form>
-
-          {/* Currency Switcher */}
-          <button
-            type="button"
-            onClick={() => setCurrency(currency === "USD" ? "INR" : "USD")}
-            title="Switch currency"
-            className="flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-mono font-medium text-muted hover:border-border-strong hover:text-foreground transition-colors"
-          >
-            <FiGlobe className="h-3 w-3" />
-            <span>{currency}</span>
-          </button>
 
           <ThemeToggle />
 

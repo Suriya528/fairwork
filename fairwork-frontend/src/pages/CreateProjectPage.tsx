@@ -32,7 +32,7 @@ const draft = (): Draft => ({
 
 export function CreateProjectPage() {
   const { user, token } = useAuth()
-  const { currency, formatAmount } = useCurrency()
+  const { formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -71,19 +71,18 @@ export function CreateProjectPage() {
     setTitle(scope.title)
     if (scope.category) setCategory(scope.category)
     setDescription(scope.description)
-    const displayBudget = currency === "INR" ? Math.round(scope.budget * 83) : scope.budget
-    setBudget(String(displayBudget))
+    setBudget(String(scope.budget))
     setMilestones(
       scope.milestones.map((m) => ({
         id: crypto.randomUUID(),
         title: m.title,
-        amount: String(currency === "INR" ? Math.round(m.amount * 83) : m.amount),
+        amount: String(m.amount),
         dueDate: "",
       })),
     )
   }
 
-  const currencyTag = currency === "INR" ? "₹ INR" : "$ USD"
+  const currencyTag = "$ USD"
   const allocation = milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0)
 
   // Calculated deadline for preview
@@ -150,7 +149,7 @@ export function CreateProjectPage() {
       return
     }
 
-    const budgetInUSD = currency === "INR" ? value / 83 : value
+    const budgetInUSD = value
 
     setSaving(true)
     setError("")
@@ -168,7 +167,7 @@ export function CreateProjectPage() {
           deadlineAt: calculatedDeadline.toISOString(),
           milestones: milestones.map((m) => ({
             title: m.title.trim(),
-            amount: currency === "INR" ? Number(m.amount) / 83 : Number(m.amount),
+            amount: Number(m.amount),
             dueDate: m.dueDate ? new Date(m.dueDate).toISOString() : undefined,
           })),
         },
@@ -278,7 +277,7 @@ export function CreateProjectPage() {
                 id="budget"
                 type="number"
                 min="0"
-                placeholder={currency === "INR" ? "e.g. 50000" : "e.g. 500"}
+                placeholder="e.g. 500"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
               />

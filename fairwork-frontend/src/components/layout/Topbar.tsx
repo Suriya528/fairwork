@@ -13,7 +13,6 @@ import {
   FiCornerDownLeft,
   FiLoader,
   FiArrowRight,
-  FiGlobe,
 } from "react-icons/fi"
 import { Badge } from "@/components/ui/Badge"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
@@ -28,11 +27,11 @@ interface TopbarProps {
   onOpenMobileNav: () => void
 }
 
-/** Sticky top bar with interactive live search input bar, autocomplete popover dropdown, wallet status, theme toggle, currency selector, and user account menu. */
+/** Sticky top bar with interactive live search input bar, autocomplete popover dropdown, wallet status, theme toggle, and user account menu. */
 export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const { user, token } = useAuth()
   const { isVerified, connectedAccount } = useWallet()
-  const { formatAmount, currency, setCurrency } = useCurrency()
+  const { formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -305,17 +304,6 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
             Not Connected
           </Badge>
         )}
-
-        {/* Currency Switcher */}
-        <button
-          type="button"
-          onClick={() => setCurrency(currency === "USD" ? "INR" : "USD")}
-          title="Switch currency"
-          className="flex items-center gap-1 rounded-lg border border-border bg-base px-2.5 py-1 text-xs font-mono font-medium text-muted hover:border-border-strong hover:text-foreground transition-colors"
-        >
-          <FiGlobe className="h-3 w-3" />
-          <span>{currency}</span>
-        </button>
 
         {/* Clean Topbar actions */}
         <NotificationBell />

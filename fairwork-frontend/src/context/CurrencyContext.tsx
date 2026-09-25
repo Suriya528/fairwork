@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { formatCurrency, USD_TO_INR_RATE } from "@/lib/format"
+import { createContext, useContext, type ReactNode } from "react"
+import { formatCurrency } from "@/lib/format"
 
-export type DisplayCurrency = "INR" | "USD"
+export type DisplayCurrency = "USD"
 
 interface CurrencyContextType {
   currency: DisplayCurrency
@@ -12,43 +12,22 @@ interface CurrencyContextType {
   formatAmount: (amountInUSD: number) => string
 }
 
-const STORAGE_KEY = "fairwork-display-currency"
-
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined)
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrencyState] = useState<DisplayCurrency>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored === "USD") {
-        return stored
-      }
-    } catch {
-      // Fallback on storage errors
-    }
-    return "USD" // Default currency is US Dollar ($)
-  })
+  const currency: DisplayCurrency = "USD"
+  const symbol = "$"
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, currency)
-    } catch {
-      // Fallback on storage errors
-    }
-  }, [currency])
-
-  const setCurrency = (next: DisplayCurrency) => {
-    setCurrencyState(next)
+  const setCurrency = (_next?: DisplayCurrency) => {
+    // FairWork operates strictly in US Dollars
   }
 
-  const symbol = currency === "INR" ? "₹" : "$"
-
   const convertAmount = (amountInUSD: number): number => {
-    return currency === "INR" ? amountInUSD * USD_TO_INR_RATE : amountInUSD
+    return amountInUSD
   }
 
   const formatAmount = (amountInUSD: number): string => {
-    return formatCurrency(amountInUSD, currency)
+    return formatCurrency(amountInUSD)
   }
 
   return (
@@ -57,7 +36,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         currency,
         setCurrency,
         symbol,
-        exchangeRate: USD_TO_INR_RATE,
+        exchangeRate: 1,
         convertAmount,
         formatAmount,
       }}

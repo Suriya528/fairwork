@@ -71,14 +71,14 @@ export const dashboardMetrics: DashboardMetric[] = [
   {
     id: "locked",
     label: "In escrow",
-    value: "₹1,65,000",
+    value: "$1,650",
     change: 12.4,
     hint: "Locked across 3 active projects",
   },
   {
     id: "released",
     label: "Released this month",
-    value: "₹25,000",
+    value: "$250",
     change: -8.1,
     hint: "1 milestone released",
   },

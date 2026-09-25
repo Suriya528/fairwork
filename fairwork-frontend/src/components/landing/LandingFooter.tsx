@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom"
-import { FiGlobe } from "react-icons/fi"
 import { Logo } from "@/components/common/Logo"
-import { useCurrency } from "@/context/CurrencyContext"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 
 const footerSections = [
@@ -35,7 +33,6 @@ const footerSections = [
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear()
-  const { currency, setCurrency } = useCurrency()
 
   return (
     <footer className="w-full border-t border-border bg-surface text-foreground" aria-label="Site footer">
@@ -95,15 +92,6 @@ export function LandingFooter() {
           </p>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCurrency(currency === "USD" ? "INR" : "USD")}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-2.5 py-1 text-xs font-mono text-muted hover:text-foreground transition-colors"
-            >
-              <FiGlobe className="h-3 w-3" />
-              <span>{currency}</span>
-            </button>
-
             <ThemeToggle />
           </div>
         </div>

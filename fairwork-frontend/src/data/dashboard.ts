@@ -92,7 +92,7 @@ export const kpiStats: KpiStat[] = [
   {
     id: "escrow-balance",
     label: "Escrow balance",
-    value: "₹1,65,000",
+    value: "$1,650",
     change: 12.4,
     hint: "Locked across 3 active contracts",
     icon: FiShield,
@@ -100,7 +100,7 @@ export const kpiStats: KpiStat[] = [
   {
     id: "total-earnings",
     label: "Total earnings",
-    value: "₹4,72,500",
+    value: "$4,725",
     change: 18.2,
     hint: "Released to date",
     icon: FiTrendingUp,
