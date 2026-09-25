@@ -54,29 +54,27 @@ export function EscrowAssurance() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Left-to-Right Section Header spanning full width */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 w-full text-left">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
-              <FiShield className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="font-medium text-foreground/90">Buyer &amp; Creator Assurance</span>
-            </div>
-
-            <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
-              Guaranteed protection{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
-                for every milestone.
-              </span>
-            </h2>
+        {/* Centered Section Header */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-14">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-5 shadow-xs">
+            <FiShield className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="font-medium text-foreground/90">Buyer &amp; Creator Assurance</span>
           </div>
 
-          <p className="text-base font-light text-muted/90 sm:text-lg max-w-md leading-relaxed pb-1 text-left">
+          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+            Guaranteed protection{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+              for every milestone.
+            </span>
+          </h2>
+
+          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
             Deterministic smart contract rules protect project deposits and creator payouts at every checkpoint.
           </p>
         </div>
 
-        {/* Bento Trust Grid spanning full width (left end to right end) */}
-        <div className="w-full grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Bento Trust Grid */}
+        <div className="max-w-6xl mx-auto grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {securityGuardrails.map(({ icon: Icon, title, description, tag }) => (
             <div
               key={title}

@@ -54,28 +54,28 @@ export function HeroSection() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Left-to-Right Hero Content Header */}
-        <div className="flex flex-col items-start text-left w-full">
-          {/* Left-aligned Monumental Title spanning left to right */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12] max-w-5xl">
+        {/* Centered Hero Content Header */}
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          {/* Centered Monumental Title with elegant optical weights */}
+          <h1 className="text-balance text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12]">
             Where ambitious projects get built.{" "}
             <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
               Guaranteed by milestone escrow.
             </span>
           </h1>
 
-          {/* Left-aligned Subtitle spanning wide */}
-          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-3xl font-light">
+          {/* Centered Subtitle */}
+          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-2xl font-light">
             Commission verified specialists, inspect deliverables against clear milestone criteria, and release payments directly to creator wallets with 0% platform fee deduction.
           </p>
 
-          {/* Amazon / Airbnb Style Universal Department & Search Bar (stretching wide) */}
+          {/* Amazon / Airbnb Style Universal Department & Search Bar */}
           <form
             onSubmit={handleSearchSubmit}
-            className="mt-9 w-full max-w-4xl rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
+            className="mt-10 w-full max-w-3xl rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
           >
             {/* Department Dropdown Selector */}
-            <div className="relative sm:w-52 shrink-0">
+            <div className="relative sm:w-48 shrink-0">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
@@ -119,8 +119,8 @@ export function HeroSection() {
             </button>
           </form>
 
-          {/* Quick Department Filter Pills (left-aligned) */}
-          <div className="mt-4 flex flex-wrap items-center justify-start gap-2 text-xs">
+          {/* Quick Department Filter Pills */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
             <span className="text-subtle font-mono text-[11px]">Popular:</span>
             {quickCategories.map((item) => (
               <button
@@ -134,8 +134,8 @@ export function HeroSection() {
             ))}
           </div>
 
-          {/* Hero Feature Badges (left-aligned) */}
-          <div className="mt-6 flex flex-wrap items-center justify-start gap-6 text-xs text-muted/80 font-mono">
+          {/* Hero Feature Badges */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted/80 font-mono">
             <span className="inline-flex items-center gap-1.5">
               <FiShield className="h-3.5 w-3.5 text-emerald-400" />
               100% Escrow Protection
@@ -151,8 +151,8 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Smart Contract Escrow & Deliverable Studio spanning full width (left end to right end) */}
-        <div className="mt-14 w-full overflow-hidden rounded-2xl border border-border bg-surface/90 shadow-2xl backdrop-blur-xl">
+        {/* Centered Smart Contract Escrow & Deliverable Studio (Linear + Stripe Precision) */}
+        <div className="mt-14 max-w-5xl mx-auto overflow-hidden rounded-2xl border border-border bg-surface/90 shadow-2xl backdrop-blur-xl">
           {/* Studio Header Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border bg-elevated/40 px-5 py-3.5 gap-3">
             <div className="flex items-center gap-2.5">
