@@ -16,55 +16,60 @@ export function MarketplaceCTA() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-          {/* Centered Pill */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-4 py-1.5 text-xs font-mono text-muted mb-6 shadow-xs">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-medium text-foreground/90">Zero Platform Commission</span>
-          </div>
+        <div className="w-full rounded-3xl border border-border/80 bg-surface/70 p-8 sm:p-12 lg:p-16 backdrop-blur-md shadow-2xl">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+            {/* Left Column: Heading, Subtitle, & Value Props */}
+            <div className="max-w-3xl text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-4 py-1.5 text-xs font-mono text-muted mb-6 shadow-xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-medium text-foreground/90">Zero Platform Commission</span>
+              </div>
 
-          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.12]">
-            Build with certainty.{" "}
-            <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
-              Settle with confidence.
-            </span>
-          </h2>
+              <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.12]">
+                Build with certainty.{" "}
+                <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
+                  Settle with confidence.
+                </span>
+              </h2>
 
-          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-2xl font-light">
-            Commission deliverables backed by non-custodial smart contracts, or offer your technical expertise with 100% milestone payout assurance.
-          </p>
+              <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-2xl font-light">
+                Commission deliverables backed by non-custodial smart contracts, or offer your technical expertise with 100% milestone payout assurance.
+              </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
-            <Link
-              to={destination}
-              className="flex h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-8 text-sm font-medium text-white shadow-md transition-all cursor-pointer"
-            >
-              <span>Get Started Free</span>
-              <FiArrowRight className="h-4 w-4" />
-            </Link>
+              {/* Trust Value Props */}
+              <div className="mt-8 flex flex-wrap items-center gap-6 sm:gap-8 text-xs font-mono text-muted font-normal">
+                <span className="inline-flex items-center gap-1.5">
+                  <FiShield className="h-4 w-4 text-emerald-400" />
+                  Non-custodial lockbox
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <FiZap className="h-4 w-4 text-cyan-400" />
+                  Instant wallet payouts
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <FiDollarSign className="h-4 w-4 text-teal-400" />
+                  0% platform take-rate
+                </span>
+              </div>
+            </div>
 
-            <Link
-              to="/projects"
-              className="flex h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-border/80 bg-surface hover:bg-elevated px-7 text-sm font-medium text-foreground transition-colors shadow-xs cursor-pointer"
-            >
-              <span>Explore Deliverables</span>
-            </Link>
-          </div>
+            {/* Right Column: CTA Buttons */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3.5 shrink-0 w-full sm:w-auto lg:w-56">
+              <Link
+                to={destination}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-8 text-sm font-medium text-white shadow-md transition-all cursor-pointer"
+              >
+                <span>Get Started Free</span>
+                <FiArrowRight className="h-4 w-4" />
+              </Link>
 
-          {/* Trust Value Props */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-xs font-mono text-muted font-normal">
-            <span className="inline-flex items-center gap-1.5">
-              <FiShield className="h-4 w-4 text-emerald-400" />
-              Non-custodial lockbox
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <FiZap className="h-4 w-4 text-cyan-400" />
-              Instant wallet payouts
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <FiDollarSign className="h-4 w-4 text-teal-400" />
-              0% platform take-rate
-            </span>
+              <Link
+                to="/projects"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border/80 bg-surface hover:bg-elevated px-7 text-sm font-medium text-foreground transition-colors shadow-xs cursor-pointer"
+              >
+                <span>Explore Deliverables</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

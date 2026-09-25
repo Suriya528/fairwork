@@ -144,26 +144,28 @@ export function CuratedSpecialists() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Centered Section Header */}
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-5 shadow-xs">
-            <FiShield className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="font-medium text-foreground/90">Curated Deliverables</span>
+        {/* Left-to-Right Section Header spanning full width */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 w-full text-left">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
+              <FiShield className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="font-medium text-foreground/90">Curated Deliverables</span>
+            </div>
+
+            <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+              Work with{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+                verified specialists.
+              </span>
+            </h2>
+
+            <p className="mt-3 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
+              Choose packaged milestones with clear delivery timelines, fixed pricing, and 100% smart contract escrow protection.
+            </p>
           </div>
 
-          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
-            Work with{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
-              verified specialists.
-            </span>
-          </h2>
-
-          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
-            Choose packaged milestones with clear delivery timelines, fixed pricing, and 100% smart contract escrow protection.
-          </p>
-
-          {/* Centered Discipline Filter Pills (Amazon / Airbnb Style) */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+          {/* Discipline Filter Pills (flowing naturally on the right or spanning across) */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {[
               { id: "all", label: "All Packages" },
               { id: "web3", label: "Smart Contracts" },
@@ -188,7 +190,7 @@ export function CuratedSpecialists() {
           </div>
         </div>
 
-        {/* Amazon Product / Deliverable Package Cards Grid */}
+        {/* Amazon Product / Deliverable Package Cards Grid (left end to right end) */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {filtered.map((pkg) => (
             <div
@@ -296,11 +298,14 @@ export function CuratedSpecialists() {
           ))}
         </div>
 
-        {/* Bottom Explore Link */}
-        <div className="mt-12 text-center">
+        {/* Bottom Explore Bar spanning left to right */}
+        <div className="mt-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-border/80 pt-6">
+          <p className="text-xs font-light text-muted">
+            Need a bespoke milestone schedule or custom multi-signoff escrow structure?
+          </p>
           <Link
             to={isAuthed ? "/projects" : "/register"}
-            className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface px-5 py-2.5 text-xs font-medium text-foreground hover:bg-elevated transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface px-5 py-2.5 text-xs font-medium text-foreground hover:bg-elevated transition-colors shadow-xs self-start sm:self-auto"
           >
             <span>Explore All Deliverables &amp; Packages</span>
             <FiArrowRight className="h-3.5 w-3.5 text-cyan-400" />

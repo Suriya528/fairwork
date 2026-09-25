@@ -116,27 +116,29 @@ export function EscrowFlowBlueprint() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Centered Section Header */}
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-5 shadow-xs">
-            <FiShield className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="font-medium text-foreground/90">Escrow Lifecycle</span>
+        {/* Left-to-Right Section Header spanning full width */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 w-full text-left">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
+              <FiShield className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="font-medium text-foreground/90">Escrow Lifecycle</span>
+            </div>
+
+            <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+              Accelerate every deliverable{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+                from brief to payout.
+              </span>
+            </h2>
           </div>
 
-          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
-            Accelerate every deliverable{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
-              from brief to payout.
-            </span>
-          </h2>
-
-          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
+          <p className="text-base font-light text-muted/90 sm:text-lg max-w-md leading-relaxed pb-1 text-left">
             Every deliverable is verified against transparent milestone specifications and settled on-chain without human middlemen or hidden deductions.
           </p>
         </div>
 
-        {/* 4-Stage Interactive Pipeline Card */}
-        <div className="max-w-5xl mx-auto overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl">
+        {/* 4-Stage Interactive Pipeline Card spanning full width (left end to right end) */}
+        <div className="w-full overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl">
           {/* Top Pipeline Stepper Bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border/80 bg-elevated/30">
             {workflowStages.map((stage) => {
