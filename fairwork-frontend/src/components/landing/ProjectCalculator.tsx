@@ -98,9 +98,6 @@ export function ProjectCalculator() {
   const estimatedDays = Math.round(selectedProject.typicalDays * (selectedScope === "starter" ? 1 : selectedScope === "growth" ? 1.5 : 2.2))
   const calculatedMilestones = selectedScope === "starter" ? selectedProject.milestones : selectedScope === "growth" ? selectedProject.milestones + 1 : selectedProject.milestones + 2
 
-  // Traditional platforms take ~20%
-  const traditionalFeesSaved = Math.round(estimatedUSD * 0.2)
-
   return (
     <section className="w-full bg-base border-b border-border/40 py-20 sm:py-28 relative overflow-hidden">
       {/* Background ambient lighting */}
@@ -116,7 +113,7 @@ export function ProjectCalculator() {
             Estimate your project milestone budget
           </h2>
           <p className="mt-3 text-base text-muted">
-            See how much you save with FairWork&apos;s 0% platform commission compared to legacy platforms.
+            Configure project scope, calculate milestone timelines, and inspect transparent peer-to-peer settlement values.
           </p>
         </div>
 
@@ -267,13 +264,13 @@ export function ProjectCalculator() {
                   </span>
                 </div>
 
-                {/* Savings Callout */}
+                {/* Zero Commission Callout */}
                 <div className="mt-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-center justify-between text-xs">
                   <span className="text-emerald-400 font-semibold font-sans">
-                    Savings vs 20% Legacy Fee:
+                    Creator Retained Earnings:
                   </span>
                   <span className="font-bold text-emerald-400 font-mono text-sm">
-                    +{formatAmount(traditionalFeesSaved * 100)}
+                    100% of Escrow
                   </span>
                 </div>
               </div>

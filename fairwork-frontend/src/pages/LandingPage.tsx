@@ -1,29 +1,22 @@
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { HeroSection } from "@/components/landing/HeroSection"
-import { MarketplaceStats } from "@/components/landing/MarketplaceStats"
-import { CategoryGrid } from "@/components/landing/CategoryGrid"
-import { GigShowcase } from "@/components/landing/GigShowcase"
-import { FairWorkPro } from "@/components/landing/FairWorkPro"
+import { EscrowFlowBlueprint } from "@/components/landing/EscrowFlowBlueprint"
+import { CuratedSpecialists } from "@/components/landing/CuratedSpecialists"
 import { ProjectCalculator } from "@/components/landing/ProjectCalculator"
-import { PlatformComparison } from "@/components/landing/PlatformComparison"
-import { TrustSection } from "@/components/landing/TrustSection"
-import { HowItWorks } from "@/components/landing/HowItWorks"
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection"
+import { VerifiedProjectShowcase } from "@/components/landing/VerifiedProjectShowcase"
+import { EscrowAssurance } from "@/components/landing/EscrowAssurance"
 import { MarketplaceCTA } from "@/components/landing/MarketplaceCTA"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 
 /**
- * Public landing page inspired by Fiverr's modern marketplace UX,
- * enhanced with unique interactive designs:
- * - Dynamic Hero with Search & Verified Talent
- * - Live Ecosystem Stats Ticker
- * - Popular Services & Filterable Gig Cards
- * - FairWork Pro VIP Enterprise Tier
- * - Interactive Project Cost & Escrow Savings Calculator
- * - FairWork vs Legacy Platforms Comparison Matrix
- * - Trust Pillars & Live Milestone Settlement Simulator
- * - 4-Step Execution Workflow & Customer Testimonials
- * - High-Converting Dual Talent CTA & Multi-Column Mega Footer
+ * Public landing page designed with bespoke architectural craftsmanship:
+ * - Editorial typographic hero with command-line search and interactive milestone console
+ * - Technical 4-stage smart contract settlement blueprint with code viewer
+ * - Curated specialist dossiers with verified deliverables and tech stacks
+ * - Interactive milestone studio for scope & turnaround calculation
+ * - Shipped project case studies with deliverable highlights and on-chain hashes
+ * - Engineering security assurance architecture (non-custodial, 48h timelock, 0% fee)
+ * - Dual client/creator conversion funnels
  */
 export function LandingPage() {
   return (
@@ -31,41 +24,29 @@ export function LandingPage() {
       <LandingHeader />
 
       <main>
-        {/* Fiverr-Style Hero with Integrated Search & Verified Talent Spotlight */}
+        {/* Typographic Hero with Interactive Milestone Console */}
         <HeroSection />
 
-        {/* Ecosystem Impact Metrics & 0% Fee Banner */}
-        <MarketplaceStats />
+        {/* Technical 4-Stage Escrow Flow Blueprint */}
+        <EscrowFlowBlueprint />
 
-        {/* Popular Services Visual Cards */}
-        <CategoryGrid />
+        {/* Curated Specialist Dossiers with Real Deliverable Specs */}
+        <CuratedSpecialists />
 
-        {/* Fiverr-Style Gig Cards with Live Escrow Pricing & Category Tabs */}
-        <GigShowcase />
-
-        {/* FairWork Pro Enterprise Tier */}
-        <FairWorkPro />
-
-        {/* UNIQUE DESIGN: Interactive Project Cost & Escrow Estimator */}
+        {/* Interactive Milestone Studio & Turnaround Estimator */}
         <ProjectCalculator />
 
-        {/* UNIQUE DESIGN: FairWork vs. Traditional Platforms Comparison Table */}
-        <PlatformComparison />
+        {/* Shipped Project Case Studies with Milestone Proofs */}
+        <VerifiedProjectShowcase />
 
-        {/* "A whole world of freelance talent at your fingertips" with Live Milestone Card */}
-        <TrustSection />
+        {/* Escrow Assurance & Security Architecture */}
+        <EscrowAssurance />
 
-        {/* 4-Step How It Works Workflow */}
-        <HowItWorks />
-
-        {/* Customer & Freelancer Testimonials */}
-        <TestimonialsSection />
-
-        {/* Closing Dual-Talent CTA ("Suddenly it's all so doable") */}
+        {/* Dual Conversion Funnels */}
         <MarketplaceCTA />
       </main>
 
-      {/* Fiverr-Style Comprehensive Directory Footer */}
+      {/* Directory Footer */}
       <LandingFooter />
     </div>
   )
