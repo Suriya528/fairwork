@@ -56,14 +56,6 @@ export function HeroSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Left-to-Right Hero Content Header */}
         <div className="flex flex-col items-start text-left w-full">
-          {/* Left-aligned Trust Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface/70 px-4 py-1.5 text-xs font-mono text-muted mb-6 shadow-xs backdrop-blur-sm">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-medium text-foreground/90">Non-Custodial Escrow</span>
-            <span className="text-subtle">•</span>
-            <span>Milestone-Verified Settlement</span>
-          </div>
-
           {/* Left-aligned Monumental Title spanning left to right */}
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12] max-w-5xl">
             Where ambitious projects get built.{" "}
