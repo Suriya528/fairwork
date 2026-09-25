@@ -1,158 +1,199 @@
-import { FiShield, FiEye, FiAlertTriangle, FiCheckCircle, FiLock, FiCpu } from "react-icons/fi"
+import { useState } from "react"
+import {
+  FiCheckCircle,
+  FiShield,
+  FiLock,
+  FiZap,
+  FiEye,
+  FiCheck,
+} from "react-icons/fi"
+import { useCurrency } from "@/context/CurrencyContext"
+import { cn } from "@/lib/utils"
 
-/**
- * Trust section highlighting FairWork's escrow & dispute architecture.
- * Features a protocol verification card alongside core trust pillars.
- */
-const features = [
+const fiverrValuePillars = [
   {
-    icon: FiShield,
-    title: "Non-Custodial Milestone Escrow",
+    title: "Over 700 technical disciplines",
     description:
-      "Funds are locked on-chain in smart contracts. Neither client nor freelancer can withdraw unilaterally.",
+      "Get results from skilled freelancers from all over the world, for every task, at any price point.",
   },
   {
-    icon: FiEye,
-    title: "Transparent Payment Ledger",
+    title: "Clear, transparent pricing",
     description:
-      "Every escrow deposit, milestone submission, and approval is recorded on-chain with immutable transaction hashes.",
+      "No hourly billing surprises or hidden platform fees. Project milestone budgets are set and committed before kickoff.",
   },
   {
-    icon: FiAlertTriangle,
-    title: "Arbitrator Dispute Resolution",
+    title: "Non-custodial milestone escrow",
     description:
-      "If a deliverable is contested, formal dispute arbitration allows evidence submission and fair resolution.",
+      "Milestone funds are cryptographically locked on-chain in smart contracts. Payouts release only when you approve the work.",
   },
   {
-    icon: FiCheckCircle,
-    title: "Upfront Budget Lock",
+    title: "Protected & dispute-ready",
     description:
-      "Milestone amounts are set before kickoff. No hidden platform commissions or surprise deductions.",
+      "24/7 arbitration and a 48-hour timelock prevent unilateral chargebacks, keeping both clients and freelancers 100% secure.",
   },
 ] as const
 
 export function TrustSection() {
-  return (
-    <section className="w-full bg-base border-b border-border/40 py-20 sm:py-28">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-12">
-          {/* Left Column: Messaging */}
-          <div className="lg:col-span-6">
-            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
-              Payment Protection Infrastructure
-            </span>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-              Contract security without middleman risk
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted">
-              Traditional freelance platforms control your money and charge unpredictable fees.
-              FairWork uses smart contracts to guarantee that clients pay only for verified work, and freelancers get paid immediately upon approval.
-            </p>
+  const { formatAmount } = useCurrency()
+  const [activeTab, setActiveTab] = useState<number>(1)
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              {features.map(({ icon: Icon, title, description }) => (
-                <div
-                  key={title}
-                  className="rounded-xl border border-border bg-surface p-4.5 transition-colors hover:border-border-strong"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-4.5 w-4.5" aria-hidden />
-                    </span>
-                    <h3 className="text-sm font-bold text-foreground">{title}</h3>
+  return (
+    <section id="trust-guarantee" className="w-full bg-surface border-b border-border/40 py-20 sm:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-14">
+          {/* Left Column: Fiverr Core Value Props */}
+          <div className="lg:col-span-6">
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 font-mono">
+              The FairWork Advantage
+            </span>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl leading-tight">
+              A whole world of freelance talent at your fingertips
+            </h2>
+
+            <div className="mt-8 flex flex-col gap-6">
+              {fiverrValuePillars.map((pillar) => (
+                <div key={pillar.title} className="flex items-start gap-4">
+                  <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                    <FiCheck className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">
+                      {pillar.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted leading-relaxed">
+                      {pillar.description}
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-muted">{description}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right Column: Protocol Trust Card Component */}
+          {/* Right Column: High-Converting Interactive Escrow Card */}
           <div className="lg:col-span-6">
-            <div className="rounded-2xl border border-border-strong bg-gradient-to-b from-surface via-surface to-elevated p-6 sm:p-8 shadow-2xl shadow-black/50">
+            <div className="relative overflow-hidden rounded-3xl border border-border-strong bg-base p-6 sm:p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              {/* Decorative Glow */}
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+
+              {/* Card Header */}
               <div className="flex items-center justify-between border-b border-border pb-4">
-                <div className="flex items-center gap-2.5">
-                  <FiCpu className="h-5 w-5 text-primary" />
-                  <span className="font-mono text-xs font-bold text-foreground uppercase tracking-wider">
-                    Escrow Contract Rules
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <FiShield className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Live Milestone Settlement</h3>
+                    <p className="font-mono text-xs text-subtle">Project ID #FW-84920</p>
+                  </div>
                 </div>
-                <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 font-mono text-[10px] text-emerald-400 font-medium">
-                  Verified Smart Contract
+
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Smart Contract Verified
                 </span>
               </div>
 
-              {/* Protocol Security Principles list */}
-              <div className="mt-6 flex flex-col gap-4">
+              {/* Summary Stats Strip */}
+              <div className="mt-5 grid grid-cols-3 gap-3 rounded-2xl border border-border bg-surface p-3.5 text-center font-mono">
+                <div>
+                  <span className="text-[10px] text-subtle uppercase">Total Escrow</span>
+                  <p className="mt-0.5 text-xs font-bold text-foreground">{formatAmount(240000)}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-subtle uppercase">Released</span>
+                  <p className="mt-0.5 text-xs font-bold text-emerald-400">{formatAmount(160000)}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-subtle uppercase">In Escrow</span>
+                  <p className="mt-0.5 text-xs font-bold text-blue-400">{formatAmount(80000)}</p>
+                </div>
+              </div>
+
+              {/* Milestone Steps Interactive Timeline */}
+              <div className="mt-6 flex flex-col gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-subtle font-mono">
+                  Milestone Deliverables:
+                </p>
+
                 {[
                   {
-                    label: "1. Deposit Stage",
-                    text: "Client funds milestone -> Tokens locked in Escrow Contract",
-                    icon: FiLock,
-                    accent: "text-blue-400",
-                  },
-                  {
-                    label: "2. Submission Stage",
-                    text: "Freelancer uploads deliverables & notifies Client",
-                    icon: FiEye,
-                    accent: "text-amber-400",
-                  },
-                  {
-                    label: "3. Settlement Stage",
-                    text: "Client approves -> Automated instant release to Freelancer wallet",
+                    id: 1,
+                    title: "Phase 1: Architecture & Smart Contracts",
+                    amount: formatAmount(80000),
+                    status: "Paid to Wallet",
+                    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
                     icon: FiCheckCircle,
-                    accent: "text-emerald-400",
+                    detail: "Deliverable approved by client. 800 USDC sent directly to freelancer wallet.",
                   },
                   {
-                    label: "4. Dispute Stage",
-                    text: "Contested milestone -> Submitted to Arbitrator authority for resolution",
-                    icon: FiAlertTriangle,
-                    accent: "text-rose-400",
+                    id: 2,
+                    title: "Phase 2: Frontend & EIP-712 Integration",
+                    amount: formatAmount(80000),
+                    status: "Client Reviewing",
+                    badge: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+                    icon: FiEye,
+                    detail: "Freelancer uploaded GitHub PR. Client has 48h to review before auto-release.",
+                  },
+                  {
+                    id: 3,
+                    title: "Phase 3: Testnet Deploy & Security Audit",
+                    amount: formatAmount(80000),
+                    status: "Locked in Escrow",
+                    badge: "bg-slate-800 text-slate-400 border-slate-700",
+                    icon: FiLock,
+                    detail: "800 USDC committed in EscrowContract.sol, awaiting Phase 2 completion.",
                   },
                 ].map((item) => {
                   const Icon = item.icon
+                  const isSelected = activeTab === item.id
                   return (
-                    <div key={item.label} className="flex items-start gap-3 rounded-xl border border-border/80 bg-base/50 p-3.5">
-                      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-elevated ${item.accent}`}>
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <div>
-                        <p className="font-mono text-xs font-bold text-foreground">{item.label}</p>
-                        <p className="mt-0.5 text-xs text-muted leading-relaxed">{item.text}</p>
+                    <div
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={cn(
+                        "rounded-xl border p-3.5 cursor-pointer transition-all duration-200",
+                        isSelected
+                          ? "border-emerald-500/80 bg-surface shadow-md"
+                          : "border-border bg-surface/50 hover:bg-surface hover:border-border-strong",
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <Icon
+                            className={cn(
+                              "h-4 w-4 shrink-0",
+                              isSelected ? "text-emerald-400" : "text-subtle",
+                            )}
+                          />
+                          <span className="text-xs font-bold text-foreground">
+                            {item.title}
+                          </span>
+                        </div>
+                        <span className={cn("rounded-md border px-2 py-0.5 text-[10px] font-mono font-medium", item.badge)}>
+                          {item.status}
+                        </span>
                       </div>
+
+                      {isSelected && (
+                        <div className="mt-2.5 pt-2.5 border-t border-border/60 text-xs text-muted leading-relaxed flex items-center justify-between">
+                          <span>{item.detail}</span>
+                          <span className="font-mono font-bold text-foreground shrink-0 ml-2">
+                            {item.amount}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
               </div>
 
-              {/* Authentic Smart Contract Code Snippet from EscrowContract.sol */}
-              <div className="mt-5 overflow-hidden rounded-xl border border-border bg-base/90 p-4 font-mono text-[11px] leading-relaxed">
-                <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2 text-subtle text-[10px]">
-                  <span>contracts/EscrowContract.sol</span>
-                  <span>Solidity ^0.8.28</span>
-                </div>
-                <pre className="overflow-x-auto text-muted">
-                  <code>
-                    <span className="text-purple-400">function</span>{" "}
-                    <span className="text-blue-400">releaseMilestone</span>(
-                    <span className="text-emerald-400">string calldata</span> projectId,{" "}
-                    <span className="text-emerald-400">uint256</span> index
-                    ) <span className="text-purple-400">external nonReentrant</span> {"{\n"}
-                    {"  "}Escrow <span className="text-purple-400">storage</span> e = escrows[projectId];{"\n"}
-                    {"  "}<span className="text-blue-400">require</span>(msg.sender == e.client, <span className="text-amber-400">&quot;Only client&quot;</span>);{"\n"}
-                    {"  "}<span className="text-blue-400">require</span>(e.isFunded &amp;&amp; !e.isDisputed, <span className="text-amber-400">&quot;Escrow unavailable&quot;</span>);{"\n"}
-                    {"  "}e.milestones[index].released = <span className="text-purple-400">true</span>;{"\n"}
-                    {"  "}IERC20(e.token).<span className="text-blue-400">safeTransfer</span>(e.freelancer, m.amount);{"\n"}
-                    {"  "}<span className="text-purple-400">emit</span> <span className="text-blue-400">MilestoneReleased</span>(projectId, index, e.freelancer, m.amount);{"\n"}
-                    {"}"}
-                  </code>
-                </pre>
-              </div>
-
-              {/* Security Guarantee Banner */}
-              <div className="mt-5 flex items-center justify-between rounded-xl bg-primary/10 border border-primary/20 p-3.5 text-xs">
-                <span className="text-muted">Zero platform hold. Direct P2P protocol settlement.</span>
-                <span className="font-mono font-bold text-primary">EIP-712 Ready</span>
+              {/* Bottom Guarantee Banner */}
+              <div className="mt-6 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-muted">
+                <FiZap className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span>
+                  Payments are non-custodial: client funds are held by the contract, not a middleman company.
+                </span>
               </div>
             </div>
           </div>

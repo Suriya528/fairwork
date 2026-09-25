@@ -1,219 +1,256 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import {
+  FiSearch,
   FiArrowRight,
+  FiStar,
   FiShield,
   FiCheckCircle,
   FiLock,
   FiZap,
-  FiCode,
-  FiLayers,
 } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
-import { cn } from "@/lib/utils"
 
-const btnBase =
-  "inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
-const btnPrimary =
-  "bg-primary text-primary-foreground hover:bg-primary-hover shadow-lg shadow-primary/20 hover:shadow-primary/30"
-const btnOutline =
-  "border border-border-strong bg-surface/80 text-foreground hover:bg-surface-hover hover:border-subtle backdrop-blur-sm"
+const popularSearches = [
+  "Smart Contract Audit",
+  "React 19 & Next.js",
+  "UI/UX Design",
+  "AI Agents & Python",
+  "Solidity Escrow",
+  "Logo & Branding",
+] as const
+
+const trustedBrands = [
+  { name: "Ethereum", symbol: "ETH" },
+  { name: "Polygon", symbol: "POLYGON" },
+  { name: "Arbitrum", symbol: "ARB" },
+  { name: "OpenZeppelin", symbol: "OZ" },
+  { name: "MetaMask", symbol: "WEB3" },
+  { name: "Chainlink", symbol: "LINK" },
+] as const
 
 export function HeroSection() {
   const { status } = useAuth()
   const { formatAmount } = useCurrency()
+  const navigate = useNavigate()
   const isAuthed = status === "authenticated"
   const destination = isAuthed ? "/projects" : "/register"
 
-  const [activeStep, setActiveStep] = useState<number>(2)
+  const [searchQuery, setSearchQuery] = useState("")
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/projects?search=${encodeURIComponent(searchQuery.trim())}`)
+    } else {
+      navigate("/projects")
+    }
+  }
+
+  function handleTagClick(tag: string) {
+    navigate(`/projects?search=${encodeURIComponent(tag)}`)
+  }
 
   return (
-    <section className="relative w-full bg-base border-b border-border/40 overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-40 lg:pb-28">
-      {/* Background ambient lighting */}
+    <section className="relative w-full bg-base border-b border-border/40 overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-20 lg:pt-40 lg:pb-24">
+      {/* Background ambient mesh lighting */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-        <div className="absolute left-1/3 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/4 rounded-full bg-gradient-to-b from-primary/20 via-primary/5 to-transparent blur-3xl" />
-        <div className="absolute right-10 top-1/3 h-[350px] w-[350px] rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute left-10 top-1/2 h-[350px] w-[350px] rounded-full bg-blue-600/10 blur-3xl" />
-        {/* Grid pattern background overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293715_1px,transparent_1px),linear-gradient(to_bottom,#1f293715_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/15 via-primary/10 to-transparent blur-3xl" />
+        <div className="absolute right-0 top-1/4 h-[350px] w-[350px] rounded-full bg-blue-600/10 blur-3xl" />
+        <div className="absolute left-0 top-1/3 h-[300px] w-[300px] rounded-full bg-emerald-600/10 blur-3xl" />
+        {/* Subtle grid lines */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293710_1px,transparent_1px),linear-gradient(to_bottom,#1f293710_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          {/* Left-Aligned Hero Text Block */}
+          {/* Left Column: Fiverr-style Hero Headline & Search */}
           <div className="lg:col-span-7 flex flex-col items-start text-left">
-            {/* Protocol Tag Eyebrow */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary backdrop-blur-md mb-6">
+            {/* Pro Pill */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-400 mb-6 backdrop-blur-sm">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-mono text-[11px] uppercase tracking-wider">
-                Non-Custodial Milestone Escrow
+                Web3 Freelance Marketplace • 0% Commission
               </span>
             </div>
 
-            {/* Left-aligned headline */}
+            {/* Main Headline */}
             <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl text-left">
-              Find elite talent.{" "}
-              <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">
-                Pay with total trust.
+              Find the right{" "}
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-sky-400 bg-clip-text text-transparent">
+                freelance service
               </span>
+              , right away.
             </h1>
 
-            {/* Left-aligned subhead */}
-            <p className="mt-6 text-base leading-relaxed text-muted sm:text-lg lg:text-xl text-left max-w-2xl">
-              FairWork connects forward-thinking clients with top technical freelancers.
-              Milestone payments are locked safely in smart contract escrow until you approve the work.
+            {/* Subhead */}
+            <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg lg:text-xl text-left max-w-2xl">
+              Scale your business with verified global talent. Milestone funds remain safely locked in non-custodial smart contracts until you inspect and approve the work.
             </p>
 
-            {/* Left-aligned Action Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
-              <Link
-                to={destination}
-                className={cn(btnBase, btnPrimary, "h-12 w-full sm:w-auto min-w-[200px] gap-2 px-6 text-base")}
-              >
-                Explore Marketplace
-                <FiArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
+            {/* Fiverr-Style Hero Search Bar */}
+            <form onSubmit={handleSearch} className="mt-8 w-full max-w-2xl">
+              <div className="flex flex-col sm:flex-row items-stretch rounded-2xl sm:rounded-xl border-2 border-border bg-surface shadow-xl shadow-black/20 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all overflow-hidden p-1.5 sm:p-1">
+                <div className="relative flex-1 flex items-center">
+                  <FiSearch className="pointer-events-none absolute left-3.5 h-5 w-5 text-subtle" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search for any service (e.g. smart contract audit, react website)..."
+                    className="h-12 w-full bg-transparent pl-11 pr-4 text-sm text-foreground placeholder:text-subtle outline-none"
+                    aria-label="Search freelance services"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="mt-2 sm:mt-0 flex h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 text-sm font-bold text-white transition-all hover:bg-emerald-500 active:scale-[0.98] shrink-0 shadow-md shadow-emerald-600/20"
+                >
+                  <FiSearch className="h-4 w-4" />
+                  <span>Search</span>
+                </button>
+              </div>
+            </form>
 
-              <Link
-                to={destination}
-                className={cn(btnBase, btnOutline, "h-12 w-full sm:w-auto min-w-[200px] gap-2 px-6 text-base")}
-              >
-                <FiCode className="h-4 w-4 text-primary" aria-hidden />
-                Become a Freelancer
-              </Link>
+            {/* Popular Search Tag Pills */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
+              <span className="font-semibold text-subtle">Popular:</span>
+              {popularSearches.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => handleTagClick(tag)}
+                  className="rounded-full border border-border bg-surface/80 px-3 py-1 text-xs text-muted transition-all hover:border-emerald-500/50 hover:bg-elevated hover:text-foreground cursor-pointer"
+                >
+                  {tag}
+                </button>
+              ))}
             </div>
 
-            {/* Engineering Standards Spec Strip */}
-            <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-2 text-[11px] font-mono text-subtle">
-              <span className="text-foreground/80 font-semibold">Architecture:</span>
-              <span>Solidity 0.8.28</span>
-              <span className="text-border-strong">•</span>
-              <span>OpenZeppelin 5.0</span>
-              <span className="text-border-strong">•</span>
-              <span>EIP-712</span>
-              <span className="text-border-strong">•</span>
-              <span>SafeERC20</span>
-              <span className="text-border-strong">•</span>
-              <span>Sepolia Testnet</span>
+            {/* Trusted By Strip */}
+            <div className="mt-10 pt-6 border-t border-border/60 w-full">
+              <p className="text-xs font-semibold uppercase tracking-wider text-subtle font-mono mb-3">
+                Trusted by high-growth teams & protocols
+              </p>
+              <div className="flex flex-wrap items-center gap-6 sm:gap-8 opacity-75">
+                {trustedBrands.map((brand) => (
+                  <span
+                    key={brand.name}
+                    className="font-mono text-xs font-bold text-muted hover:text-foreground transition-colors tracking-widest uppercase flex items-center gap-1.5"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                    {brand.name}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Signature Interactive Protocol Escrow Card */}
+          {/* Right Column: Fiverr-style Freelancer Spotlight & Escrow Card */}
           <div className="lg:col-span-5 w-full">
-            <div className="overflow-hidden rounded-2xl border border-border-strong bg-surface/90 p-5 sm:p-7 shadow-2xl shadow-black/60 backdrop-blur-xl">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/30">
-                    <FiShield className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-bold text-foreground">Escrow Protocol Demo</h2>
-                      <span className="rounded bg-primary/10 border border-primary/20 px-2 py-0.5 font-mono text-[10px] text-primary font-medium uppercase tracking-wider">
-                        Simulated
-                      </span>
+            <div className="relative">
+              {/* Main Talent Showcase Card */}
+              <div className="overflow-hidden rounded-2xl border border-border-strong bg-surface/95 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl">
+                {/* Profile Header */}
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-emerald-500 to-blue-600 p-0.5">
+                        <div className="h-full w-full rounded-full bg-surface flex items-center justify-center font-bold text-sm text-foreground">
+                          AR
+                        </div>
+                      </div>
+                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-surface" />
                     </div>
-                    <p className="text-xs text-subtle font-mono">Sample Workflow • {formatAmount(90000)} (900 USDC Escrow)</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-foreground">Alex Rivera</h3>
+                        <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                          PRO VERIFIED
+                        </span>
+                      </div>
+                      <p className="text-xs text-subtle">Smart Contract Security Auditor</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-xs font-bold text-amber-400">
+                    <FiStar className="h-3.5 w-3.5 fill-amber-400" />
+                    <span>5.0</span>
+                    <span className="text-subtle font-normal">(86)</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 rounded-lg bg-elevated px-2.5 py-1 border border-border text-xs">
-                  <FiLock className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="font-mono text-xs text-muted">Funds Locked</span>
+                {/* Gig Title */}
+                <div className="mt-4">
+                  <p className="text-sm font-semibold text-foreground leading-snug">
+                    &quot;I will audit your Solidity smart contracts with formal verification & reorg safety&quot;
+                  </p>
+                </div>
+
+                {/* Simulated Milestone Escrow Box */}
+                <div className="mt-4 rounded-xl border border-border bg-base/80 p-3.5">
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <span className="font-mono text-subtle text-[11px]">Milestone Escrow Status</span>
+                    <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-emerald-400">
+                      <FiLock className="h-3 w-3" />
+                      {formatAmount(150000)} (1,500 USDC) Locked
+                    </span>
+                  </div>
+
+                  <div className="flex h-2 w-full overflow-hidden rounded-full bg-surface border border-border">
+                    <div className="h-full bg-emerald-500" style={{ width: "60%" }} title="Milestone 1 & 2 Approved" />
+                    <div className="h-full bg-blue-500" style={{ width: "40%" }} title="Final Milestone In Review" />
+                  </div>
+
+                  <div className="mt-2.5 flex items-center justify-between text-[11px] font-mono text-subtle">
+                    <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                      <FiCheckCircle className="h-3 w-3" /> Phase 1 Released
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-400 font-semibold">
+                      <FiZap className="h-3 w-3" /> Phase 2 In Review
+                    </span>
+                  </div>
+                </div>
+
+                {/* Price & Action */}
+                <div className="mt-5 flex items-center justify-between pt-3 border-t border-border">
+                  <div>
+                    <span className="text-[11px] text-subtle uppercase tracking-wider font-mono">Starting at</span>
+                    <div className="text-lg font-extrabold text-foreground font-mono">
+                      {formatAmount(50000)} <span className="text-xs text-subtle font-normal">/ milestone</span>
+                    </div>
+                  </div>
+
+                  <Link
+                    to={destination}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary hover:bg-primary-hover px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all"
+                  >
+                    <span>View Profile</span>
+                    <FiArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </div>
 
-              {/* Progress Visual Track */}
-              <div className="mt-4 pt-1">
-                <div className="flex items-center justify-between text-[11px] font-mono text-subtle mb-1.5">
-                  <span>Escrow Allocation</span>
-                  <span className="text-foreground font-semibold">28% Released • 44% In Review</span>
+              {/* Floating Badge: Non-Custodial Security */}
+              <div className="absolute -bottom-5 -left-4 hidden sm:flex items-center gap-2 rounded-xl border border-border bg-base/95 px-3.5 py-2 shadow-xl backdrop-blur-md">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+                  <FiShield className="h-4 w-4" />
                 </div>
-                <div className="flex h-2 w-full overflow-hidden rounded-full bg-base border border-border">
-                  <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: "28%" }} title="Released: 250 USDC" />
-                  <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: "44%" }} title="Submitted / Review: 400 USDC" />
-                  <div className="h-full bg-slate-700 transition-all duration-300" style={{ width: "28%" }} title="Queued in Escrow: 250 USDC" />
+                <div className="text-left">
+                  <p className="text-[11px] font-bold text-foreground">Zero Clawbacks</p>
+                  <p className="text-[10px] text-subtle font-mono">48h Escrow Timelock</p>
                 </div>
               </div>
 
-              {/* Interactive Milestone Demonstration Track */}
-              <div className="mt-5">
-                <p className="text-xs font-semibold text-subtle uppercase tracking-wider mb-3">
-                  Milestone Settlement Sequence
-                </p>
-                <div className="flex flex-col gap-2.5">
-                  {[
-                    {
-                      step: 1,
-                      title: "1. Audit & Kickoff",
-                      amount: formatAmount(25000),
-                      token: "250 USDC",
-                      status: "Released",
-                      badgeTone: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-                      icon: FiCheckCircle,
-                    },
-                    {
-                      step: 2,
-                      title: "2. Component Library",
-                      amount: formatAmount(40000),
-                      token: "400 USDC",
-                      status: "Submitted / Review",
-                      badgeTone: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-                      icon: FiZap,
-                    },
-                    {
-                      step: 3,
-                      title: "3. Token Handoff",
-                      amount: formatAmount(25000),
-                      token: "250 USDC",
-                      status: "In Escrow",
-                      badgeTone: "bg-slate-800 text-slate-400 border-slate-700",
-                      icon: FiLayers,
-                    },
-                  ].map((ms) => {
-                    const Icon = ms.icon
-                    const isSelected = activeStep === ms.step
-                    return (
-                      <button
-                        type="button"
-                        key={ms.step}
-                        onClick={() => setActiveStep(ms.step)}
-                        className={cn(
-                          "flex items-center justify-between rounded-xl border p-3 text-left transition-all duration-200",
-                          isSelected
-                            ? "border-primary bg-primary/10 shadow-md shadow-primary/10"
-                            : "border-border bg-base/60 hover:border-border-strong hover:bg-elevated/40",
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Icon className={cn("h-4 w-4", isSelected ? "text-primary" : "text-subtle")} />
-                          <span className="text-xs font-semibold text-foreground">{ms.title}</span>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex flex-col items-end">
-                            <span className="font-mono text-xs font-bold text-foreground">{ms.amount}</span>
-                            <span className="font-mono text-[10px] text-subtle">{ms.token}</span>
-                          </div>
-                          <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-medium", ms.badgeTone)}>
-                            {ms.status}
-                          </span>
-                        </div>
-                      </button>
-                    )
-                  })}
+              {/* Floating Badge: Instant Payout */}
+              <div className="absolute -top-4 -right-3 hidden sm:flex items-center gap-2 rounded-xl border border-border bg-base/95 px-3.5 py-2 shadow-xl backdrop-blur-md">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+                  <FiZap className="h-4 w-4" />
                 </div>
-              </div>
-
-              {/* Interactive explanation pill */}
-              <div className="mt-4 flex items-center justify-between rounded-xl bg-elevated/70 px-3.5 py-2.5 border border-border text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-blue-400" />
-                  <span className="text-muted leading-tight">
-                    {activeStep === 1 && "Milestone 1 completed. Funds released directly to freelancer's wallet."}
-                    {activeStep === 2 && "Milestone 2 submitted. Client inspects deliverables before authorizing release."}
-                    {activeStep === 3 && "Milestone 3 queued. Funds remain protected in smart contract escrow."}
-                  </span>
+                <div className="text-left">
+                  <p className="text-[11px] font-bold text-foreground">Instant Wallet Payout</p>
+                  <p className="text-[10px] text-subtle font-mono">On Client Approval</p>
                 </div>
               </div>
             </div>

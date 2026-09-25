@@ -1,105 +1,123 @@
 import { Link } from "react-router-dom"
-import { FiCpu, FiCheckCircle, FiShield } from "react-icons/fi"
+import { FiCheckCircle, FiShield, FiGithub, FiGlobe, FiLock } from "react-icons/fi"
 import { Logo } from "@/components/common/Logo"
+import { useCurrency } from "@/context/CurrencyContext"
+import { ThemeToggle } from "@/components/common/ThemeToggle"
 
-/**
- * Validated footer link categories.
- * All destinations point to verified public routes (/login, /register, /help)
- * or active homepage anchor sections (/#how-it-works, /#categories).
- * No fake routes, no dead links, and no exposed private routes.
- */
-const footerSections = [
+const footerColumns = [
+  {
+    title: "Categories",
+    links: [
+      { label: "Web3 & Smart Contracts", href: "/projects?category=web3" },
+      { label: "Programming & Tech", href: "/projects?category=dev" },
+      { label: "UI/UX & Product Design", href: "/projects?category=design" },
+      { label: "AI Services & Agents", href: "/projects?category=ai" },
+      { label: "Mobile Apps", href: "/projects?category=mobile" },
+      { label: "DevOps & Cloud Infra", href: "/projects?category=devops" },
+      { label: "Security & Audits", href: "/projects?category=security" },
+      { label: "Technical Writing", href: "/projects?category=writing" },
+    ],
+  },
   {
     title: "For Clients",
     links: [
+      { label: "How FairWork Works", href: "/#how-it-works" },
+      { label: "FairWork Pro Talent", href: "/projects" },
+      { label: "Trust & Escrow Safety", href: "/#trust-guarantee" },
       { label: "Post a Project", href: "/register" },
-      { label: "Find Freelancers", href: "/register" },
-      { label: "How It Works", href: "/#how-it-works" },
+      { label: "Dispute Arbitration", href: "/help" },
     ],
   },
   {
     title: "For Freelancers",
     links: [
-      { label: "Find Work", href: "/register" },
-      { label: "Explore Categories", href: "/#categories" },
-      { label: "Payment Escrow", href: "/#how-it-works" },
+      { label: "Become a Seller", href: "/register" },
+      { label: "Explore Project Briefs", href: "/projects" },
+      { label: "0% Take-Rate Model", href: "/#trust-guarantee" },
+      { label: "Instant Crypto Payouts", href: "/#how-it-works" },
+      { label: "Freelancer Guide", href: "/help" },
     ],
   },
   {
-    title: "Platform & Legal",
+    title: "Legal & Standards",
     links: [
       { label: "Help Center", href: "/help" },
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
-      { label: "GitHub Repository", href: "https://github.com/Suriya528/fairwork" },
+      { label: "Escrow Contract Rules", href: "/#trust-guarantee" },
+      { label: "Open Source Codebase", href: "https://github.com/Suriya528/fairwork" },
     ],
   },
 ] as const
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear()
+  const { currency, setCurrency } = useCurrency()
 
   return (
-    <footer className="w-full border-t border-border bg-surface text-foreground" aria-label="Site footer">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Brand & Protocol Status Column */}
+    <footer className="w-full border-t border-border bg-base text-foreground" aria-label="Site footer">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        {/* Top 4-Column Directory Grid */}
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Brand Col */}
           <div className="flex flex-col gap-4 lg:col-span-1">
-            <Link to="/" className="inline-block self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg" aria-label="FairWork Home">
-              <Logo size="md" />
+            <Link to="/" className="inline-block self-start" aria-label="FairWork Home">
+              <div className="flex items-center gap-1">
+                <Logo size="md" />
+                <span className="h-2 w-2 rounded-full bg-emerald-500 -ml-1.5 mb-1" />
+              </div>
             </Link>
 
-            <p className="max-w-xs text-xs leading-relaxed text-muted">
-              FairWork connects clients and technical freelancers through milestone-based projects and escrow-protected payments.
+            <p className="text-xs leading-relaxed text-muted max-w-xs">
+              The world&apos;s leading freelance marketplace backed by non-custodial milestone escrow and zero platform commissions.
             </p>
 
-            {/* Protocol Identity Indicators */}
-            <div className="flex flex-col gap-2 pt-1 font-mono text-[11px] text-subtle">
-              <div className="inline-flex items-center gap-2">
-                <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden />
+            <div className="flex flex-col gap-2 pt-2 text-[11px] font-mono text-subtle">
+              <div className="flex items-center gap-2">
+                <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 <span>Ethereum Sepolia Testnet</span>
               </div>
-              <div className="inline-flex items-center gap-2">
-                <FiCpu className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
-                <span>EIP-712 Signed Contracts</span>
-              </div>
-              <div className="inline-flex items-center gap-2">
-                <FiShield className="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden />
+              <div className="flex items-center gap-2">
+                <FiLock className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 <span>Non-Custodial Escrow</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiShield className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                <span>48h Timelock Protection</span>
               </div>
             </div>
           </div>
 
-          {/* Link Groups */}
-          <nav className="grid gap-8 sm:grid-cols-3 lg:col-span-3" aria-label="Footer navigation">
-            {footerSections.map((section) => (
-              <div key={section.title} className="flex flex-col gap-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-subtle font-mono">
-                  {section.title}
+          {/* Directory Links Columns */}
+          <div className="grid gap-8 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-4">
+            {footerColumns.map((col) => (
+              <div key={col.title} className="flex flex-col gap-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground font-mono">
+                  {col.title}
                 </h3>
                 <ul className="flex flex-col gap-2.5" role="list">
-                  {section.links.map(({ label, href }) => (
+                  {col.links.map(({ label, href }) => (
                     <li key={label}>
                       {href.startsWith("http") ? (
                         <a
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-block py-0.5 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                          className="text-xs font-medium text-muted hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </a>
-                      ) : href.startsWith("#") ? (
+                      ) : href.startsWith("#") || href.includes("/#") ? (
                         <a
                           href={href}
-                          className="inline-block py-0.5 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                          className="text-xs font-medium text-muted hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </a>
                       ) : (
                         <Link
                           to={href}
-                          className="inline-block py-0.5 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                          className="text-xs font-medium text-muted hover:text-emerald-400 transition-colors"
                         >
                           {label}
                         </Link>
@@ -109,20 +127,39 @@ export function LandingFooter() {
                 </ul>
               </div>
             ))}
-          </nav>
+          </div>
         </div>
 
-        {/* Bottom Legal & Operational Bar */}
-        <div className="mt-12 flex flex-col items-center justify-between border-t border-border/80 pt-6 sm:flex-row gap-4">
-          <p className="text-xs text-subtle font-mono">
-            &copy; {currentYear} FairWork Protocol. All rights reserved.
-          </p>
-
-          <div className="flex items-center gap-4 text-xs font-mono text-subtle">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
-              <span>Sepolia Testnet Deployment</span>
+        {/* Bottom Bar: Copyright, Language/Currency, Theme & Social */}
+        <div className="mt-16 flex flex-col items-center justify-between border-t border-border pt-8 sm:flex-row gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-subtle">
+              &copy; {currentYear} FairWork Protocol. Built for decentralized freelancing.
             </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Currency toggle */}
+            <button
+              type="button"
+              onClick={() => setCurrency(currency === "USD" ? "INR" : "USD")}
+              className="flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-mono font-semibold text-muted hover:border-border-strong hover:text-foreground transition-colors"
+            >
+              <FiGlobe className="h-3.5 w-3.5" />
+              <span>{currency === "USD" ? "USD ($)" : "INR (₹)"}</span>
+            </button>
+
+            <ThemeToggle />
+
+            <a
+              href="https://github.com/Suriya528/fairwork"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-muted hover:text-foreground hover:bg-elevated transition-colors"
+              aria-label="GitHub Repository"
+            >
+              <FiGithub className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </div>

@@ -1,153 +1,167 @@
 import { Link } from "react-router-dom"
 import {
+  FiArrowRight,
   FiCode,
-  FiSmartphone,
+  FiShield,
   FiLayout,
-  FiServer,
   FiCpu,
-  FiLink,
+  FiSmartphone,
   FiCloud,
   FiEdit3,
-  FiArrowUpRight,
+  FiTrendingUp,
 } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
 
-/**
- * Static category list derived from existing project tags in the codebase.
- * Enriched with tech tags and protocol metadata for discovery.
- */
-const categories = [
+interface ServiceCategory {
+  title: string
+  subtitle: string
+  icon: React.ComponentType<{ className?: string }>
+  gradient: string
+  categoryFilter: string
+  accentColor: string
+}
+
+const popularServices: ServiceCategory[] = [
   {
-    label: "Web3 & Smart Contracts",
-    icon: FiLink,
-    description: "Solidity, Viem, EIP-712, Smart Contract Escrow",
-    tags: ["Solidity", "ETH", "USDC"],
-    highlight: true,
-  },
-  {
-    label: "Full-Stack Web Development",
+    title: "Website Development",
+    subtitle: "Build your web presence",
     icon: FiCode,
-    description: "React 19, Next.js, TypeScript, Tailwind CSS",
-    tags: ["React", "TypeScript", "Next.js"],
-    highlight: false,
+    gradient: "from-blue-600/90 to-indigo-900/90",
+    accentColor: "border-blue-500/40 text-blue-400",
+    categoryFilter: "dev",
   },
   {
-    label: "UI/UX & Product Design",
+    title: "Smart Contract Audits",
+    subtitle: "Secure protocol funds",
+    icon: FiShield,
+    gradient: "from-emerald-600/90 to-teal-900/90",
+    accentColor: "border-emerald-500/40 text-emerald-400",
+    categoryFilter: "security",
+  },
+  {
+    title: "UI/UX & Product Design",
+    subtitle: "Craft intuitive interfaces",
     icon: FiLayout,
-    description: "Figma Libraries, Tokens, Design Systems",
-    tags: ["Figma", "Design System", "Tokens"],
-    highlight: false,
+    gradient: "from-purple-600/90 to-pink-900/90",
+    accentColor: "border-purple-500/40 text-purple-400",
+    categoryFilter: "design",
   },
   {
-    label: "Backend & API Systems",
-    icon: FiServer,
-    description: "Node.js, Express, Microservices, REST & GraphQL",
-    tags: ["Node.js", "Express", "REST"],
-    highlight: false,
-  },
-  {
-    label: "Mobile App Development",
-    icon: FiSmartphone,
-    description: "iOS, Android, React Native, Cross-Platform",
-    tags: ["iOS", "Mobile", "React Native"],
-    highlight: false,
-  },
-  {
-    label: "AI & Machine Learning",
+    title: "AI Services & Agents",
+    subtitle: "Scale with custom LLMs",
     icon: FiCpu,
-    description: "ML Models, Data Pipelines, LLM Integrations",
-    tags: ["Python", "AI", "Data"],
-    highlight: false,
+    gradient: "from-cyan-600/90 to-blue-900/90",
+    accentColor: "border-cyan-500/40 text-cyan-400",
+    categoryFilter: "ai",
   },
   {
-    label: "Cloud & DevOps Infrastructure",
+    title: "Mobile App Development",
+    subtitle: "iOS & Android solutions",
+    icon: FiSmartphone,
+    gradient: "from-amber-600/90 to-orange-900/90",
+    accentColor: "border-amber-500/40 text-amber-400",
+    categoryFilter: "mobile",
+  },
+  {
+    title: "Cloud & DevOps Infra",
+    subtitle: "High-availability 99.99%",
     icon: FiCloud,
-    description: "AWS, Docker, CI/CD Pipelines, Serverless",
-    tags: ["Cloud", "DevOps", "Docker"],
-    highlight: false,
+    gradient: "from-sky-600/90 to-slate-900/90",
+    accentColor: "border-sky-500/40 text-sky-400",
+    categoryFilter: "devops",
   },
   {
-    label: "Technical Content & Docs",
-    icon: FiEdit3,
-    description: "API Documentation, Architecture Guides, Specs",
-    tags: ["Docs", "Writing", "Specs"],
-    highlight: false,
+    title: "Web3 dApp Engineering",
+    subtitle: "Solidity, Viem & Wallets",
+    icon: FiTrendingUp,
+    gradient: "from-violet-600/90 to-purple-900/90",
+    accentColor: "border-violet-500/40 text-violet-400",
+    categoryFilter: "web3",
   },
-] as const
+  {
+    title: "Technical Writing & Specs",
+    subtitle: "Docs & architecture guides",
+    icon: FiEdit3,
+    gradient: "from-rose-600/90 to-red-900/90",
+    accentColor: "border-rose-500/40 text-rose-400",
+    categoryFilter: "writing",
+  },
+]
 
 export function CategoryGrid() {
   const { status } = useAuth()
   const isAuthed = status === "authenticated"
-  const destination = isAuthed ? "/projects" : "/register"
+  const defaultDestination = isAuthed ? "/projects" : "/register"
 
   return (
-    <section id="categories" className="w-full bg-base border-b border-border/40 py-20 sm:py-28">
+    <section id="categories" className="w-full bg-base border-b border-border/40 py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between">
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono">
-              Marketplace Taxonomy
-            </span>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-              Explore core technical disciplines
+            <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              Popular services
             </h2>
-            <p className="mt-3 max-w-xl text-base text-muted">
-              Connect with specialized freelancers across core development, design, and protocol engineering domains.
+            <p className="mt-2 text-base text-muted max-w-xl">
+              Explore the most in-demand freelance talent and project categories on FairWork.
             </p>
           </div>
 
           <Link
-            to={destination}
-            className="mt-4 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover transition-colors"
+            to={defaultDestination}
+            className="mt-4 md:mt-0 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
           >
-            View all project categories
-            <FiArrowUpRight className="h-4 w-4" />
+            <span>All categories</span>
+            <FiArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map(({ label, icon: Icon, description, tags, highlight }) => (
-            <Link
-              key={label}
-              to={destination}
-              className={`group relative flex flex-col justify-between rounded-2xl border p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40 ${
-                highlight
-                  ? "border-primary/50 bg-gradient-to-b from-primary/10 via-surface to-surface shadow-md shadow-primary/10"
-                  : "border-border bg-surface hover:border-border-strong hover:bg-surface-hover"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
-                      highlight
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-elevated text-primary group-hover:bg-primary/15"
-                    }`}
-                  >
-                    <Icon className="h-5.5 w-5.5" aria-hidden />
-                  </span>
-                  <FiArrowUpRight className="h-4 w-4 text-subtle transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+        {/* Fiverr-Style Visual Service Cards Grid */}
+        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {popularServices.map((service) => {
+            const Icon = service.icon
+            return (
+              <Link
+                key={service.title}
+                to={`/projects?category=${service.categoryFilter}`}
+                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border p-6 shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:border-emerald-500/50 bg-surface cursor-pointer min-h-[220px]"
+              >
+                {/* Background Ambient Gradient Layer */}
+                <div
+                  className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-10 group-hover:opacity-20 transition-opacity duration-300`}
+                />
+
+                {/* Card Content Top */}
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl border bg-base/80 backdrop-blur-sm shadow-sm transition-transform duration-300 group-hover:scale-110 ${service.accentColor}`}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </span>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-base/60 text-subtle transition-all duration-200 group-hover:bg-emerald-500 group-hover:text-white">
+                      <FiArrowRight className="h-4 w-4" />
+                    </span>
+                  </div>
+
+                  <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-muted font-mono">
+                    {service.subtitle}
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-foreground group-hover:text-emerald-400 transition-colors">
+                    {service.title}
+                  </h3>
                 </div>
 
-                <h3 className="mt-5 text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                  {label}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-muted">{description}</p>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-1.5 pt-3 border-t border-border/60">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-md bg-base px-2 py-0.5 font-mono text-[10px] text-subtle border border-border/80"
-                  >
-                    {tag}
+                {/* Card Content Bottom */}
+                <div className="relative z-10 pt-4 border-t border-border/40 flex items-center justify-between text-xs text-subtle">
+                  <span>Explore talent</span>
+                  <span className="font-semibold text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Browse &rarr;
                   </span>
-                ))}
-              </div>
-            </Link>
-          ))}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       </div>
     </section>

@@ -1,14 +1,6 @@
 import { Link } from "react-router-dom"
-import { FiArrowRight, FiShield, FiLock } from "react-icons/fi"
+import { FiArrowRight, FiBriefcase, FiUserCheck, FiZap } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
-import { cn } from "@/lib/utils"
-
-const btnBase =
-  "inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
-const btnPrimary =
-  "bg-primary text-primary-foreground hover:bg-primary-hover shadow-lg shadow-primary/25"
-const btnOutline =
-  "border border-border-strong bg-surface/90 text-foreground hover:bg-surface-hover hover:border-subtle"
 
 export function MarketplaceCTA() {
   const { status } = useAuth()
@@ -16,43 +8,115 @@ export function MarketplaceCTA() {
   const destination = isAuthed ? "/projects" : "/register"
 
   return (
-    <section className="w-full bg-base py-20 sm:py-28">
+    <section className="w-full bg-surface py-20 sm:py-28 border-b border-border/40">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl border border-border-strong bg-gradient-to-b from-surface via-surface to-elevated px-6 py-16 text-center sm:px-12 sm:py-24 shadow-2xl shadow-black/60">
-          {/* Ambient Lighting */}
-          <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-            <div className="absolute left-1/2 top-1/2 h-[450px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-primary/15 via-primary/5 to-transparent blur-3xl" />
-          </div>
+        {/* Fiverr-Style Dual Banner */}
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 font-mono">
+            Get Started Today
+          </span>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+            Suddenly it&apos;s all so doable.
+          </h2>
+          <p className="mt-4 text-base text-muted sm:text-lg">
+            Whether you&apos;re looking to hire specialized talent or offer your skills to global clients, FairWork makes collaboration seamless and risk-free.
+          </p>
+        </div>
 
-          <div className="mx-auto max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-base/80 px-3.5 py-1 text-xs text-muted font-mono mb-6">
-              <FiLock className="h-3.5 w-3.5 text-primary" />
-              <span>Smart Contract Milestone Escrow</span>
+        {/* Two High-Conversion Action Cards */}
+        <div className="grid gap-8 md:grid-cols-2">
+          {/* Card 1: For Clients */}
+          <div className="relative overflow-hidden rounded-3xl border border-border bg-base p-8 sm:p-10 shadow-xl transition-all duration-300 hover:border-emerald-500/40 hover:shadow-2xl flex flex-col justify-between">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-2xl" />
+
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <FiBriefcase className="h-5 w-5" />
+                </span>
+                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 font-mono text-xs font-bold text-emerald-400">
+                  Clients & Founders
+                </span>
+              </div>
+
+              <h3 className="mt-6 text-2xl font-extrabold text-foreground">
+                Find talent your way
+              </h3>
+              <p className="mt-3 text-sm text-muted leading-relaxed">
+                Work with the best freelance talent from around the world on our secure, milestone-backed platform. Deposit funds into escrow only when you&apos;re ready to start.
+              </p>
+
+              <ul className="mt-6 flex flex-col gap-2.5 text-xs text-muted">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Pre-verified engineers across 8+ technical disciplines
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  100% money-back guarantee via 48h escrow timelock
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Zero platform markup or surprise commissions
+                </li>
+              </ul>
             </div>
 
-            <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-              Build and scale with milestone-backed security
-            </h2>
-
-            <p className="mt-5 text-base text-muted sm:text-lg leading-relaxed">
-              Post a project or browse technical contracts. Funds remain cryptographically locked in escrow until deliverables are submitted, reviewed, and approved.
-            </p>
-
-            <div className="mt-9 flex flex-col items-center justify-center gap-3.5 sm:flex-row">
+            <div className="mt-8 pt-6 border-t border-border/80">
               <Link
                 to={destination}
-                className={cn(btnBase, btnPrimary, "h-12 w-full min-w-[200px] gap-2 px-7 text-base sm:w-auto")}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-500 transition-all active:scale-[0.98]"
               >
-                Post a Project
-                <FiArrowRight className="h-4 w-4" aria-hidden />
+                <span>Post a Project Brief</span>
+                <FiArrowRight className="h-4 w-4" />
               </Link>
+            </div>
+          </div>
 
+          {/* Card 2: For Freelancers / Sellers */}
+          <div className="relative overflow-hidden rounded-3xl border border-border bg-base p-8 sm:p-10 shadow-xl transition-all duration-300 hover:border-blue-500/40 hover:shadow-2xl flex flex-col justify-between">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-500/10 blur-2xl" />
+
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <FiUserCheck className="h-5 w-5" />
+                </span>
+                <span className="rounded-full bg-blue-500/10 border border-blue-500/20 px-3 py-1 font-mono text-xs font-bold text-blue-400">
+                  Freelancers & Sellers
+                </span>
+              </div>
+
+              <h3 className="mt-6 text-2xl font-extrabold text-foreground">
+                Earn on your own terms
+              </h3>
+              <p className="mt-3 text-sm text-muted leading-relaxed">
+                Offer your services to top clients, build an immutable on-chain reputation, and get paid instantly in USDC to your Web3 wallet upon milestone approval.
+              </p>
+
+              <ul className="mt-6 flex flex-col gap-2.5 text-xs text-muted">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                  Guaranteed funds deposited in smart contract escrow prior to kickoff
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                  Instant P2P settlement straight to your MetaMask / EVM wallet
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                  Keep 100% of your earnings with 0% platform commission
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-border/80">
               <Link
                 to={destination}
-                className={cn(btnBase, btnOutline, "h-12 w-full min-w-[200px] gap-2 px-7 text-base sm:w-auto")}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-border-strong bg-surface hover:bg-elevated hover:border-emerald-500/50 px-6 text-sm font-bold text-foreground transition-all active:scale-[0.98]"
               >
-                <FiShield className="h-4 w-4 text-primary" aria-hidden />
-                Join as a Freelancer
+                <span>Become a Seller</span>
+                <FiZap className="h-4 w-4 text-emerald-400" />
               </Link>
             </div>
           </div>

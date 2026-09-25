@@ -1,18 +1,18 @@
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { HeroSection } from "@/components/landing/HeroSection"
-import { MarketplaceSearch } from "@/components/landing/MarketplaceSearch"
 import { CategoryGrid } from "@/components/landing/CategoryGrid"
-import { HowItWorks } from "@/components/landing/HowItWorks"
+import { GigShowcase } from "@/components/landing/GigShowcase"
+import { FairWorkPro } from "@/components/landing/FairWorkPro"
 import { TrustSection } from "@/components/landing/TrustSection"
-import { PlatformBenefits } from "@/components/landing/PlatformBenefits"
+import { HowItWorks } from "@/components/landing/HowItWorks"
+import { TestimonialsSection } from "@/components/landing/TestimonialsSection"
 import { MarketplaceCTA } from "@/components/landing/MarketplaceCTA"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 
 /**
- * Public landing page for unauthenticated visitors.
- * Renders outside AppLayout — has its own header and footer.
- * Does NOT use any authenticated API data.
- * All sections use static content or truthful empty states.
+ * Public landing page inspired by Fiverr's modern marketplace UX.
+ * Renders outside AppLayout with high-converting search hero, popular services,
+ * Fiverr Pro tier, gig cards with live escrow pricing, and dual client/freelancer funnels.
  */
 export function LandingPage() {
   return (
@@ -20,15 +20,32 @@ export function LandingPage() {
       <LandingHeader />
 
       <main>
+        {/* Fiverr-Style Hero with Integrated Search & Verified Talent Card */}
         <HeroSection />
-        <MarketplaceSearch />
+
+        {/* Popular Services Visual Cards */}
         <CategoryGrid />
-        <HowItWorks />
+
+        {/* Fiverr-Style Gig Cards with Live Escrow Pricing */}
+        <GigShowcase />
+
+        {/* FairWork Pro Premium Tier */}
+        <FairWorkPro />
+
+        {/* "A whole world of freelance talent at your fingertips" with Live Milestone Card */}
         <TrustSection />
-        <PlatformBenefits />
+
+        {/* 4-Step How It Works Workflow */}
+        <HowItWorks />
+
+        {/* Customer & Freelancer Testimonials */}
+        <TestimonialsSection />
+
+        {/* Closing Dual-Talent CTA ("Suddenly it's all so doable") */}
         <MarketplaceCTA />
       </main>
 
+      {/* Fiverr-Style Comprehensive Directory Footer */}
       <LandingFooter />
     </div>
   )
