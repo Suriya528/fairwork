@@ -20,6 +20,8 @@ const quickCategories = [
   { label: "UI/UX Design", query: "UI/UX Design" },
   { label: "Autonomous AI", query: "AI & Machine Learning" },
   { label: "Mobile Apps", query: "Mobile Development" },
+  { label: "Backend & APIs", query: "Backend & API Systems" },
+  { label: "Cloud & DevOps", query: "Cloud & DevOps" },
 ] as const
 
 type StudioTab = "escrow" | "deliverables" | "settlement"
@@ -54,164 +56,167 @@ export function HeroSection() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Left-Aligned Hero Content (Real Website Flow - Spanning Left to Right) */}
-        <div className="flex flex-col items-start text-left w-full">
-          {/* Monumental Title with elegant optical weights */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12] w-full text-pretty">
-            Where ambitious projects get built.{" "}
-            <span className="font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
-              Guaranteed by milestone escrow.
-            </span>
-          </h1>
-
-          {/* Subtitle spanning full width without right-side gaps */}
-          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed w-full font-light text-pretty">
-            Commission verified specialists, inspect deliverables against clear milestone criteria, and release payments directly to creator wallets with 0% platform fee deduction.
-          </p>
-
-          {/* Amazon / Airbnb Style Universal Department & Search Bar (stretching full width) */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="mt-9 w-full rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
-          >
-            {/* Department Dropdown Selector */}
-            <div className="relative sm:w-52 shrink-0">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                aria-label="Select discipline"
-                className="h-12 w-full appearance-none rounded-xl border-0 bg-elevated/60 px-3.5 pr-8 text-xs font-medium text-foreground focus:bg-elevated focus:outline-none cursor-pointer"
-              >
-                <option value="all">All Disciplines</option>
-                <option value="Web3 & Smart Contracts">Smart Contracts &amp; Web3</option>
-                <option value="Web Development">Web Development</option>
-                <option value="UI/UX Design">UI/UX Design</option>
-                <option value="AI & Machine Learning">AI &amp; Machine Learning</option>
-                <option value="Mobile Development">Mobile Development</option>
-                <option value="Backend & API Systems">Backend &amp; API Systems</option>
-                <option value="Cloud & DevOps">Cloud &amp; DevOps</option>
-              </select>
-              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-subtle text-xs">
-                ▼
-              </div>
-            </div>
-
-            {/* Keyword Search Input */}
-            <div className="relative flex-1">
-              <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
-              <input
-                type="text"
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                placeholder="Search deliverable packages, audits, apps, tokens..."
-                className="h-12 w-full rounded-xl border-0 bg-transparent pl-10 pr-4 text-xs sm:text-sm font-normal text-foreground placeholder:text-subtle focus:outline-none"
-                aria-label="Search query"
-              />
-            </div>
-
-            {/* High-conversion Search CTA */}
-            <button
-              type="submit"
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-6 text-xs sm:text-sm font-medium text-white shadow-sm transition-all shrink-0 cursor-pointer"
-            >
-              <span>Explore Briefs</span>
-              <FiArrowRight className="h-4 w-4" />
-            </button>
-          </form>
-
-          {/* Quick Department Filter Pills */}
-          <div className="mt-4 flex flex-wrap items-center justify-start gap-2 text-xs w-full">
-            <span className="text-subtle font-mono text-[11px]">Popular:</span>
-            {quickCategories.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => navigate(`/projects?search=${encodeURIComponent(item.query)}`)}
-                className="rounded-full border border-border/70 bg-surface/70 px-3 py-1 text-[11px] font-normal text-muted hover:border-border-strong hover:text-foreground transition-colors cursor-pointer"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Hero Feature Badges spanning full width from left end to right end */}
-          <div className="mt-6 flex flex-wrap items-center justify-between w-full text-xs text-muted/80 font-mono gap-4">
-            <span className="inline-flex items-center gap-1.5">
-              <FiShield className="h-3.5 w-3.5 text-emerald-400" />
-              100% Escrow Protection
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <FiZap className="h-3.5 w-3.5 text-cyan-400" />
-              Instant Wallet Payout
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <FiDollarSign className="h-3.5 w-3.5 text-teal-400" />
-              0% Platform Commission
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <FiCheckCircle className="h-3.5 w-3.5 text-primary" />
-              Milestone Acceptance Guarantee
-            </span>
-          </div>
-        </div>
-
-        {/* Smart Contract Escrow & Deliverable Studio spanning full width */}
-        <div className="mt-14 w-full overflow-hidden rounded-2xl border border-border bg-surface/90 shadow-2xl backdrop-blur-xl">
-          {/* Studio Header Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border bg-elevated/40 px-5 py-3.5 gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <FiLock className="h-3.5 w-3.5" />
+        {/* Two-Column Real Website Hero Layout: Text on Left, Live Studio on Right */}
+        <div className="grid lg:grid-cols-12 gap-10 xl:gap-12 items-center w-full">
+          {/* Left Column: Headline, Subtitle, Search Bar, Trust Signals */}
+          <div className="lg:col-span-6 flex flex-col items-start text-left w-full">
+            {/* Monumental Title with elegant optical weights */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tight text-foreground leading-[1.12]">
+              Technical talent,{" "}
+              <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
+                settled in escrow.
               </span>
-              <div>
-                <span className="text-xs font-medium text-foreground">Interactive Escrow Studio</span>
-                <span className="text-[11px] text-subtle font-mono block sm:inline sm:ml-2">
-                  Vault ID: #FW-8842-SEPOLIA
-                </span>
+            </h1>
+
+            {/* Subtitle spanning naturally */}
+            <p className="mt-5 text-base text-muted/90 sm:text-lg leading-relaxed font-light">
+              Commission verified specialists, inspect deliverables against clear milestone criteria, and release payments directly to creator wallets with 0% platform fee deduction.
+            </p>
+
+            {/* Universal Search Bar */}
+            <form
+              onSubmit={handleSearchSubmit}
+              className="mt-7 w-full rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
+            >
+              {/* Department Dropdown Selector */}
+              <div className="relative sm:w-44 shrink-0">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  aria-label="Select discipline"
+                  className="h-11 w-full appearance-none rounded-xl border-0 bg-elevated/60 px-3 pr-7 text-xs font-medium text-foreground focus:bg-elevated focus:outline-none cursor-pointer"
+                >
+                  <option value="all">All Disciplines</option>
+                  <option value="Web3 & Smart Contracts">Smart Contracts &amp; Web3</option>
+                  <option value="Web Development">Web Development</option>
+                  <option value="UI/UX Design">UI/UX Design</option>
+                  <option value="AI & Machine Learning">AI &amp; Machine Learning</option>
+                  <option value="Mobile Development">Mobile Development</option>
+                  <option value="Backend & API Systems">Backend &amp; API Systems</option>
+                  <option value="Cloud & DevOps">Cloud &amp; DevOps</option>
+                </select>
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-subtle text-[10px]">
+                  ▼
+                </div>
               </div>
+
+              {/* Keyword Search Input */}
+              <div className="relative flex-1">
+                <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-subtle" />
+                <input
+                  type="text"
+                  value={inputQuery}
+                  onChange={(e) => setInputQuery(e.target.value)}
+                  placeholder="Search packages, audits, apps..."
+                  className="h-11 w-full rounded-xl border-0 bg-transparent pl-9 pr-3 text-xs sm:text-sm font-normal text-foreground placeholder:text-subtle focus:outline-none"
+                  aria-label="Search query"
+                />
+              </div>
+
+              {/* High-conversion Search CTA */}
+              <button
+                type="submit"
+                className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-primary hover:bg-primary-hover px-5 text-xs font-medium text-white shadow-sm transition-all shrink-0 cursor-pointer"
+              >
+                <span>Explore</span>
+                <FiArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </form>
+
+            {/* Quick Department Filter Pills */}
+            <div className="mt-3.5 flex flex-wrap items-center justify-start gap-1.5 text-xs w-full">
+              <span className="text-subtle font-mono text-[10px]">Popular:</span>
+              {quickCategories.slice(0, 5).map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => navigate(`/projects?search=${encodeURIComponent(item.query)}`)}
+                  className="rounded-full border border-border/70 bg-surface/70 px-2.5 py-0.5 text-[10px] font-normal text-muted hover:border-border-strong hover:text-foreground transition-colors cursor-pointer"
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
-            {/* Studio Navigation Tabs */}
-            <div className="flex items-center rounded-lg border border-border bg-surface p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab("escrow")}
-                className={`rounded-md px-3 py-1 transition-colors cursor-pointer ${
-                  activeTab === "escrow"
-                    ? "bg-elevated text-foreground shadow-xs font-medium"
-                    : "text-muted hover:text-foreground font-normal"
-                }`}
-              >
-                Escrow Ledger
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("deliverables")}
-                className={`rounded-md px-3 py-1 transition-colors cursor-pointer ${
-                  activeTab === "deliverables"
-                    ? "bg-elevated text-foreground shadow-xs font-medium"
-                    : "text-muted hover:text-foreground font-normal"
-                }`}
-              >
-                Inspection Checklist
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("settlement")}
-                className={`rounded-md px-3 py-1 transition-colors cursor-pointer ${
-                  activeTab === "settlement"
-                    ? "bg-elevated text-foreground shadow-xs font-medium"
-                    : "text-muted hover:text-foreground font-normal"
-                }`}
-              >
-                Settlement Flow
-              </button>
+            {/* Hero Feature Badges Grid */}
+            <div className="mt-6 grid grid-cols-2 gap-2.5 w-full text-xs text-muted/80 font-mono border-t border-border/40 pt-4">
+              <span className="inline-flex items-center gap-1.5 text-[11px]">
+                <FiShield className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                100% Escrow Protection
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px]">
+                <FiZap className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                Instant Wallet Payout
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px]">
+                <FiDollarSign className="h-3.5 w-3.5 text-teal-400 shrink-0" />
+                0% Platform Commission
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px]">
+                <FiCheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+                Milestone Acceptance
+              </span>
             </div>
           </div>
 
-          {/* 4-Stage Visual Settlement Pipeline */}
-          <div className="border-b border-border/80 bg-surface/50 p-4 sm:p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {/* Right Column: Live Interactive Escrow Studio */}
+          <div className="lg:col-span-6 w-full">
+            <div className="w-full overflow-hidden rounded-2xl border border-border bg-surface/95 shadow-2xl backdrop-blur-xl">
+              {/* Studio Header Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border bg-elevated/40 px-4 py-3 gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <FiLock className="h-3 w-3" />
+                  </span>
+                  <div>
+                    <span className="text-xs font-medium text-foreground">Interactive Escrow Studio</span>
+                    <span className="text-[10px] text-subtle font-mono block sm:inline sm:ml-2">
+                      #FW-8842-SEPOLIA
+                    </span>
+                  </div>
+                </div>
+
+                {/* Studio Navigation Tabs */}
+                <div className="flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("escrow")}
+                    className={`rounded-md px-2.5 py-1 text-[11px] transition-colors cursor-pointer ${
+                      activeTab === "escrow"
+                        ? "bg-elevated text-foreground shadow-xs font-medium"
+                        : "text-muted hover:text-foreground font-normal"
+                    }`}
+                  >
+                    Ledger
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("deliverables")}
+                    className={`rounded-md px-2.5 py-1 text-[11px] transition-colors cursor-pointer ${
+                      activeTab === "deliverables"
+                        ? "bg-elevated text-foreground shadow-xs font-medium"
+                        : "text-muted hover:text-foreground font-normal"
+                    }`}
+                  >
+                    Checklist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("settlement")}
+                    className={`rounded-md px-2.5 py-1 text-[11px] transition-colors cursor-pointer ${
+                      activeTab === "settlement"
+                        ? "bg-elevated text-foreground shadow-xs font-medium"
+                        : "text-muted hover:text-foreground font-normal"
+                    }`}
+                  >
+                    Settlement
+                  </button>
+                </div>
+              </div>
+
+              {/* 4-Stage Visual Settlement Pipeline */}
+              <div className="border-b border-border/80 bg-surface/50 p-3.5 sm:p-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               {[
                 {
                   step: "01",
@@ -436,6 +441,8 @@ export function HeroSection() {
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
     </section>
