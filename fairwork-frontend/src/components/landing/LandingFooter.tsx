@@ -17,10 +17,10 @@ const footerSections = [
   {
     title: "Disciplines",
     links: [
-      { label: "Smart Contracts", href: "/projects?category=web3" },
-      { label: "Full-Stack Web", href: "/projects?category=dev" },
-      { label: "Design Systems", href: "/projects?category=design" },
-      { label: "Autonomous AI", href: "/projects?category=ai" },
+      { label: "Smart Contracts & Web3", href: "/projects?category=Web3+%26+Smart+Contracts" },
+      { label: "Web Development", href: "/projects?category=Web+Development" },
+      { label: "UI/UX Design", href: "/projects?category=UI%2FUX+Design" },
+      { label: "AI & Machine Learning", href: "/projects?category=AI+%26+Machine+Learning" },
     ],
   },
   {

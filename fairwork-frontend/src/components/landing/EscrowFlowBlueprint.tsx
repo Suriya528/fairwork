@@ -30,10 +30,15 @@ const workflowStages: WorkflowStage[] = [
       "✓ Project creator & client wallets bound",
     ],
     contractAction: "Escrow Contract Initialization",
-    codeSnippet: `// Initialize project and commit milestone values
-function createProject(string calldata projectId, uint256[] calldata milestoneAmounts) external {
-    require(milestoneAmounts.length > 0, "INVALID_MILESTONES");
-    // Parameters locked directly in contract storage
+    codeSnippet: `// Initialize escrow agreement and lock milestone criteria
+function createEscrow(
+    string calldata projectId,
+    address freelancer,
+    address token,
+    uint256[] calldata milestoneAmounts
+) external whenNotPaused {
+    require(milestoneAmounts.length > 0, "Milestones required");
+    // Direct on-chain storage commitment
 }`,
   },
   {
@@ -51,9 +56,11 @@ function createProject(string calldata projectId, uint256[] calldata milestoneAm
     ],
     contractAction: "Token Deposit & State Lock",
     codeSnippet: `// Non-custodial escrow deposit
-IERC20(token).safeTransferFrom(msg.sender, address(this), totalAmount);
-escrow.isFunded = true;
-emit EscrowFunded(projectId, msg.sender, totalAmount);`,
+function fund(string calldata projectId) external nonReentrant whenNotPaused {
+    e.isFunded = true;
+    IERC20(e.token).safeTransferFrom(msg.sender, address(this), e.totalAmount);
+    emit EscrowFunded(projectId, msg.sender, e.totalAmount);
+}`,
   },
   {
     id: "verify",
@@ -69,9 +76,10 @@ emit EscrowFunded(projectId, msg.sender, totalAmount);`,
       "⏳ Client inspection window open",
     ],
     contractAction: "Milestone Deliverable Submitted",
-    codeSnippet: `// Link deliverable submission
-emit DeliverableSubmitted(projectId, milestoneIndex, proofHash);
-// Client review window active (unilateral cancellation locked)`,
+    codeSnippet: `// Deliverable submitted for client staging inspection
+// Mutual 48-hour timelock active:
+// Prevents unilateral withdrawals while review is open
+emit DeliverableSubmitted(projectId, milestoneIndex, proofHash);`,
   },
   {
     id: "settle",
@@ -87,10 +95,12 @@ emit DeliverableSubmitted(projectId, milestoneIndex, proofHash);
       "✓ Direct wallet-to-wallet transfer ready",
     ],
     contractAction: "Atomic Settlement Transfer",
-    codeSnippet: `// Instant settlement directly to recipient wallet
-e.milestones[index].released = true;
-IERC20(e.token).safeTransfer(e.freelancer, m.amount);
-emit MilestoneReleased(projectId, index, e.freelancer, m.amount);`,
+    codeSnippet: `// Instant atomic milestone settlement directly to creator wallet
+function releaseMilestone(string calldata projectId, uint256 index) external nonReentrant {
+    e.milestones[index].released = true;
+    IERC20(e.token).safeTransfer(e.freelancer, m.amount);
+    emit MilestoneReleased(projectId, index, e.freelancer, m.amount);
+}`,
   },
 ]
 

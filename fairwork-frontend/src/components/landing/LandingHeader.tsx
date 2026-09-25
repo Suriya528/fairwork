@@ -8,10 +8,10 @@ import { useCurrency } from "@/context/CurrencyContext"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { label: "Escrow Pipeline", href: "#workflow-pipeline" },
-  { label: "Specialists", href: "#verified-specialists" },
-  { label: "Milestone Studio", href: "#milestone-composer" },
-  { label: "Buyer Protection", href: "#security-guardrails" },
+  { label: "Escrow Pipeline", href: "/#workflow-pipeline" },
+  { label: "Specialists", href: "/#verified-specialists" },
+  { label: "Milestone Studio", href: "/#milestone-composer" },
+  { label: "Buyer Protection", href: "/#security-guardrails" },
   { label: "Explore Projects", href: "/projects", isRoute: true },
 ] as const
 

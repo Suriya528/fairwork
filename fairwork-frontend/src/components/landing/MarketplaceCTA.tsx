@@ -3,9 +3,10 @@ import { FiArrowRight, FiShield, FiZap, FiDollarSign } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
 
 export function MarketplaceCTA() {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   const isAuthed = status === "authenticated"
-  const destination = isAuthed ? "/projects" : "/register"
+  const isClient = isAuthed && user?.role === "client"
+  const destination = isAuthed ? (isClient ? "/projects/new" : "/projects") : "/register"
 
   return (
     <section className="relative w-full bg-base py-24 sm:py-32 border-b border-border/40 overflow-hidden">

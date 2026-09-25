@@ -9,15 +9,14 @@ import { MarketplaceCTA } from "@/components/landing/MarketplaceCTA"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 
 /**
- * Public landing page designed in GitHub's signature visual architecture:
- * - Continuous vertical glowing timeline spine with section nodes
- * - GitHub Primer navigation with [/] search keycap
- * - Pull Request & Actions CI/CD milestone settlement window
- * - GitHub Actions workflow pipeline visualizer
- * - Pinned repository & verified contributor cards with language dots
- * - Interactive milestone issue composer
- * - Merged pull requests & settled milestones showcase
- * - Security guardrails & closing banner
+ * Public landing page combining Amazon discovery, Stripe escrow transparency,
+ * and Linear precision typography:
+ * - Centered hero banner with universal search and interactive escrow studio
+ * - 4-stage automated milestone settlement pipeline
+ * - Curated deliverable package cards with verified specialists
+ * - Real-time milestone & budget configurator
+ * - Shipped deliverable showcases with verified settlement proofs
+ * - Non-custodial security guardrails & closing call-to-action
  */
 export function LandingPage() {
   return (
@@ -25,25 +24,25 @@ export function LandingPage() {
       <LandingHeader />
 
       <main>
-        {/* Node 1: Hero with Pull Request & Actions Checks Window */}
+        {/* Hero Banner with Universal Search & Interactive Escrow Studio */}
         <HeroSection />
 
-        {/* Node 2: GitHub Actions Workflow Pipeline */}
+        {/* 4-Stage Automated Milestone Settlement Pipeline */}
         <EscrowFlowBlueprint />
 
-        {/* Node 3: Pinned Repository & Verified Contributor Cards */}
+        {/* Curated Deliverable Package Cards */}
         <CuratedSpecialists />
 
-        {/* Node 4: Interactive Milestone Issue Composer */}
+        {/* Real-time Milestone & Budget Configurator */}
         <ProjectCalculator />
 
-        {/* Node 5: Merged Pull Requests & Settled Milestones */}
+        {/* Shipped Deliverable Showcases & Settlement Proofs */}
         <VerifiedProjectShowcase />
 
-        {/* Node 6: Security & Smart Contract Guardrails */}
+        {/* Non-Custodial Escrow Security Guardrails */}
         <EscrowAssurance />
 
-        {/* Node 7: Spine Termination & Closing CTA */}
+        {/* Closing Call-to-Action */}
         <MarketplaceCTA />
       </main>
 

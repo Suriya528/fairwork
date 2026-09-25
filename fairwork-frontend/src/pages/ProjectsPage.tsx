@@ -145,7 +145,21 @@ export function ProjectsPage() {
       : [...projects]
 
     if (selectedCategory) {
-      result = result.filter((project) => project.category === selectedCategory)
+      const catLower = selectedCategory.toLowerCase().trim()
+      result = result.filter((project) => {
+        if (!project.category) return false
+        const pCat = project.category.toLowerCase()
+        return (
+          pCat === catLower ||
+          pCat.includes(catLower) ||
+          catLower.includes(pCat) ||
+          (catLower === "web3" && pCat.includes("web3")) ||
+          (catLower.includes("smart contract") && pCat.includes("smart contract")) ||
+          (catLower.includes("dev") && pCat.includes("web development")) ||
+          (catLower.includes("design") && pCat.includes("design")) ||
+          (catLower.includes("ai") && pCat.includes("ai"))
+        )
+      })
     }
 
     result.sort((a, b) => {

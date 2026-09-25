@@ -83,9 +83,9 @@ const scopeMultipliers: Record<ScopeTier, { factor: number; label: string; desc:
 
 export function ProjectCalculator() {
   const { formatAmount } = useCurrency()
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   const isAuthed = status === "authenticated"
-  const destination = isAuthed ? "/projects" : "/register"
+  const isClient = isAuthed && user?.role === "client"
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("web")
   const [selectedScope, setSelectedScope] = useState<ScopeTier>("starter")
@@ -103,6 +103,12 @@ export function ProjectCalculator() {
       : selectedScope === "growth"
         ? selectedProject.milestones + 1
         : selectedProject.milestones + 2
+
+  const destination = isAuthed
+    ? isClient
+      ? `/projects/new?title=${encodeURIComponent(selectedProject.label)}&budget=${estimatedUSD}`
+      : "/projects"
+    : "/register"
 
   return (
     <section id="milestone-composer" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
@@ -231,7 +237,7 @@ export function ProjectCalculator() {
                 Estimated Escrow Deposit
               </span>
               <div className="mt-1 text-3xl font-extrabold text-foreground font-mono">
-                {formatAmount(estimatedUSD * 100)}
+                {formatAmount(estimatedUSD)}
               </div>
               <span className="text-[11px] text-muted font-mono mt-0.5 block">
                 ≈ {estimatedUSD} USDC committed in smart contract

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { FiPlus, FiTrash2, FiClock, FiCalendar, FiZap } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/Card"
@@ -34,12 +34,13 @@ export function CreateProjectPage() {
   const { user, token } = useAuth()
   const { currency, formatAmount } = useCurrency()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const [title, setTitle] = useState("")
-  const [category, setCategory] = useState<string>("")
+  const [title, setTitle] = useState(() => searchParams.get("title") || "")
+  const [category, setCategory] = useState<string>(() => searchParams.get("category") || "")
   const [customCategory, setCustomCategory] = useState<string>("")
-  const [description, setDescription] = useState("")
-  const [budget, setBudget] = useState("")
+  const [description, setDescription] = useState(() => searchParams.get("description") || "")
+  const [budget, setBudget] = useState(() => searchParams.get("budget") || "")
 
   // Deadline state
   const [deadlineMode, setDeadlineMode] = useState<"duration" | "exact">("duration")

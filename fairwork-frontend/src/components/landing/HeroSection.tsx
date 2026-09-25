@@ -15,21 +15,22 @@ import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 
 const quickCategories = [
-  { label: "Smart Contracts", query: "Smart Contracts" },
-  { label: "Full-Stack Web", query: "Full-Stack" },
-  { label: "Design Systems", query: "Design System" },
-  { label: "AI Autonomous Agents", query: "AI Agent" },
-  { label: "Mobile Apps", query: "Mobile" },
+  { label: "Smart Contracts", query: "Web3 & Smart Contracts" },
+  { label: "Web Applications", query: "Web Development" },
+  { label: "UI/UX Design", query: "UI/UX Design" },
+  { label: "Autonomous AI", query: "AI & Machine Learning" },
+  { label: "Mobile Apps", query: "Mobile Development" },
 ] as const
 
 type StudioTab = "escrow" | "deliverables" | "settlement"
 
 export function HeroSection() {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   const { formatAmount } = useCurrency()
   const navigate = useNavigate()
   const isAuthed = status === "authenticated"
-  const destination = isAuthed ? "/projects" : "/register"
+  const isClient = isAuthed && user?.role === "client"
+  const destination = isAuthed ? (isClient ? "/projects/new" : "/projects") : "/register"
 
   const [inputQuery, setInputQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -90,11 +91,13 @@ export function HeroSection() {
                 className="h-12 w-full appearance-none rounded-xl border-0 bg-elevated/70 px-3.5 pr-8 text-xs font-semibold text-foreground focus:bg-elevated focus:outline-none cursor-pointer"
               >
                 <option value="all">All Disciplines</option>
-                <option value="Smart Contracts">Smart Contracts</option>
-                <option value="Web Development">Full-Stack Web</option>
-                <option value="Design Systems">UI/UX &amp; Design</option>
-                <option value="AI Engineering">AI &amp; Autonomous</option>
-                <option value="Mobile Engineering">Mobile Apps</option>
+                <option value="Web3 & Smart Contracts">Smart Contracts &amp; Web3</option>
+                <option value="Web Development">Web Development</option>
+                <option value="UI/UX Design">UI/UX Design</option>
+                <option value="AI & Machine Learning">AI &amp; Machine Learning</option>
+                <option value="Mobile Development">Mobile Development</option>
+                <option value="Backend & API Systems">Backend &amp; API Systems</option>
+                <option value="Cloud & DevOps">Cloud &amp; DevOps</option>
               </select>
               <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-subtle text-xs">
                 ▼
@@ -292,7 +295,7 @@ export function HeroSection() {
                   <div className="rounded-lg border border-border bg-elevated/50 p-3">
                     <span className="text-[10px] text-subtle uppercase block">Secured Balance</span>
                     <span className="text-base font-bold text-foreground mt-0.5 block">
-                      {formatAmount(240000)}
+                      {formatAmount(2400)}
                     </span>
                     <span className="text-[10px] text-emerald-400">Locked on-chain</span>
                   </div>
@@ -413,7 +416,7 @@ export function HeroSection() {
                 <div className="rounded-lg border border-border bg-elevated/40 p-3 font-mono text-xs space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-subtle">Milestone Total:</span>
-                    <span className="text-foreground font-bold">{formatAmount(240000)}</span>
+                    <span className="text-foreground font-bold">{formatAmount(2400)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-subtle">Platform Fee:</span>
@@ -421,7 +424,7 @@ export function HeroSection() {
                   </div>
                   <div className="flex justify-between pt-1 border-t border-border/60">
                     <span className="text-subtle">Creator Net:</span>
-                    <span className="text-emerald-400 font-bold">{formatAmount(240000)}</span>
+                    <span className="text-emerald-400 font-bold">{formatAmount(2400)}</span>
                   </div>
                 </div>
               </div>

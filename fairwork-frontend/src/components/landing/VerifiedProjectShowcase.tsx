@@ -95,7 +95,7 @@ export function VerifiedProjectShowcase() {
                   </span>
 
                   <span className="font-mono text-sm text-foreground font-extrabold">
-                    {formatAmount(proj.budgetUSD * 100)}
+                    {formatAmount(proj.budgetUSD)}
                   </span>
                 </div>
 

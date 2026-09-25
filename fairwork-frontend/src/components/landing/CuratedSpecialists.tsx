@@ -112,11 +112,25 @@ const deliverablePackages: DeliverablePackage[] = [
 
 export function CuratedSpecialists() {
   const { formatAmount } = useCurrency()
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   const isAuthed = status === "authenticated"
-  const destination = isAuthed ? "/projects" : "/register"
+  const isClient = isAuthed && user?.role === "client"
 
   const [activeTab, setActiveTab] = useState<"all" | "web3" | "dev" | "design" | "ai">("all")
+
+  function getCommissionUrl(pkg: DeliverablePackage) {
+    if (!isAuthed) return "/register"
+    if (!isClient) return `/projects?search=${encodeURIComponent(pkg.skills[0] || "")}`
+    const cat =
+      pkg.category === "web3"
+        ? "Web3 & Smart Contracts"
+        : pkg.category === "dev"
+          ? "Web Development"
+          : pkg.category === "design"
+            ? "UI/UX Design"
+            : "AI & Machine Learning"
+    return `/projects/new?title=${encodeURIComponent(pkg.packageTitle)}&category=${encodeURIComponent(cat)}&budget=${pkg.startingUSD}`
+  }
 
   const filtered = activeTab === "all"
     ? deliverablePackages
@@ -257,12 +271,12 @@ export function CuratedSpecialists() {
                   <div>
                     <span className="text-[10px] text-subtle uppercase font-mono block">Package Price</span>
                     <span className="text-base font-bold text-foreground font-mono">
-                      {formatAmount(pkg.startingUSD * 100)}
+                      {formatAmount(pkg.startingUSD)}
                     </span>
                   </div>
 
                   <Link
-                    to={destination}
+                    to={getCommissionUrl(pkg)}
                     className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary hover:bg-primary-hover px-4 text-xs font-bold text-white transition-all shadow-xs"
                   >
                     <span>Commission</span>
@@ -277,7 +291,7 @@ export function CuratedSpecialists() {
         {/* Bottom Explore Link */}
         <div className="mt-12 text-center">
           <Link
-            to={destination}
+            to={isAuthed ? "/projects" : "/register"}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-2.5 text-xs font-bold text-foreground hover:bg-elevated transition-colors shadow-xs"
           >
             <span>Explore All Deliverables &amp; Packages</span>
