@@ -111,20 +111,28 @@ export function ProjectCalculator() {
     : "/register"
 
   return (
-    <section id="milestone-composer" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
+    <section id="milestone-composer" className="relative w-full bg-surface/40 border-y border-border/60 py-20 sm:py-28 overflow-hidden">
+      {/* Subtle architectural cyan glow */}
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+        <div className="absolute left-1/2 top-1/2 h-[420px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-500/5 blur-3xl" />
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Centered Section Header */}
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
-            <FiSliders className="h-3.5 w-3.5 text-primary" />
-            <span className="font-semibold text-foreground">Interactive Estimator</span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-5 shadow-xs">
+            <FiSliders className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="font-medium text-foreground/90">Interactive Estimator</span>
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl leading-tight">
-            Scope your project in minutes.
+          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+            Scope your project{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+              in minutes.
+            </span>
           </h2>
 
-          <p className="mt-4 text-base text-muted sm:text-lg max-w-2xl">
+          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
             Select your technical discipline and project complexity to estimate milestone checkpoints and escrow deposits.
           </p>
         </div>
@@ -132,13 +140,13 @@ export function ProjectCalculator() {
         {/* Milestone Studio Grid */}
         <div className="max-w-5xl mx-auto grid gap-6 lg:grid-cols-12 items-start">
           {/* Left: Configuration Controls */}
-          <div className="lg:col-span-7 rounded-2xl border border-border bg-surface p-6 sm:p-7 shadow-lg">
+          <div className="lg:col-span-7 rounded-2xl border border-border/80 bg-surface p-6 sm:p-7 shadow-xl">
             <div className="border-b border-border/80 pb-4 mb-6 flex items-center justify-between">
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-foreground">Milestone Configuration</h3>
-                <p className="text-xs text-muted mt-0.5">Customize scope parameters</p>
+                <h3 className="text-sm sm:text-base font-medium text-foreground">Milestone Configuration</h3>
+                <p className="text-xs font-light text-muted mt-0.5">Customize scope parameters</p>
               </div>
-              <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-mono font-semibold text-primary">
+              <span className="rounded-full bg-cyan-500/10 border border-cyan-500/25 px-2.5 py-0.5 text-[10px] font-mono font-medium text-cyan-300">
                 Live Estimates
               </span>
             </div>
@@ -146,7 +154,7 @@ export function ProjectCalculator() {
             <div className="space-y-6">
               {/* Category Picker */}
               <div>
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-subtle mb-3">
+                <label className="block text-xs font-mono font-medium uppercase tracking-wider text-subtle mb-3">
                   1. Select Discipline
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -161,8 +169,8 @@ export function ProjectCalculator() {
                         className={cn(
                           "flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer",
                           isSelected
-                            ? "border-primary bg-primary/5 shadow-xs"
-                            : "border-border bg-elevated/40 hover:bg-elevated",
+                            ? "border-cyan-400/60 bg-cyan-500/5 shadow-xs"
+                            : "border-border/80 bg-elevated/35 hover:bg-elevated/70",
                         )}
                       >
                         <span
@@ -170,14 +178,14 @@ export function ProjectCalculator() {
                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
                             isSelected
                               ? "bg-primary text-white border-primary"
-                              : "bg-surface text-muted border-border",
+                              : "bg-surface text-muted border-border/80",
                           )}
                         >
                           <Icon className="h-4 w-4" />
                         </span>
                         <div>
-                          <p className="text-xs font-bold text-foreground">{opt.label}</p>
-                          <p className="text-[10px] text-subtle font-mono mt-0.5">Base: ${opt.baseUSD}</p>
+                          <p className="text-xs font-medium text-foreground">{opt.label}</p>
+                          <p className="text-[10px] text-subtle font-mono mt-0.5 font-normal">Base: ${opt.baseUSD}</p>
                         </div>
                       </button>
                     )
@@ -187,7 +195,7 @@ export function ProjectCalculator() {
 
               {/* Scope Tier Picker */}
               <div>
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-subtle mb-3">
+                <label className="block text-xs font-mono font-medium uppercase tracking-wider text-subtle mb-3">
                   2. Complexity &amp; Verification Level
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -202,17 +210,17 @@ export function ProjectCalculator() {
                         className={cn(
                           "flex flex-col justify-between rounded-xl border p-3.5 text-left transition-all cursor-pointer",
                           isSelected
-                            ? "border-primary bg-primary/5 shadow-xs"
-                            : "border-border bg-elevated/40 hover:bg-elevated",
+                            ? "border-cyan-400/60 bg-cyan-500/5 shadow-xs"
+                            : "border-border/80 bg-elevated/35 hover:bg-elevated/70",
                         )}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={cn("text-xs font-bold", isSelected ? "text-primary" : "text-foreground")}>
+                          <span className={cn("text-xs font-medium", isSelected ? "text-cyan-300" : "text-foreground")}>
                             {data.label}
                           </span>
-                          {isSelected && <FiCheck className="h-4 w-4 text-primary" />}
+                          {isSelected && <FiCheck className="h-4 w-4 text-cyan-400" />}
                         </div>
-                        <p className="mt-1.5 text-[11px] text-subtle leading-snug">{data.desc}</p>
+                        <p className="mt-1.5 text-[11px] font-light text-subtle leading-snug">{data.desc}</p>
                       </button>
                     )
                   })}
@@ -222,24 +230,24 @@ export function ProjectCalculator() {
           </div>
 
           {/* Right: Escrow Summary Card (Stripe Clarity) */}
-          <div className="lg:col-span-5 rounded-2xl border border-border bg-surface p-6 sm:p-7 shadow-lg">
+          <div className="lg:col-span-5 rounded-2xl border border-border/80 bg-surface p-6 sm:p-7 shadow-xl">
             <div className="border-b border-border/80 pb-3 flex items-center justify-between">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
+              <span className="text-xs font-mono font-medium uppercase tracking-wider text-foreground/90">
                 Escrow Breakdown
               </span>
-              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400 font-bold">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400 font-medium">
                 0% Fee
               </span>
             </div>
 
-            <div className="mt-5 rounded-xl border border-border bg-elevated/60 p-4 text-center">
+            <div className="mt-5 rounded-xl border border-border/80 bg-elevated/50 p-4 text-center">
               <span className="text-[10px] font-mono uppercase tracking-wider text-subtle">
                 Estimated Escrow Deposit
               </span>
-              <div className="mt-1 text-3xl font-extrabold text-foreground font-mono">
+              <div className="mt-1 text-3xl font-normal text-foreground font-mono">
                 {formatAmount(estimatedUSD)}
               </div>
-              <span className="text-[11px] text-muted font-mono mt-0.5 block">
+              <span className="text-[11px] text-muted font-mono mt-0.5 block font-normal">
                 ≈ {estimatedUSD} USDC committed in smart contract
               </span>
             </div>
@@ -247,28 +255,28 @@ export function ProjectCalculator() {
             <div className="mt-5 space-y-3 font-mono text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-border/60">
                 <span className="text-subtle">Milestone Checkpoints</span>
-                <span className="text-foreground font-bold">{calculatedMilestones} stages</span>
+                <span className="text-foreground font-medium">{calculatedMilestones} stages</span>
               </div>
               <div className="flex items-center justify-between py-1.5 border-b border-border/60">
                 <span className="text-subtle flex items-center gap-1">
                   <FiClock className="h-3 w-3" /> Turnaround
                 </span>
-                <span className="text-foreground font-bold">~{estimatedDays} days</span>
+                <span className="text-foreground font-medium">~{estimatedDays} days</span>
               </div>
               <div className="flex items-center justify-between py-1.5 border-b border-border/60">
                 <span className="text-subtle">Platform Commission</span>
-                <span className="text-emerald-400 font-bold">$0.00 (0%)</span>
+                <span className="text-emerald-400 font-medium">$0.00 (0%)</span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-subtle">Creator Receipt</span>
-                <span className="text-emerald-400 font-bold">100% of Escrow</span>
+                <span className="text-emerald-400 font-medium">100% of Escrow</span>
               </div>
             </div>
 
             <div className="mt-6 pt-2">
               <Link
                 to={destination}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 text-xs font-bold text-white transition-all shadow-xs"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 text-xs font-medium text-white transition-all shadow-xs"
               >
                 <span>Create Milestone Brief</span>
                 <FiArrowRight className="h-3.5 w-3.5" />

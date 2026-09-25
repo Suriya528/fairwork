@@ -60,7 +60,7 @@ export function LandingFooter() {
           {/* Navigation Columns */}
           {footerSections.map((section) => (
             <div key={section.title} className="flex flex-col gap-3">
-              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-subtle">
+              <h3 className="text-xs font-mono font-medium uppercase tracking-wider text-subtle">
                 {section.title}
               </h3>
               <ul className="flex flex-col gap-2" role="list">

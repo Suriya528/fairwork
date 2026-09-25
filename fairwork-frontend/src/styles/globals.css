@@ -61,45 +61,45 @@
   --radius-2xl: 1rem;
 }
 
-/* Default / Dark Mode Tokens (FairWork Established Identity) */
+/* Default / Dark Mode Tokens (FairWork Established Identity - Deep Obsidian Vault) */
 :root,
 .dark,
 [data-theme="dark"] {
-  --color-background: #030712;
-  --color-base: #030712;
-  --color-surface: #111827;
-  --color-surface-hover: #161f31;
-  --color-elevated: #1a2436;
+  --color-background: #06090e;
+  --color-base: #06090e;
+  --color-surface: #0c1219;
+  --color-surface-hover: #121a24;
+  --color-elevated: #162230;
 
-  --color-overlay: rgba(2, 6, 14, 0.72);
+  --color-overlay: rgba(4, 7, 13, 0.78);
 
-  --color-border: #1f2937;
-  --color-border-strong: #2b3648;
+  --color-border: #182333;
+  --color-border-strong: #233449;
 
-  --color-foreground: #ffffff;
-  --color-muted: #9ca3af;
-  --color-subtle: #6b7280;
+  --color-foreground: #f1f5f9;
+  --color-muted: #94a3b8;
+  --color-subtle: #64748b;
 
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
   --color-primary-foreground: #ffffff;
-  --color-primary-soft: #1e293b;
+  --color-primary-soft: #082f49;
 
-  --color-input: #1f2937;
-  --color-input-border: #374151;
-  --color-ring: #3b82f6;
+  --color-input: #0c1219;
+  --color-input-border: #1e2c3d;
+  --color-ring: #0284c7;
 
-  --color-success: #4ade80;
-  --color-success-soft: #052e1a;
-  --color-success-foreground: #03150c;
+  --color-success: #34d399;
+  --color-success-soft: #062b1e;
+  --color-success-foreground: #021a11;
   --color-warning: #fbbf24;
   --color-warning-soft: #2e2410;
   --color-warning-foreground: #1a1305;
   --color-danger: #f87171;
   --color-danger-soft: #300f12;
   --color-danger-foreground: #ffffff;
-  --color-info: #60a5fa;
-  --color-info-soft: #0f2033;
+  --color-info: #38bdf8;
+  --color-info-soft: #0c263d;
   --color-info-foreground: #04121f;
 }
 

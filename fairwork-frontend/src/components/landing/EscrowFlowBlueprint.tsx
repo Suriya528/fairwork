@@ -109,28 +109,36 @@ export function EscrowFlowBlueprint() {
   const currentStage = workflowStages.find((s) => s.id === activeStageId) || workflowStages[2]
 
   return (
-    <section id="workflow-pipeline" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
+    <section id="workflow-pipeline" className="relative w-full bg-surface/30 border-y border-border/60 py-20 sm:py-28 overflow-hidden">
+      {/* Subtle architectural accent light */}
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+        <div className="absolute left-1/4 top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-teal-500/5 blur-3xl" />
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Centered Section Header */}
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-5 shadow-xs">
             <FiShield className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="font-semibold text-foreground">Escrow Lifecycle</span>
+            <span className="font-medium text-foreground/90">Escrow Lifecycle</span>
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl leading-tight">
-            Accelerate every deliverable from brief to payout.
+          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+            Accelerate every deliverable{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+              from brief to payout.
+            </span>
           </h2>
 
-          <p className="mt-4 text-base text-muted sm:text-lg max-w-2xl">
+          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
             Every deliverable is verified against transparent milestone specifications and settled on-chain without human middlemen or hidden deductions.
           </p>
         </div>
 
         {/* 4-Stage Interactive Pipeline Card */}
-        <div className="max-w-5xl mx-auto overflow-hidden rounded-2xl border border-border bg-surface shadow-xl">
+        <div className="max-w-5xl mx-auto overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl">
           {/* Top Pipeline Stepper Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border bg-elevated/40">
+          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border/80 bg-elevated/30">
             {workflowStages.map((stage) => {
               const isSelected = activeStageId === stage.id
               return (
@@ -139,12 +147,12 @@ export function EscrowFlowBlueprint() {
                   type="button"
                   onClick={() => setActiveStageId(stage.id)}
                   className={cn(
-                    "flex flex-col p-4 sm:p-5 text-left border-r border-border last:border-r-0 transition-colors cursor-pointer",
-                    isSelected ? "bg-surface shadow-xs" : "hover:bg-elevated/70",
+                    "flex flex-col p-4 sm:p-5 text-left border-r border-border/80 last:border-r-0 transition-colors cursor-pointer",
+                    isSelected ? "bg-surface shadow-xs" : "hover:bg-elevated/60",
                   )}
                 >
                   <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-subtle font-bold">{stage.step}</span>
+                    <span className="text-subtle font-normal">{stage.step}</span>
                     {stage.status === "completed" ? (
                       <FiCheck className="h-4 w-4 text-emerald-400" />
                     ) : stage.status === "in_progress" ? (
@@ -155,13 +163,13 @@ export function EscrowFlowBlueprint() {
                   </div>
                   <span
                     className={cn(
-                      "mt-2 text-xs font-bold leading-tight",
-                      isSelected ? "text-primary" : "text-foreground",
+                      "mt-2 text-xs font-medium leading-tight",
+                      isSelected ? "text-cyan-400" : "text-foreground/90",
                     )}
                   >
                     {stage.name}
                   </span>
-                  <span className="mt-1 text-[11px] font-mono text-subtle">
+                  <span className="mt-1 text-[11px] font-mono text-subtle font-normal">
                     {stage.badge}
                   </span>
                 </button>
@@ -174,25 +182,25 @@ export function EscrowFlowBlueprint() {
             {/* Left Column: Stage Spec & Telemetry */}
             <div className="md:col-span-6 flex flex-col justify-between space-y-6">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-md border border-border bg-elevated px-2.5 py-1 font-mono text-xs text-subtle mb-3">
+                <div className="inline-flex items-center gap-2 rounded-md border border-border/80 bg-elevated/60 px-2.5 py-1 font-mono text-xs text-subtle mb-3">
                   <FiLock className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-foreground font-semibold">{currentStage.contractAction}</span>
+                  <span className="text-foreground/90 font-medium">{currentStage.contractAction}</span>
                 </div>
 
-                <h3 className="text-lg font-bold text-foreground">
+                <h3 className="text-lg font-normal text-foreground">
                   {currentStage.name}
                 </h3>
-                <p className="mt-2 text-xs text-muted leading-relaxed">
+                <p className="mt-2 text-xs font-light text-muted leading-relaxed">
                   {currentStage.summary}
                 </p>
 
-                <div className="mt-5 rounded-xl border border-border bg-elevated/50 p-4 font-mono text-xs">
-                  <span className="text-[10px] text-subtle uppercase tracking-wider block mb-2.5 font-bold">
+                <div className="mt-5 rounded-xl border border-border/80 bg-elevated/40 p-4 font-mono text-xs">
+                  <span className="text-[10px] text-subtle uppercase tracking-wider block mb-2.5 font-medium">
                     Verification Telemetry:
                   </span>
-                  <ul className="space-y-2 text-[11px]">
+                  <ul className="space-y-2 text-[11px] font-normal">
                     {currentStage.telemetry.map((log) => (
-                      <li key={log} className="text-foreground/90 flex items-center gap-1.5">
+                      <li key={log} className="text-foreground/85 flex items-center gap-1.5">
                         {log}
                       </li>
                     ))}
@@ -200,34 +208,34 @@ export function EscrowFlowBlueprint() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-mono text-subtle">
-                <span className="flex items-center gap-1.5">
+              <div className="pt-4 border-t border-border/80 flex items-center justify-between text-xs font-mono text-subtle">
+                <span className="flex items-center gap-1.5 font-normal">
                   <FiZap className="h-3.5 w-3.5 text-emerald-400" />
                   Finality: {currentStage.executionTime}
                 </span>
-                <span className="text-emerald-400 font-semibold">0% Platform Fee</span>
+                <span className="text-emerald-400 font-medium">0% Platform Fee</span>
               </div>
             </div>
 
             {/* Right Column: Smart Contract Verifiable Execution */}
             <div className="md:col-span-6">
-              <div className="h-full flex flex-col justify-between rounded-xl border border-border bg-elevated/70 p-5 font-mono text-xs overflow-x-auto text-muted">
+              <div className="h-full flex flex-col justify-between rounded-xl border border-border/80 bg-elevated/50 p-5 font-mono text-xs overflow-x-auto text-muted">
                 <div>
                   <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60 text-[11px] text-subtle">
                     <span className="flex items-center gap-1.5">
-                      <FiLayers className="h-3.5 w-3.5 text-primary" />
+                      <FiLayers className="h-3.5 w-3.5 text-cyan-400" />
                       Smart Contract Verification
                     </span>
-                    <span className="text-emerald-400 font-semibold">Deterministic</span>
+                    <span className="text-emerald-400 font-medium">Deterministic</span>
                   </div>
-                  <pre className="text-foreground/90 leading-relaxed text-[11px]">
+                  <pre className="text-foreground/85 leading-relaxed text-[11px] font-normal">
                     <code>{currentStage.codeSnippet}</code>
                   </pre>
                 </div>
 
                 <div className="mt-6 pt-3 border-t border-border/60 flex items-center justify-between text-[11px] text-subtle">
                   <span>Settlement Security: High</span>
-                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
                     <FiCheckCircle className="h-3 w-3" /> Non-Custodial
                   </span>
                 </div>

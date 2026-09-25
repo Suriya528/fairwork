@@ -49,38 +49,38 @@ export function HeroSection() {
     <section className="relative w-full bg-base border-b border-border/40 pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
       {/* Ambient background glow & radial grid */}
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-        <div className="absolute left-1/2 top-0 h-[560px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-b from-primary/10 via-emerald-500/5 to-transparent blur-3xl" />
-        <div className="absolute right-1/4 top-1/3 h-[420px] w-[420px] rounded-full bg-purple-500/5 blur-3xl" />
+        <div className="absolute left-1/2 top-0 h-[640px] w-[1000px] -translate-x-1/2 rounded-full bg-gradient-to-b from-cyan-500/10 via-teal-500/5 to-transparent blur-3xl" />
+        <div className="absolute right-1/4 top-1/4 h-[380px] w-[380px] rounded-full bg-indigo-500/5 blur-3xl" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Centered Hero Content Header */}
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Centered Trust Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/90 px-4 py-1.5 text-xs font-mono text-muted mb-8 shadow-xs">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface/70 px-4 py-1.5 text-xs font-mono text-muted mb-8 shadow-xs backdrop-blur-sm">
             <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-foreground">Non-Custodial Escrow</span>
+            <span className="font-medium text-foreground/90">Non-Custodial Escrow</span>
             <span className="text-subtle">•</span>
             <span>Milestone-Verified Settlement</span>
           </div>
 
-          {/* Centered Monumental Title */}
-          <h1 className="text-balance text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[1.08]">
+          {/* Centered Monumental Title with elegant optical weights */}
+          <h1 className="text-balance text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12]">
             Where ambitious projects get built.{" "}
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-400">
+            <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
               Guaranteed by milestone escrow.
             </span>
           </h1>
 
           {/* Centered Subtitle */}
-          <p className="mt-6 text-base text-muted sm:text-xl leading-relaxed max-w-2xl font-normal">
+          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-2xl font-light">
             Commission verified specialists, inspect deliverables against clear milestone criteria, and release payments directly to creator wallets with 0% platform fee deduction.
           </p>
 
           {/* Amazon / Airbnb Style Universal Department & Search Bar */}
           <form
             onSubmit={handleSearchSubmit}
-            className="mt-10 w-full max-w-3xl rounded-2xl border border-border bg-surface p-2 shadow-xl shadow-black/5 dark:shadow-black/20 flex flex-col sm:flex-row items-stretch gap-2"
+            className="mt-10 w-full max-w-3xl rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
           >
             {/* Department Dropdown Selector */}
             <div className="relative sm:w-48 shrink-0">
@@ -88,7 +88,7 @@ export function HeroSection() {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 aria-label="Select discipline"
-                className="h-12 w-full appearance-none rounded-xl border-0 bg-elevated/70 px-3.5 pr-8 text-xs font-semibold text-foreground focus:bg-elevated focus:outline-none cursor-pointer"
+                className="h-12 w-full appearance-none rounded-xl border-0 bg-elevated/60 px-3.5 pr-8 text-xs font-medium text-foreground focus:bg-elevated focus:outline-none cursor-pointer"
               >
                 <option value="all">All Disciplines</option>
                 <option value="Web3 & Smart Contracts">Smart Contracts &amp; Web3</option>
@@ -112,7 +112,7 @@ export function HeroSection() {
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 placeholder="Search deliverable packages, audits, apps, tokens..."
-                className="h-12 w-full rounded-xl border-0 bg-transparent pl-10 pr-4 text-xs sm:text-sm text-foreground placeholder:text-subtle focus:outline-none"
+                className="h-12 w-full rounded-xl border-0 bg-transparent pl-10 pr-4 text-xs sm:text-sm font-normal text-foreground placeholder:text-subtle focus:outline-none"
                 aria-label="Search query"
               />
             </div>
@@ -120,7 +120,7 @@ export function HeroSection() {
             {/* High-conversion Search CTA */}
             <button
               type="submit"
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-6 text-xs sm:text-sm font-bold text-white shadow-sm transition-all shrink-0 cursor-pointer"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-6 text-xs sm:text-sm font-medium text-white shadow-sm transition-all shrink-0 cursor-pointer"
             >
               <span>Explore Briefs</span>
               <FiArrowRight className="h-4 w-4" />
@@ -135,7 +135,7 @@ export function HeroSection() {
                 key={item.label}
                 type="button"
                 onClick={() => navigate(`/projects?search=${encodeURIComponent(item.query)}`)}
-                className="rounded-full border border-border bg-surface/80 px-3 py-1 text-[11px] font-medium text-muted hover:border-primary/60 hover:text-foreground transition-colors cursor-pointer"
+                className="rounded-full border border-border/70 bg-surface/70 px-3 py-1 text-[11px] font-normal text-muted hover:border-border-strong hover:text-foreground transition-colors cursor-pointer"
               >
                 {item.label}
               </button>
@@ -143,17 +143,17 @@ export function HeroSection() {
           </div>
 
           {/* Hero Feature Badges */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted font-mono">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted/80 font-mono">
             <span className="inline-flex items-center gap-1.5">
               <FiShield className="h-3.5 w-3.5 text-emerald-400" />
               100% Escrow Protection
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <FiZap className="h-3.5 w-3.5 text-blue-400" />
+              <FiZap className="h-3.5 w-3.5 text-sky-400" />
               Instant Wallet Payout
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <FiDollarSign className="h-3.5 w-3.5 text-purple-400" />
+              <FiDollarSign className="h-3.5 w-3.5 text-indigo-400" />
               0% Platform Commission
             </span>
           </div>
@@ -168,7 +168,7 @@ export function HeroSection() {
                 <FiLock className="h-3.5 w-3.5" />
               </span>
               <div>
-                <span className="text-xs font-bold text-foreground">Interactive Escrow Studio</span>
+                <span className="text-xs font-medium text-foreground">Interactive Escrow Studio</span>
                 <span className="text-[11px] text-subtle font-mono block sm:inline sm:ml-2">
                   Vault ID: #FW-8842-SEPOLIA
                 </span>
@@ -180,10 +180,10 @@ export function HeroSection() {
               <button
                 type="button"
                 onClick={() => setActiveTab("escrow")}
-                className={`rounded-md px-3 py-1 font-medium transition-colors cursor-pointer ${
+                className={`rounded-md px-3 py-1 transition-colors cursor-pointer ${
                   activeTab === "escrow"
-                    ? "bg-elevated text-foreground shadow-xs font-semibold"
-                    : "text-muted hover:text-foreground"
+                    ? "bg-elevated text-foreground shadow-xs font-medium"
+                    : "text-muted hover:text-foreground font-normal"
                 }`}
               >
                 Escrow Ledger
@@ -191,10 +191,10 @@ export function HeroSection() {
               <button
                 type="button"
                 onClick={() => setActiveTab("deliverables")}
-                className={`rounded-md px-3 py-1 font-medium transition-colors cursor-pointer ${
+                className={`rounded-md px-3 py-1 transition-colors cursor-pointer ${
                   activeTab === "deliverables"
-                    ? "bg-elevated text-foreground shadow-xs font-semibold"
-                    : "text-muted hover:text-foreground"
+                    ? "bg-elevated text-foreground shadow-xs font-medium"
+                    : "text-muted hover:text-foreground font-normal"
                 }`}
               >
                 Inspection Checklist
@@ -202,10 +202,10 @@ export function HeroSection() {
               <button
                 type="button"
                 onClick={() => setActiveTab("settlement")}
-                className={`rounded-md px-3 py-1 font-medium transition-colors cursor-pointer ${
+                className={`rounded-md px-3 py-1 transition-colors cursor-pointer ${
                   activeTab === "settlement"
-                    ? "bg-elevated text-foreground shadow-xs font-semibold"
-                    : "text-muted hover:text-foreground"
+                    ? "bg-elevated text-foreground shadow-xs font-medium"
+                    : "text-muted hover:text-foreground font-normal"
                 }`}
               >
                 Settlement Flow
@@ -256,7 +256,7 @@ export function HeroSection() {
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs font-mono mb-1">
-                      <span className="text-subtle font-bold">{stage.step}</span>
+                      <span className="text-subtle font-medium">{stage.step}</span>
                       {isCompleted ? (
                         <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                       ) : isActive ? (
@@ -265,7 +265,7 @@ export function HeroSection() {
                         <span className="h-2 w-2 rounded-full bg-subtle" />
                       )}
                     </div>
-                    <p className="text-xs font-bold text-foreground">{stage.title}</p>
+                    <p className="text-xs font-medium text-foreground">{stage.title}</p>
                     <p className="text-[11px] text-muted mt-0.5">{stage.desc}</p>
                   </div>
                 )
@@ -279,14 +279,14 @@ export function HeroSection() {
               <div className="md:col-span-7 space-y-4">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <div>
-                    <h3 className="text-sm sm:text-base font-bold text-foreground">
+                    <h3 className="text-sm sm:text-base font-medium text-foreground">
                       Milestone 02: Production dApp Interface &amp; Invariant Tests
                     </h3>
-                    <p className="text-xs text-muted mt-0.5">
+                    <p className="text-xs text-muted mt-0.5 font-light">
                       Client committed deposit • Mutual 48-hour timelock active
                     </p>
                   </div>
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-mono text-xs font-bold text-emerald-400">
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 font-mono text-xs font-medium text-emerald-400">
                     Vault Funded
                   </span>
                 </div>
@@ -294,19 +294,19 @@ export function HeroSection() {
                 <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                   <div className="rounded-lg border border-border bg-elevated/50 p-3">
                     <span className="text-[10px] text-subtle uppercase block">Secured Balance</span>
-                    <span className="text-base font-bold text-foreground mt-0.5 block">
+                    <span className="text-base font-medium text-foreground mt-0.5 block">
                       {formatAmount(2400)}
                     </span>
-                    <span className="text-[10px] text-emerald-400">Locked on-chain</span>
+                    <span className="text-[10px] text-emerald-400 font-normal">Locked on-chain</span>
                   </div>
                   <div className="rounded-lg border border-border bg-elevated/50 p-3">
                     <span className="text-[10px] text-subtle uppercase block">Platform Deduction</span>
-                    <span className="text-base font-bold text-emerald-400 mt-0.5 block">$0.00</span>
-                    <span className="text-[10px] text-subtle">100% to creator</span>
+                    <span className="text-base font-medium text-emerald-400 mt-0.5 block">$0.00</span>
+                    <span className="text-[10px] text-subtle font-normal">100% to creator</span>
                   </div>
                 </div>
 
-                <p className="text-xs text-muted leading-relaxed font-sans">
+                <p className="text-xs text-muted leading-relaxed font-sans font-light">
                   The client has funded this milestone into the smart contract escrow lockbox. Funds are completely protected from unilateral withdrawal while deliverables are submitted and reviewed.
                 </p>
               </div>
@@ -326,12 +326,12 @@ export function HeroSection() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-subtle">Release Trigger:</span>
-                  <span className="text-foreground font-semibold">Client Wallet Sig</span>
+                  <span className="text-foreground font-medium">Client Wallet Sig</span>
                 </div>
                 <div className="pt-2 border-t border-border/60">
                   <Link
                     to={destination}
-                    className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-sans text-xs font-bold text-white transition-colors"
+                    className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-sans text-xs font-medium text-white transition-colors"
                   >
                     <span>Commission Similar Milestone</span>
                     <FiArrowRight className="h-3 w-3" />
@@ -345,10 +345,10 @@ export function HeroSection() {
           {activeTab === "deliverables" && (
             <div className="p-5 sm:p-7 space-y-4">
               <div className="border-b border-border pb-3">
-                <h3 className="text-sm sm:text-base font-bold text-foreground">
+                <h3 className="text-sm sm:text-base font-medium text-foreground">
                   Deliverable Inspection Criteria
                 </h3>
-                <p className="text-xs text-muted mt-0.5">
+                <p className="text-xs text-muted mt-0.5 font-light">
                   Clear specifications verified prior to milestone escrow release.
                 </p>
               </div>
@@ -381,18 +381,18 @@ export function HeroSection() {
                       {item.status === "passed" ? (
                         <FiCheck className="h-4 w-4 text-emerald-400 shrink-0" />
                       ) : (
-                        <FiLayers className="h-4 w-4 text-blue-400 shrink-0" />
+                        <FiLayers className="h-4 w-4 text-sky-400 shrink-0" />
                       )}
                       <div>
-                        <p className="font-semibold text-foreground">{item.name}</p>
-                        <p className="text-[11px] text-muted">{item.detail}</p>
+                        <p className="font-medium text-foreground">{item.name}</p>
+                        <p className="text-[11px] text-muted font-light">{item.detail}</p>
                       </div>
                     </div>
                     <span
-                      className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
+                      className={`text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded ${
                         item.status === "passed"
                           ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-blue-500/10 text-blue-400"
+                          : "bg-sky-500/10 text-sky-400"
                       }`}
                     >
                       {item.status}
@@ -407,34 +407,34 @@ export function HeroSection() {
           {activeTab === "settlement" && (
             <div className="p-5 sm:p-7 grid gap-6 md:grid-cols-12 items-center">
               <div className="md:col-span-6 space-y-3">
-                <h3 className="text-sm sm:text-base font-bold text-foreground">
+                <h3 className="text-sm sm:text-base font-medium text-foreground">
                   Direct Wallet-to-Wallet Settlement
                 </h3>
-                <p className="text-xs text-muted leading-relaxed">
+                <p className="text-xs text-muted leading-relaxed font-light">
                   When the client confirms the deliverable, FairWork executes the smart contract release. Funds transfer directly to the creator&apos;s wallet without intermediary custody or holding periods.
                 </p>
                 <div className="rounded-lg border border-border bg-elevated/40 p-3 font-mono text-xs space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-subtle">Milestone Total:</span>
-                    <span className="text-foreground font-bold">{formatAmount(2400)}</span>
+                    <span className="text-foreground font-medium">{formatAmount(2400)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-subtle">Platform Fee:</span>
-                    <span className="text-emerald-400 font-bold">$0.00 (0%)</span>
+                    <span className="text-emerald-400 font-medium">$0.00 (0%)</span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-border/60">
                     <span className="text-subtle">Creator Net:</span>
-                    <span className="text-emerald-400 font-bold">{formatAmount(2400)}</span>
+                    <span className="text-emerald-400 font-medium">{formatAmount(2400)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="md:col-span-6 flex flex-col justify-center items-center text-center p-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-                <div className="h-12 w-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3">
+              <div className="md:col-span-6 flex flex-col justify-center items-center text-center p-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                <div className="h-12 w-12 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center mb-3">
                   <FiZap className="h-6 w-6" />
                 </div>
-                <h4 className="text-sm font-bold text-foreground">Instant Finality</h4>
-                <p className="text-xs text-muted mt-1 max-w-xs">
+                <h4 className="text-sm font-medium text-foreground">Instant Finality</h4>
+                <p className="text-xs text-muted mt-1 max-w-xs font-light">
                   Zero withdrawal delays. The moment a milestone is released, tokens arrive directly in creator storage.
                 </p>
               </div>

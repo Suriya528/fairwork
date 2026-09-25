@@ -137,20 +137,28 @@ export function CuratedSpecialists() {
     : deliverablePackages.filter((r) => r.category === activeTab)
 
   return (
-    <section id="verified-specialists" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
+    <section id="verified-specialists" className="relative w-full bg-base py-20 sm:py-28 overflow-hidden">
+      {/* Subtle indigo/cyan radial ambiance */}
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+        <div className="absolute right-1/4 top-1/3 h-[420px] w-[420px] rounded-full bg-cyan-500/5 blur-3xl" />
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Centered Section Header */}
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-5 shadow-xs">
             <FiShield className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="font-semibold text-foreground">Curated Deliverables</span>
+            <span className="font-medium text-foreground/90">Curated Deliverables</span>
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl leading-tight">
-            Work with verified specialists.
+          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+            Work with{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+              verified specialists.
+            </span>
           </h2>
 
-          <p className="mt-4 text-base text-muted sm:text-lg max-w-2xl">
+          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
             Choose packaged milestones with clear delivery timelines, fixed pricing, and 100% smart contract escrow protection.
           </p>
 
@@ -168,10 +176,10 @@ export function CuratedSpecialists() {
                 type="button"
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={cn(
-                  "rounded-full px-4 py-1.5 text-xs font-medium transition-all cursor-pointer border",
+                  "rounded-full px-4 py-1.5 text-xs font-normal transition-all cursor-pointer border",
                   activeTab === tab.id
-                    ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
-                    : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground",
+                    ? "bg-cyan-500/15 text-cyan-300 border-cyan-400/50 font-medium shadow-xs"
+                    : "border-border/80 bg-surface/70 text-muted hover:border-border-strong hover:text-foreground",
                 )}
               >
                 {tab.label}
@@ -185,7 +193,7 @@ export function CuratedSpecialists() {
           {filtered.map((pkg) => (
             <div
               key={pkg.id}
-              className="flex flex-col justify-between rounded-2xl border border-border bg-surface p-6 sm:p-7 transition-all duration-200 hover:border-primary/50 hover:shadow-lg"
+              className="flex flex-col justify-between rounded-2xl border border-border/80 bg-surface p-6 sm:p-7 transition-all duration-200 hover:border-cyan-500/40 hover:shadow-xl"
             >
               <div>
                 {/* Specialist Profile Bar */}
@@ -193,7 +201,7 @@ export function CuratedSpecialists() {
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br text-white font-bold text-sm shadow-xs",
+                        "flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br text-white font-medium text-sm shadow-xs",
                         pkg.avatarColor,
                       )}
                     >
@@ -201,19 +209,19 @@ export function CuratedSpecialists() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">
+                        <span className="text-sm font-medium text-foreground">
                           {pkg.specialistName}
                         </span>
-                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-semibold text-emerald-400">
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-400">
                           Verified
                         </span>
                       </div>
-                      <p className="text-xs text-muted mt-0.5 font-medium">{pkg.role}</p>
+                      <p className="text-xs text-muted mt-0.5 font-light">{pkg.role}</p>
                     </div>
                   </div>
 
                   {/* Rating Badge */}
-                  <div className="flex items-center gap-1 rounded-lg border border-border bg-elevated px-2.5 py-1 text-xs font-semibold text-foreground">
+                  <div className="flex items-center gap-1 rounded-lg border border-border/80 bg-elevated/60 px-2.5 py-1 text-xs font-medium text-foreground">
                     <FiStar className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                     <span>{pkg.rating.toFixed(1)}</span>
                     <span className="text-[11px] text-subtle font-normal">({pkg.reviewsCount})</span>
@@ -221,22 +229,22 @@ export function CuratedSpecialists() {
                 </div>
 
                 {/* Package Title & Description */}
-                <h3 className="mt-4 text-base font-bold text-foreground leading-snug">
+                <h3 className="mt-4 text-base font-medium text-foreground leading-snug">
                   {pkg.packageTitle}
                 </h3>
-                <p className="mt-2 text-xs text-muted leading-relaxed">
+                <p className="mt-2 text-xs font-light text-muted leading-relaxed">
                   {pkg.description}
                 </p>
 
                 {/* Deliverables Checklist */}
-                <div className="mt-4 rounded-xl border border-border/80 bg-elevated/40 p-3.5 space-y-2 text-xs">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-subtle block mb-1">
+                <div className="mt-4 rounded-xl border border-border/80 bg-elevated/35 p-3.5 space-y-2 text-xs">
+                  <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-subtle block mb-1">
                     What&apos;s Included:
                   </span>
                   {pkg.deliverables.map((item) => (
                     <div key={item} className="flex items-start gap-2">
                       <FiCheck className="mt-0.5 h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-foreground/90">{item}</span>
+                      <span className="text-foreground/85 font-light">{item}</span>
                     </div>
                   ))}
                 </div>
@@ -246,7 +254,7 @@ export function CuratedSpecialists() {
                   {pkg.skills.map((skill) => (
                     <span
                       key={skill}
-                      className="rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-muted"
+                      className="rounded-md border border-border/80 bg-elevated/40 px-2 py-0.5 text-[11px] font-mono text-muted font-normal"
                     >
                       {skill}
                     </span>
@@ -255,10 +263,10 @@ export function CuratedSpecialists() {
               </div>
 
               {/* Card Footer: Metadata + Escrow Seal + Commission CTA */}
-              <div className="mt-6 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-xs font-mono text-subtle">
+              <div className="mt-6 pt-4 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-xs font-mono text-subtle font-normal">
                   <span className="flex items-center gap-1">
-                    <FiClock className="h-3.5 w-3.5 text-primary" />
+                    <FiClock className="h-3.5 w-3.5 text-cyan-400" />
                     {pkg.turnaroundDays}-Day Turnaround
                   </span>
                   <span className="flex items-center gap-1">
@@ -270,14 +278,14 @@ export function CuratedSpecialists() {
                 <div className="flex items-center justify-between sm:justify-end gap-3">
                   <div>
                     <span className="text-[10px] text-subtle uppercase font-mono block">Package Price</span>
-                    <span className="text-base font-bold text-foreground font-mono">
+                    <span className="text-base font-medium text-foreground font-mono">
                       {formatAmount(pkg.startingUSD)}
                     </span>
                   </div>
 
                   <Link
                     to={getCommissionUrl(pkg)}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary hover:bg-primary-hover px-4 text-xs font-bold text-white transition-all shadow-xs"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary hover:bg-primary-hover px-4 text-xs font-medium text-white transition-all shadow-xs"
                   >
                     <span>Commission</span>
                     <FiArrowRight className="h-3.5 w-3.5" />
@@ -292,10 +300,10 @@ export function CuratedSpecialists() {
         <div className="mt-12 text-center">
           <Link
             to={isAuthed ? "/projects" : "/register"}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-2.5 text-xs font-bold text-foreground hover:bg-elevated transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-surface px-5 py-2.5 text-xs font-medium text-foreground hover:bg-elevated transition-colors shadow-xs"
           >
             <span>Explore All Deliverables &amp; Packages</span>
-            <FiArrowRight className="h-3.5 w-3.5 text-primary" />
+            <FiArrowRight className="h-3.5 w-3.5 text-cyan-400" />
           </Link>
         </div>
       </div>
