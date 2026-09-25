@@ -1,65 +1,83 @@
 import { useState } from "react"
-import { FiCheckCircle } from "react-icons/fi"
+import { FiCheck, FiGitBranch, FiTerminal } from "react-icons/fi"
 import { cn } from "@/lib/utils"
 
-const blueprintSteps = [
+interface WorkflowStage {
+  id: string
+  name: string
+  jobFile: string
+  executionTime: string
+  status: "completed" | "in_progress" | "pending"
+  summary: string
+  logs: string[]
+  codeSnippet: string
+}
+
+const workflowStages: WorkflowStage[] = [
   {
-    id: 1,
-    title: "1. Scope & Milestone Codification",
-    summary: "Deliverables, acceptance criteria, and milestone values are agreed upon and recorded.",
-    contractAction: "Escrow.createMilestone(projectId, amount, deadline)",
-    details: [
-      "Explicit deliverable definitions with code review criteria",
-      "Staged release milestones with independent values",
-      "Zero hidden platform commission deducted at any stage",
+    id: "scope",
+    name: "1. Scope Milestone",
+    jobFile: ".github/workflows/milestone-init.yml",
+    executionTime: "0.8s",
+    status: "completed",
+    summary: "Milestone scope, acceptance tests, and budget committed to smart contract.",
+    logs: [
+      "✓ Parsed deliverable specifications",
+      "✓ Milestone amount verified: 1,500 USDC",
+      "✓ Project participants initialized",
     ],
-    codeSnippet: `// Step 1: Milestone definition codified
-EscrowMilestone memory m = EscrowMilestone({
-    amount: 1500 * 1e6, // 1,500 USDC
-    released: false,
-    deliverableHash: bytes32(0)
-});`,
+    codeSnippet: `// Initialize project and commit milestone values
+function createProject(string calldata projectId, uint256[] calldata milestoneAmounts) external {
+    require(milestoneAmounts.length > 0, "NO_MILESTONES");
+    // State committed directly on-chain
+}`,
   },
   {
-    id: 2,
-    title: "2. Non-Custodial Deposit",
-    summary: "Client commits milestone funds directly into the verified smart contract.",
-    contractAction: "IERC20(usdc).safeTransferFrom(client, address(escrow), totalAmount)",
-    details: [
-      "Funds are held by code on Ethereum/EVM, never corporate bank accounts",
-      "Freelancer can commence work with 100% deposit certainty",
-      "48-hour mutual timelock protects against unilateral clawbacks",
+    id: "deposit",
+    name: "2. Lock Escrow",
+    jobFile: ".github/workflows/escrow-deposit.yml",
+    executionTime: "1.2s",
+    status: "completed",
+    summary: "Milestone funds transferred directly into non-custodial smart contract lockbox.",
+    logs: [
+      "✓ Verified client wallet balance",
+      "✓ Transfer authorized to EscrowContract",
+      "✓ 48-hour mutual timelock enabled",
     ],
-    codeSnippet: `// Step 2: Locked in non-custodial contract
-require(msg.value >= milestoneAmount, "INSUFFICIENT_DEPOSIT");
-escrows[projectId].isFunded = true;
+    codeSnippet: `// Non-custodial escrow deposit
+IERC20(token).safeTransferFrom(msg.sender, address(this), totalAmount);
+escrow.isFunded = true;
 emit EscrowFunded(projectId, msg.sender, totalAmount);`,
   },
   {
-    id: 3,
-    title: "3. Deliverable Inspection Window",
-    summary: "Engineer submits completed artifacts for client testing and verification.",
-    contractAction: "Deliverable.submitArtifact(projectId, milestoneIndex, proofURI)",
-    details: [
-      "Full review window for code quality, test runs, and security audits",
-      "Direct revision loop if deliverables require fine-tuning",
-      "Objective evidence trail preserved for potential arbitration",
+    id: "verify",
+    name: "3. Deliverable Review",
+    jobFile: ".github/workflows/review-inspection.yml",
+    executionTime: "Live",
+    status: "in_progress",
+    summary: "Engineer submits completed code, Figma tokens, or audits for client signoff.",
+    logs: [
+      "✓ Pull request linked to Milestone 02",
+      "✓ Automated test suite passed: 100% green",
+      "⏳ Client review window open",
     ],
-    codeSnippet: `// Step 3: Verified deliverable submitted
+    codeSnippet: `// Link deliverable artifact
 emit DeliverableSubmitted(projectId, milestoneIndex, proofHash);
 // Client review window active (unilateral cancellation locked)`,
   },
   {
-    id: 4,
-    title: "4. One-Click Atomic Settlement",
-    summary: "Client approves deliverables and funds transfer directly to creator wallet.",
-    contractAction: "Escrow.releaseMilestone(projectId, milestoneIndex)",
-    details: [
-      "Direct peer-to-peer payout with sub-minute blockchain finality",
-      "Zero platform fee hold (freelancer receives 100% of milestone)",
-      "Permanent on-chain reputation credit minted to freelancer address",
+    id: "settle",
+    name: "4. Atomic Release",
+    jobFile: ".github/workflows/payout-settle.yml",
+    executionTime: "0.4s",
+    status: "pending",
+    summary: "Client signs milestone release; contract sends 100% of payment directly to creator.",
+    logs: [
+      "⏳ Awaiting client signature",
+      "✓ 0% platform fee deduction",
+      "✓ Direct wallet transfer ready",
     ],
-    codeSnippet: `// Step 4: Atomic release directly to freelancer
+    codeSnippet: `// Instant settlement directly to recipient
 e.milestones[index].released = true;
 IERC20(e.token).safeTransfer(e.freelancer, m.amount);
 emit MilestoneReleased(projectId, index, e.freelancer, m.amount);`,
@@ -67,112 +85,122 @@ emit MilestoneReleased(projectId, index, e.freelancer, m.amount);`,
 ]
 
 export function EscrowFlowBlueprint() {
-  const [activeStep, setActiveStep] = useState<number>(2)
-  const currentStep = blueprintSteps.find(s => s.id === activeStep) || blueprintSteps[1]
+  const [activeStageId, setActiveStageId] = useState<string>("verify")
+  const currentStage = workflowStages.find((s) => s.id === activeStageId) || workflowStages[2]
 
   return (
-    <section id="escrow-blueprint" className="w-full bg-surface border-b border-border/40 py-20 sm:py-28">
+    <section id="workflow-pipeline" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-            Escrow Architecture
-          </span>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            How funds move with cryptographic certainty
-          </h2>
-          <p className="mt-4 text-base text-muted">
-            Inspect the verifiable, 4-stage smart contract settlement cycle engineered for high-stakes software engineering and design.
-          </p>
-        </div>
+        {/* Continuous GitHub Vertical Spine Container */}
+        <div className="relative pl-6 sm:pl-10">
+          <div
+            className="pointer-events-none absolute left-0 top-2 bottom-0 w-[2px] bg-gradient-to-b from-blue-500 via-emerald-500 to-purple-500"
+            aria-hidden
+          />
 
-        {/* Interactive Blueprint Workspace */}
-        <div className="grid gap-8 lg:grid-cols-12 items-stretch">
-          {/* Step Selector Column */}
-          <div className="lg:col-span-5 flex flex-col gap-3 justify-center">
-            {blueprintSteps.map((step) => {
-              const isSelected = activeStep === step.id
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setActiveStep(step.id)}
-                  className={cn(
-                    "flex flex-col rounded-2xl border p-5 text-left transition-all cursor-pointer",
-                    isSelected
-                      ? "border-emerald-500/80 bg-base shadow-lg"
-                      : "border-border/80 bg-base/40 hover:bg-base/80 hover:border-border-strong",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={cn("text-xs font-mono font-bold", isSelected ? "text-emerald-400" : "text-subtle")}>
-                      STAGE 0{step.id}
-                    </span>
-                    {isSelected && (
-                      <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    )}
-                  </div>
-                  <h3 className="mt-1 text-sm sm:text-base font-bold text-foreground">
-                    {step.title}
-                  </h3>
-                  <p className="mt-1 text-xs text-muted leading-relaxed">
-                    {step.summary}
-                  </p>
-                </button>
-              )
-            })}
+          {/* Node on Spine */}
+          <div className="absolute -left-[11px] top-0 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400 bg-base text-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]">
+            <FiGitBranch className="h-3 w-3" />
           </div>
 
-          {/* Interactive Code & Verification Visualizer */}
-          <div className="lg:col-span-7 flex flex-col justify-between rounded-2xl border border-border bg-base p-6 sm:p-8 shadow-xl">
-            <div>
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4 gap-2">
-                <div>
-                  <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold tracking-wider">
-                    Smart Contract Execution
-                  </span>
-                  <h4 className="text-base font-bold text-foreground">
-                    {currentStep.title}
-                  </h4>
-                </div>
-                <span className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-mono text-muted">
-                  Solidity ^0.8.28
-                </span>
-              </div>
+          {/* Header */}
+          <div className="max-w-3xl mb-12">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+              Automated Workflow
+            </span>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+              Accelerate every milestone from brief to payout.
+            </h2>
+            <p className="mt-4 text-base text-muted sm:text-lg">
+              Every deliverable is verified through clear repository checkpoints and settled on-chain without human middlemen.
+            </p>
+          </div>
 
-              {/* Protocol Spec Code Block */}
-              <div className="mt-5 rounded-xl border border-border bg-surface/90 p-4 font-mono text-xs leading-relaxed overflow-x-auto text-muted">
-                <div className="flex items-center justify-between text-[10px] text-subtle border-b border-border/60 pb-2 mb-3">
-                  <span>Method: {currentStep.contractAction}</span>
-                  <span>Non-Custodial</span>
-                </div>
-                <pre className="text-foreground/90">
-                  <code>{currentStep.codeSnippet}</code>
-                </pre>
-              </div>
-
-              {/* Verification Checklist */}
-              <div className="mt-6">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-subtle">
-                  Guaranteed Safety Rules:
-                </span>
-                <ul className="mt-3 flex flex-col gap-2.5" role="list">
-                  {currentStep.details.map((detail) => (
-                    <li key={detail} className="flex items-start gap-2.5 text-xs text-muted leading-relaxed">
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-                        <FiCheckCircle className="h-3 w-3" />
+          {/* GitHub Actions Pipeline Visualizer */}
+          <div className="overflow-hidden rounded-xl border border-border-strong bg-[#0d1117] shadow-xl">
+            {/* Top Pipeline Flow Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border bg-[#161b22]">
+              {workflowStages.map((stage) => {
+                const isSelected = activeStageId === stage.id
+                return (
+                  <button
+                    key={stage.id}
+                    type="button"
+                    onClick={() => setActiveStageId(stage.id)}
+                    className={cn(
+                      "flex flex-col p-4 text-left border-r border-border last:border-r-0 transition-colors cursor-pointer",
+                      isSelected ? "bg-[#0d1117]" : "hover:bg-[#161b22]/70",
+                    )}
+                  >
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className={cn("font-bold", isSelected ? "text-emerald-400" : "text-muted")}>
+                        {stage.name}
                       </span>
-                      <span>{detail}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                      {stage.status === "completed" ? (
+                        <FiCheck className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : stage.status === "in_progress" ? (
+                        <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+                      ) : (
+                        <span className="h-2 w-2 rounded-full bg-subtle" />
+                      )}
+                    </div>
+                    <span className="mt-1 text-[11px] font-mono text-subtle truncate">
+                      {stage.executionTime}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
-            {/* Bottom Finality Note */}
-            <div className="mt-8 pt-4 border-t border-border flex items-center justify-between text-xs font-mono text-subtle">
-              <span>Settlement Engine</span>
-              <span className="text-emerald-400 font-semibold">100% Verifiable On-Chain</span>
+            {/* Workflow Stage Details Workspace */}
+            <div className="grid gap-6 md:grid-cols-12 p-5 sm:p-7">
+              {/* Left Column: Job Spec & Console Logs */}
+              <div className="md:col-span-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 font-mono text-xs text-subtle mb-3">
+                    <FiTerminal className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>{currentStage.jobFile}</span>
+                  </div>
+
+                  <h3 className="text-base font-bold text-foreground">
+                    {currentStage.name}
+                  </h3>
+                  <p className="mt-2 text-xs text-muted leading-relaxed">
+                    {currentStage.summary}
+                  </p>
+
+                  <div className="mt-5 rounded-lg border border-border bg-[#161b22] p-3.5 font-mono text-xs">
+                    <span className="text-[10px] text-subtle uppercase tracking-wider block mb-2 font-bold">
+                      Execution Telemetry:
+                    </span>
+                    <ul className="space-y-1.5 text-[11px]">
+                      {currentStage.logs.map((log) => (
+                        <li key={log} className="text-muted">
+                          {log}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-subtle">
+                  <span>Status: Deterministic</span>
+                  <span className="text-emerald-400 font-semibold">0% Take-Rate</span>
+                </div>
+              </div>
+
+              {/* Right Column: Solidity Contract Execution Logic */}
+              <div className="md:col-span-7">
+                <div className="rounded-lg border border-border bg-[#161b22] p-4 font-mono text-xs overflow-x-auto text-muted">
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-border/60 text-[10px] text-subtle">
+                    <span>contracts/EscrowSettlement.sol</span>
+                    <span className="text-emerald-400">Smart Contract Verifiable</span>
+                  </div>
+                  <pre className="text-foreground/90 leading-relaxed text-[11px]">
+                    <code>{currentStage.codeSnippet}</code>
+                  </pre>
+                </div>
+              </div>
             </div>
           </div>
         </div>

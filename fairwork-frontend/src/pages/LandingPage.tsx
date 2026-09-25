@@ -9,14 +9,15 @@ import { MarketplaceCTA } from "@/components/landing/MarketplaceCTA"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 
 /**
- * Public landing page designed with bespoke architectural craftsmanship:
- * - Editorial typographic hero with command-line search and interactive milestone console
- * - Technical 4-stage smart contract settlement blueprint with code viewer
- * - Curated specialist dossiers with verified deliverables and tech stacks
- * - Interactive milestone studio for scope & turnaround calculation
- * - Shipped project case studies with deliverable highlights and on-chain hashes
- * - Engineering security assurance architecture (non-custodial, 48h timelock, 0% fee)
- * - Dual client/creator conversion funnels
+ * Public landing page designed in GitHub's signature visual architecture:
+ * - Continuous vertical glowing timeline spine with section nodes
+ * - GitHub Primer navigation with [/] search keycap
+ * - Pull Request & Actions CI/CD milestone settlement window
+ * - GitHub Actions workflow pipeline visualizer
+ * - Pinned repository & verified contributor cards with language dots
+ * - Interactive milestone issue composer
+ * - Merged pull requests & settled milestones showcase
+ * - Security guardrails & closing banner
  */
 export function LandingPage() {
   return (
@@ -24,29 +25,28 @@ export function LandingPage() {
       <LandingHeader />
 
       <main>
-        {/* Typographic Hero with Interactive Milestone Console */}
+        {/* Node 1: Hero with Pull Request & Actions Checks Window */}
         <HeroSection />
 
-        {/* Technical 4-Stage Escrow Flow Blueprint */}
+        {/* Node 2: GitHub Actions Workflow Pipeline */}
         <EscrowFlowBlueprint />
 
-        {/* Curated Specialist Dossiers with Real Deliverable Specs */}
+        {/* Node 3: Pinned Repository & Verified Contributor Cards */}
         <CuratedSpecialists />
 
-        {/* Interactive Milestone Studio & Turnaround Estimator */}
+        {/* Node 4: Interactive Milestone Issue Composer */}
         <ProjectCalculator />
 
-        {/* Shipped Project Case Studies with Milestone Proofs */}
+        {/* Node 5: Merged Pull Requests & Settled Milestones */}
         <VerifiedProjectShowcase />
 
-        {/* Escrow Assurance & Security Architecture */}
+        {/* Node 6: Security & Smart Contract Guardrails */}
         <EscrowAssurance />
 
-        {/* Dual Conversion Funnels */}
+        {/* Node 7: Spine Termination & Closing CTA */}
         <MarketplaceCTA />
       </main>
 
-      {/* Directory Footer */}
       <LandingFooter />
     </div>
   )

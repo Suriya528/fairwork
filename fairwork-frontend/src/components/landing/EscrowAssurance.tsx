@@ -1,96 +1,111 @@
 import { FiShield, FiLock, FiCheckCircle, FiCpu, FiAlertTriangle, FiPercent } from "react-icons/fi"
 
-const assurancePillars = [
+const securityGuardrails = [
   {
     icon: FiLock,
-    title: "Non-Custodial Smart Contract Escrow",
+    title: "Non-Custodial Smart Contract Lockbox",
     description:
-      "FairWork never takes custody of funds. Client deposits are held by immutable Solidity contracts on-chain, eliminating middleman bankruptcy or withholding risks.",
-    badge: "Solidity ^0.8.28",
+      "FairWork never holds client balances. Funds are committed directly to immutable smart contract storage on-chain, preventing corporate custody risk.",
+    status: "Enabled",
   },
   {
     icon: FiCheckCircle,
-    title: "Deterministic Release Mechanism",
+    title: "Atomic Milestone Settlement",
     description:
-      "When you inspect and approve a milestone deliverable, the contract's atomic transfer immediately deposits the payment directly into the creator's wallet.",
-    badge: "Instant Settlement",
+      "Once a milestone deliverable passes review and the client signs off, the contract executes an immediate peer-to-peer transfer to the creator's wallet.",
+    status: "Enabled",
   },
   {
     icon: FiShield,
-    title: "48-Hour Mutual Review Timelock",
+    title: "Mutual Review Protection",
     description:
-      "Neither party can unilaterally drain or cancel the escrow once deliverables are lodged for review, preventing arbitrary cancellations.",
-    badge: "Anti-Clawback",
+      "Built-in contract timelocks prevent unilateral balance withdrawal while deliverables are under active inspection, safeguarding both sides.",
+    status: "Enabled",
   },
   {
     icon: FiPercent,
-    title: "Zero Platform Take-Rate (0% Commission)",
+    title: "Zero Platform Commission",
     description:
-      "Freelancers receive 100% of agreed milestone amounts. No hidden 20% deduction or opaque processing markups.",
-    badge: "100% to Creator",
+      "Contributors receive 100% of the milestone value. Zero platform fee cuts, zero processing deductions, and zero withdrawal holds.",
+    status: "Enabled",
   },
   {
     icon: FiAlertTriangle,
-    title: "Transparent Dispute Arbitration",
+    title: "Formal On-Chain Arbitration",
     description:
-      "If deliverables do not match agreed scope, either party can raise a formal dispute to an independent arbitrator with cryptographic evidence trails.",
-    badge: "On-Chain Resolution",
+      "If deliverables deviate from agreed specifications, either participant can trigger neutral arbitration with verifiable commit and review evidence.",
+    status: "Enabled",
   },
   {
     icon: FiCpu,
-    title: "Cryptographic EIP-712 Authentication",
+    title: "Cryptographic Wallet Authentication",
     description:
-      "All agreements and authorizations are signed using standardized cryptographic wallet signatures, ensuring non-repudiation.",
-    badge: "EIP-712 Standard",
+      "Every milestone approval and contract state change is verified via cryptographic wallet signatures, providing permanent non-repudiation.",
+    status: "Enabled",
   },
 ] as const
 
 export function EscrowAssurance() {
   return (
-    <section id="escrow-assurance" className="w-full bg-surface border-b border-border/40 py-20 sm:py-28">
+    <section id="security-guardrails" className="relative w-full bg-base border-b border-border/40 py-20 sm:py-28 overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-            Protocol Security
-          </span>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            Engineered for mutual financial safety
-          </h2>
-          <p className="mt-4 text-base text-muted">
-            FairWork removes trust liabilities from both sides of the contract through deterministic smart contracts.
-          </p>
-        </div>
+        {/* Continuous Spine Line */}
+        <div className="relative pl-6 sm:pl-10">
+          <div
+            className="pointer-events-none absolute left-0 top-2 bottom-0 w-[2px] bg-gradient-to-b from-emerald-500 via-teal-500 to-blue-500"
+            aria-hidden
+          />
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {assurancePillars.map(({ icon: Icon, title, description, badge }) => (
-            <div
-              key={title}
-              className="flex flex-col justify-between rounded-2xl border border-border bg-base p-6 shadow-sm transition-all duration-200 hover:border-emerald-500/40 hover:-translate-y-1"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="rounded bg-surface px-2 py-0.5 font-mono text-[10px] text-subtle border border-border">
-                    {badge}
-                  </span>
+          {/* Node on Spine */}
+          <div className="absolute -left-[11px] top-0 flex h-6 w-6 items-center justify-center rounded-full border border-emerald-400 bg-base text-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]">
+            <FiShield className="h-3 w-3" />
+          </div>
+
+          <div className="max-w-3xl mb-12">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+              Security &amp; Trust
+            </span>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+              Built-in protection for every commit.
+            </h2>
+            <p className="mt-4 text-base text-muted">
+              Deterministic smart contract rules protect project funds and creator payouts at every checkpoint.
+            </p>
+          </div>
+
+          {/* GitHub Security Bento Cards */}
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {securityGuardrails.map(({ icon: Icon, title, description, status }) => (
+              <div
+                key={title}
+                className="flex flex-col justify-between rounded-xl border border-border-strong bg-[#0d1117] p-6 transition-all duration-200 hover:border-emerald-500/40"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-[#161b22] text-emerald-400">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      {status}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-5 text-sm sm:text-base font-bold text-foreground">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-xs leading-relaxed text-muted">
+                    {description}
+                  </p>
                 </div>
 
-                <h3 className="mt-5 text-base font-bold text-foreground">
-                  {title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-muted">
-                  {description}
-                </p>
+                <div className="mt-6 pt-3 border-t border-border/60 flex items-center justify-between text-[11px] font-mono text-subtle">
+                  <span>Verification</span>
+                  <span className="text-foreground font-semibold">On-Chain Guard</span>
+                </div>
               </div>
-
-              <div className="mt-6 pt-3 border-t border-border/60 flex items-center justify-between text-[11px] font-mono text-subtle">
-                <span>Contract Guard</span>
-                <span className="text-emerald-400 font-semibold">Active</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
