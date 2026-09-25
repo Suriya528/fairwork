@@ -119,22 +119,20 @@ export function ProjectCalculator() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Left-to-Right Section Header spanning full width */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 w-full text-left">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
-              <FiSliders className="h-3.5 w-3.5 text-cyan-400" />
-              <span className="font-medium text-foreground/90">Interactive Estimator</span>
-            </div>
-
-            <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
-              Scope your project{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
-                in minutes.
-              </span>
-            </h2>
+        <div className="w-full mb-12 text-left">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
+            <FiSliders className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="font-medium text-foreground/90">Interactive Estimator</span>
           </div>
 
-          <p className="text-base font-light text-muted/90 sm:text-lg max-w-md leading-relaxed pb-1 text-left">
+          <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15] w-full text-pretty">
+            Scope your project{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
+              in minutes.
+            </span>
+          </h2>
+
+          <p className="mt-4 text-base font-light text-muted/90 sm:text-lg w-full leading-relaxed text-pretty">
             Select your technical discipline and project complexity to estimate milestone checkpoints and escrow deposits.
           </p>
         </div>

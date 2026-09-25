@@ -54,25 +54,25 @@ export function HeroSection() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Left-Aligned Hero Content (Real Website Flow) */}
+        {/* Left-Aligned Hero Content (Real Website Flow - Spanning Left to Right) */}
         <div className="flex flex-col items-start text-left w-full">
           {/* Monumental Title with elegant optical weights */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12] max-w-5xl">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-foreground leading-[1.12] w-full text-pretty">
             Where ambitious projects get built.{" "}
-            <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
+            <span className="font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
               Guaranteed by milestone escrow.
             </span>
           </h1>
 
-          {/* Subtitle spanning wide */}
-          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-3xl font-light">
+          {/* Subtitle spanning full width without right-side gaps */}
+          <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed w-full font-light text-pretty">
             Commission verified specialists, inspect deliverables against clear milestone criteria, and release payments directly to creator wallets with 0% platform fee deduction.
           </p>
 
-          {/* Amazon / Airbnb Style Universal Department & Search Bar (stretching wide) */}
+          {/* Amazon / Airbnb Style Universal Department & Search Bar (stretching full width) */}
           <form
             onSubmit={handleSearchSubmit}
-            className="mt-9 w-full max-w-4xl rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
+            className="mt-9 w-full rounded-2xl border border-border/80 bg-surface/90 p-2 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row items-stretch gap-2"
           >
             {/* Department Dropdown Selector */}
             <div className="relative sm:w-52 shrink-0">
@@ -119,8 +119,8 @@ export function HeroSection() {
             </button>
           </form>
 
-          {/* Quick Department Filter Pills (left-aligned) */}
-          <div className="mt-4 flex flex-wrap items-center justify-start gap-2 text-xs">
+          {/* Quick Department Filter Pills */}
+          <div className="mt-4 flex flex-wrap items-center justify-start gap-2 text-xs w-full">
             <span className="text-subtle font-mono text-[11px]">Popular:</span>
             {quickCategories.map((item) => (
               <button
@@ -134,19 +134,23 @@ export function HeroSection() {
             ))}
           </div>
 
-          {/* Hero Feature Badges (left-aligned) */}
-          <div className="mt-6 flex flex-wrap items-center justify-start gap-6 text-xs text-muted/80 font-mono">
+          {/* Hero Feature Badges spanning full width from left end to right end */}
+          <div className="mt-6 flex flex-wrap items-center justify-between w-full text-xs text-muted/80 font-mono gap-4">
             <span className="inline-flex items-center gap-1.5">
               <FiShield className="h-3.5 w-3.5 text-emerald-400" />
               100% Escrow Protection
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <FiZap className="h-3.5 w-3.5 text-sky-400" />
+              <FiZap className="h-3.5 w-3.5 text-cyan-400" />
               Instant Wallet Payout
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <FiDollarSign className="h-3.5 w-3.5 text-indigo-400" />
+              <FiDollarSign className="h-3.5 w-3.5 text-teal-400" />
               0% Platform Commission
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <FiCheckCircle className="h-3.5 w-3.5 text-primary" />
+              Milestone Acceptance Guarantee
             </span>
           </div>
         </div>

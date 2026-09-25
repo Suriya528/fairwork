@@ -21,26 +21,26 @@ export function MarketplaceCTA() {
           <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" aria-hidden />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-            {/* Left Content */}
-            <div className="max-w-3xl text-left">
+            {/* Left Content spanning full width */}
+            <div className="flex-1 text-left">
               <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-4 py-1.5 text-xs font-mono text-muted mb-6 shadow-xs">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="font-medium text-foreground/90">Zero Platform Commission</span>
               </div>
 
-              <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.12]">
+              <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.12] w-full text-pretty">
                 Build with certainty.{" "}
-                <span className="block font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
+                <span className="font-normal text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300">
                   Settle with confidence.
                 </span>
               </h2>
 
-              <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed max-w-2xl font-light">
+              <p className="mt-6 text-base text-muted/90 sm:text-xl leading-relaxed w-full font-light text-pretty">
                 Commission deliverables backed by non-custodial smart contracts, or offer your technical expertise with 100% milestone payout assurance.
               </p>
 
               {/* Trust Value Props */}
-              <div className="mt-8 flex flex-wrap items-center gap-6 sm:gap-8 text-xs font-mono text-muted font-normal">
+              <div className="mt-8 flex flex-wrap items-center gap-6 sm:gap-8 text-xs font-mono text-muted font-normal w-full">
                 <span className="inline-flex items-center gap-1.5">
                   <FiShield className="h-4 w-4 text-emerald-400" />
                   Non-custodial lockbox
@@ -57,7 +57,7 @@ export function MarketplaceCTA() {
             </div>
 
             {/* Right CTAs */}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-3.5 shrink-0 w-full sm:w-auto lg:w-56">
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3.5 shrink-0 w-full sm:w-auto lg:w-60">
               <Link
                 to={destination}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-8 text-sm font-medium text-white shadow-md transition-all cursor-pointer"

@@ -146,26 +146,26 @@ export function CuratedSpecialists() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Left-to-Right Section Header spanning full width */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 w-full text-left">
-          <div className="max-w-3xl">
+          <div className="flex-1">
             <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface/80 px-3.5 py-1 text-xs font-mono text-muted mb-4 shadow-xs">
               <FiShield className="h-3.5 w-3.5 text-emerald-400" />
               <span className="font-medium text-foreground/90">Curated Deliverables</span>
             </div>
 
-            <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15]">
+            <h2 className="text-3xl font-light tracking-tight text-foreground sm:text-5xl leading-[1.15] text-pretty">
               Work with{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300 font-normal">
                 verified specialists.
               </span>
             </h2>
 
-            <p className="mt-3 text-base font-light text-muted/90 sm:text-lg max-w-2xl leading-relaxed">
+            <p className="mt-3 text-base font-light text-muted/90 sm:text-lg leading-relaxed text-pretty">
               Choose packaged milestones with clear delivery timelines, fixed pricing, and 100% smart contract escrow protection.
             </p>
           </div>
 
           {/* Discipline Filter Pills (flowing naturally on the right) */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 self-start lg:self-end">
             {[
               { id: "all", label: "All Packages" },
               { id: "web3", label: "Smart Contracts" },
