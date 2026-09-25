@@ -99,8 +99,8 @@ export function FairWorkPro() {
                     </span>
                     <h3 className="text-sm font-bold text-foreground">Top 1% Global Freelancers</h3>
                   </div>
-                  <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 text-[11px] font-mono text-emerald-400 font-bold">
-                    Pass Rate: 3.2%
+                  <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-[11px] font-mono text-emerald-400 font-bold">
+                    Top Rated • 5.0 ★
                   </span>
                 </div>
 

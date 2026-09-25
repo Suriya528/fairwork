@@ -72,18 +72,18 @@ export function LandingFooter() {
               The world&apos;s leading freelance marketplace backed by non-custodial milestone escrow and zero platform commissions.
             </p>
 
-            <div className="flex flex-col gap-2 pt-2 text-[11px] font-mono text-subtle">
+            <div className="flex flex-col gap-2 pt-2 text-[11px] font-medium text-subtle">
               <div className="flex items-center gap-2">
                 <FiCheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                <span>Ethereum Sepolia Testnet</span>
+                <span>Safe Milestone Escrow Protection</span>
               </div>
               <div className="flex items-center gap-2">
                 <FiLock className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                <span>Non-Custodial Escrow</span>
+                <span>Instant Wallet Payouts</span>
               </div>
               <div className="flex items-center gap-2">
                 <FiShield className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                <span>48h Timelock Protection</span>
+                <span>0% Platform Commission</span>
               </div>
             </div>
           </div>

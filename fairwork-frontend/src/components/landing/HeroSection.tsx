@@ -71,7 +71,7 @@ export function HeroSection() {
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-400 mb-6 backdrop-blur-sm">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-mono text-[11px] uppercase tracking-wider">
-                Web3 Freelance Marketplace • 0% Commission
+                Trusted by 15,000+ Freelancers &amp; Teams • 0% Platform Commission
               </span>
             </div>
 
@@ -238,8 +238,8 @@ export function HeroSection() {
                   <FiShield className="h-4 w-4" />
                 </div>
                 <div className="text-left">
-                  <p className="text-[11px] font-bold text-foreground">Zero Clawbacks</p>
-                  <p className="text-[10px] text-subtle font-mono">48h Escrow Timelock</p>
+                  <p className="text-[11px] font-bold text-foreground">100% Escrow Protection</p>
+                  <p className="text-[10px] text-subtle font-mono">Pay On Approval</p>
                 </div>
               </div>
 
