@@ -439,7 +439,7 @@ async function startBlockchainListener(config = {}) {
   }
 }
 
-async function handleListenerLoopError(err, podId = "default-pod") {
+async function handleListenerLoopError(err, podId = "default-pod", QuarantineEventModel = QuarantineEvent) {
   listenerStatus.consecutiveFailures++;
   listenerStatus.lastError = err?.message || String(err);
   if (
@@ -451,7 +451,7 @@ async function handleListenerLoopError(err, podId = "default-pod") {
     listenerStatus.halted = true;
     logger.error(`CRITICAL INDEXER HALT: ${err?.message}`);
     try {
-      await QuarantineEvent.create({
+      await QuarantineEventModel.create({
         category: "OPERATOR_REVIEW",
         errorMessage: err?.message,
         stackTrace: err?.stack,

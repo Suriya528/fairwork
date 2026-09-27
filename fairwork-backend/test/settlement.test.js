@@ -9,6 +9,7 @@ const { verifyAtStartup } = require("../src/services/contractIntegrity");
 const { detectReorg, processReorgReversal, MAX_REORG_DEPTH } = require("../src/services/reorgEngine");
 const { processOutboxEntry, pollAndProcessOutboxBatch } = require("../src/services/outboxWorker");
 const { reconcileVerifiedBlockchainEvent } = require("../src/services/reconciliationService");
+const QuarantineEvent = require("../src/models/QuarantineEvent");
 
 test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   await t.test("Scenario 1: Lease initialization via ensureSyncState()", async () => {
@@ -121,6 +122,15 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
     assert.equal(persisted[0].chainId, 11155111);
     assert.equal(persisted[0].blockNumber, 1000);
     assert.equal(persisted[0].contractAddress, "0x1234567890123456789012345678901234567890");
+
+    // Verify document conforms strictly to Mongoose schema definition
+    let schemaValidationErr = null;
+    try {
+      await new QuarantineEvent(persisted[0]).validate();
+    } catch (err) {
+      schemaValidationErr = err;
+    }
+    assert.equal(schemaValidationErr, null, "Recorded document must pass Mongoose schema validation");
 
     // 2. Verify DLQ persistence failure propagates error to halt indexer
     const FailingMockQuarantine = {

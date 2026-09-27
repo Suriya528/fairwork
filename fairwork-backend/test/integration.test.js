@@ -16,6 +16,7 @@ const OutboxEvent = require("../src/models/OutboxEvent");
 const BlockchainSyncState = require("../src/models/BlockchainSyncState");
 const Message = require("../src/models/Message");
 const BlockCheckpoint = require("../src/models/BlockCheckpoint");
+const QuarantineEvent = require("../src/models/QuarantineEvent");
 const { resolveViemChain, getRpcUrl } = require("../src/services/chainResolver");
 
 test("Integration-Gate Logic Suite", async (t) => {
@@ -269,20 +270,43 @@ test("Integration-Gate Logic Suite", async (t) => {
 
     const rpc429Err = new Error("HTTP 429: Too Many Requests - RPC rate limit exceeded");
 
+    const quarantinedDocs = [];
+    const MockQuarantine = {
+      create: async (doc) => {
+        quarantinedDocs.push(doc);
+        return { ...doc, _id: "mock_quarantine_gate14" };
+      },
+    };
+
     // Failures 1 through 4: Should remain NOT halted, but increment failure count
     for (let i = 1; i <= 4; i++) {
-      const status = await handleListenerLoopError(rpc429Err, "test-pod");
+      const status = await handleListenerLoopError(rpc429Err, "test-pod", MockQuarantine);
       assert.equal(status.consecutiveFailures, i);
       assert.equal(status.halted, false, `Should not halt at failure ${i}`);
       assert.equal(status.healthy, true, `Should remain healthy at failure ${i}`);
     }
 
-    // 5th Failure: Must trigger emergency halt and flip healthy to false
-    const finalStatus = await handleListenerLoopError(rpc429Err, "test-pod");
+    // 5th Failure: Must trigger emergency halt, flip healthy to false, and persist QuarantineEvent
+    const finalStatus = await handleListenerLoopError(rpc429Err, "test-pod", MockQuarantine);
     assert.equal(finalStatus.consecutiveFailures, 5);
     assert.equal(finalStatus.halted, true, "Must be halted after 5 consecutive failures");
     assert.equal(finalStatus.healthy, false, "Must not be healthy after 5 consecutive failures");
     assert.equal(finalStatus.lastError, rpc429Err.message);
+
+    // Verify QuarantineEvent was successfully recorded with proper fields
+    assert.equal(quarantinedDocs.length, 1);
+    assert.equal(quarantinedDocs[0].category, "OPERATOR_REVIEW");
+    assert.equal(quarantinedDocs[0].errorMessage, rpc429Err.message);
+    assert.ok(quarantinedDocs[0].stackTrace);
+
+    // Verify recorded document strictly conforms to Mongoose schema definition
+    let validationError = null;
+    try {
+      await new QuarantineEvent(quarantinedDocs[0]).validate();
+    } catch (err) {
+      validationError = err;
+    }
+    assert.equal(validationError, null, "Recorded document must pass Mongoose schema validation");
 
     // Clean up test state
     resetListenerStatusForTesting();
