@@ -8,6 +8,7 @@ const { transitionStatus, isValidTransition } = require("../src/services/project
 const { verifyAtStartup } = require("../src/services/contractIntegrity");
 const { detectReorg, processReorgReversal, MAX_REORG_DEPTH } = require("../src/services/reorgEngine");
 const { processOutboxEntry, pollAndProcessOutboxBatch } = require("../src/services/outboxWorker");
+const { reconcileVerifiedBlockchainEvent } = require("../src/services/reconciliationService");
 
 test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   await t.test("Scenario 1: Lease initialization via ensureSyncState()", async () => {
@@ -81,7 +82,62 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 18: DLQ persistence failure → HALT", async () => {
-    assert.ok(true);
+    const persisted = [];
+    const MockQuarantine = {
+      create: async (doc) => {
+        persisted.push(doc);
+        return { ...doc, _id: "mock_dlq_id_1" };
+      },
+    };
+
+    const sampleEvent = {
+      chainId: 11155111,
+      contractAddress: "0x1234567890123456789012345678901234567890",
+      transactionHash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      logIndex: 0,
+      blockNumber: 1000,
+      blockHash: "0xblockhash",
+      eventName: "MilestoneReleased",
+      projectId: "proj_dlq_test",
+      milestoneIndex: 0,
+      freelancerAddress: "0xfreelancer",
+      onChainAmountUnits: "1000000",
+    };
+
+    // 1. Verify successful QuarantineEvent document creation on security violation
+    await assert.rejects(
+      () =>
+        reconcileVerifiedBlockchainEvent({
+          QuarantineEventModel: MockQuarantine,
+          verifiedEvent: sampleEvent,
+          onChainEscrowState: null, // triggers SECURITY_VALIDATION_FAILURE
+        }),
+      /MISSING_ON_CHAIN_ESCROW_STATE/
+    );
+
+    assert.equal(persisted.length, 1);
+    assert.equal(persisted[0].category, "SECURITY_VALIDATION_FAILURE");
+    assert.equal(persisted[0].errorMessage, "MISSING_ON_CHAIN_ESCROW_STATE");
+    assert.equal(persisted[0].chainId, 11155111);
+    assert.equal(persisted[0].blockNumber, 1000);
+    assert.equal(persisted[0].contractAddress, "0x1234567890123456789012345678901234567890");
+
+    // 2. Verify DLQ persistence failure propagates error to halt indexer
+    const FailingMockQuarantine = {
+      create: async () => {
+        throw new Error("MONGO_WRITE_TIMEOUT");
+      },
+    };
+
+    await assert.rejects(
+      () =>
+        reconcileVerifiedBlockchainEvent({
+          QuarantineEventModel: FailingMockQuarantine,
+          verifiedEvent: sampleEvent,
+          onChainEscrowState: null,
+        }),
+      /MONGO_WRITE_TIMEOUT/
+    );
   });
 
   await t.test("Scenario 19: Outbox duplicate race (concurrent claim)", async () => {
