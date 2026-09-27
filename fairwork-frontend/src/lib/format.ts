@@ -12,14 +12,30 @@ export function convertCurrencyAmount(amountInUSD: number): number {
 
 /**
  * Format a USD monetary amount into standard US Dollar display ($X,XXX.XX).
+ * Safely handles plain numbers, strings, and MongoDB Decimal128 objects ({ $numberDecimal: "..." }).
  */
-export function formatCurrency(amountInUSD: number): string {
+export function formatCurrency(amountInUSD: number | unknown): string {
+  let num = 0
+  if (typeof amountInUSD === "number") {
+    num = isNaN(amountInUSD) ? 0 : amountInUSD
+  } else if (typeof amountInUSD === "string") {
+    const parsed = parseFloat(amountInUSD)
+    num = isNaN(parsed) ? 0 : parsed
+  } else if (amountInUSD && typeof amountInUSD === "object") {
+    if ("$numberDecimal" in amountInUSD) {
+      const parsed = parseFloat(String((amountInUSD as any).$numberDecimal))
+      num = isNaN(parsed) ? 0 : parsed
+    } else {
+      num = Number(amountInUSD) || 0
+    }
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: amountInUSD % 1 === 0 ? 0 : 2,
+    minimumFractionDigits: num % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
-  }).format(amountInUSD)
+  }).format(num)
 }
 
 /** Format a crypto/token amount with its symbol, e.g. "250.00 USDC" or "0.85 ETH". */

@@ -13,11 +13,12 @@ const DEFAULT_LEASE_TTL_MS = 60 * 1000; // 60 seconds
  * Idempotent — does nothing if document already exists.
  */
 async function ensureSyncState(syncKey = "SEPOLIA_ESCROW_SYNC", chainId = 11155111, contractAddress = null) {
+  const startBlock = parseInt(process.env.START_BLOCK || process.env.BLOCKCHAIN_DEPLOYMENT_BLOCK || "0", 10);
   const existing = await BlockchainSyncState.findOne({ key: syncKey });
   if (!existing) {
     await BlockchainSyncState.create({
       key: syncKey,
-      lastProcessedBlock: 0,
+      lastProcessedBlock: startBlock,
       lastProcessedBlockHash: null,
       leaseOwner: null,
       leaseGeneration: 0,
@@ -26,6 +27,10 @@ async function ensureSyncState(syncKey = "SEPOLIA_ESCROW_SYNC", chainId = 111551
       chainId,
       contractAddress: contractAddress ? contractAddress.toLowerCase() : null,
     });
+  } else if (existing.lastProcessedBlock === 0 && startBlock > 0) {
+    // Fast-forward initial zero block to configured deployment block
+    existing.lastProcessedBlock = startBlock;
+    await existing.save();
   }
 }
 

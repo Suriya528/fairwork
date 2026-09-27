@@ -183,7 +183,7 @@ async function startBlockchainListener(config = {}) {
       }
 
       // ── Core Block Processing: fetch new logs and reconcile ──
-      const CHUNK_SIZE = config.chunkSize || 500;
+      const CHUNK_SIZE = config.chunkSize || parseInt(process.env.BLOCK_CHUNK_SIZE || "10", 10);
       const CONFIRMATION_DEPTH = BigInt(process.env.CONFIRMATION_DEPTH || (process.env.NODE_ENV === "production" ? 3 : 1));
       const fromBlock = BigInt(currentLease.lastProcessedBlock + 1);
       const latestBlock = await executeWithFullJitter(() => publicClient.getBlockNumber());
@@ -418,7 +418,7 @@ async function startBlockchainListener(config = {}) {
           logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent:`, qErr.message);
         }
       } else {
-        logger.error(`[Indexer ${podId}] Error in loop:`, err.message);
+        logger.error({ err: err.message }, `[Indexer ${podId}] Error in loop: ${err.message}`);
       }
     }
 

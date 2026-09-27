@@ -166,12 +166,27 @@ function personWallet(u: BackendPopulatedUser | string | null | undefined): stri
   return u.walletAddress ?? null
 }
 
+export function toNumber(val: unknown): number {
+  if (typeof val === "number") return isNaN(val) ? 0 : val
+  if (typeof val === "string") {
+    const parsed = parseFloat(val)
+    return isNaN(parsed) ? 0 : parsed
+  }
+  if (val && typeof val === "object") {
+    if ("$numberDecimal" in val) {
+      const parsed = parseFloat(String((val as any).$numberDecimal))
+      return isNaN(parsed) ? 0 : parsed
+    }
+  }
+  return 0
+}
+
 function toMilestone(m: BackendMilestone, projectId: string, index: number): ApiMilestone {
   return {
     id: m.id || m._id || `milestone-${index + 1}`,
     projectId,
     title: m.title || "",
-    amount: m.amount || 0,
+    amount: toNumber(m.amount),
     status: m.status || "pending",
     order: index + 1,
     paymentReleased: m.paymentReleased ?? false,
@@ -193,7 +208,7 @@ function toProject(p: BackendProject): ApiProject {
     description: p.description || "",
     category: p.category || "Web Development",
     customCategory: p.customCategory || "",
-    budget: p.budget || 0,
+    budget: toNumber(p.budget),
     status: p.status || "open",
     clientId: personId(p.clientId) ?? "",
     clientName: personName(p.clientId),

@@ -1,4 +1,4 @@
-import type { ApiProject } from "@/services/projectsApi"
+import { toNumber, type ApiProject } from "@/services/projectsApi"
 
 /**
  * Authoritative Financial Utility Module for FairWork
@@ -15,33 +15,33 @@ import type { ApiProject } from "@/services/projectsApi"
 
 /** Returns total agreed project budget. */
 export function getProjectBudget(project: ApiProject): number {
-  return project.budget || 0
+  return toNumber(project.budget)
 }
 
 /** Returns total milestone allocated amount. */
 export function getMilestoneAllocatedAmount(project: ApiProject): number {
-  return (project.milestones || []).reduce((sum, m) => sum + (m.amount || 0), 0)
+  return (project.milestones || []).reduce((sum, m) => sum + toNumber(m.amount), 0)
 }
 
 /** Returns total released payment amount (paymentReleased === true). */
 export function getReleasedAmount(project: ApiProject): number {
   return (project.milestones || [])
     .filter((m) => Boolean(m && m.paymentReleased))
-    .reduce((sum, m) => sum + (m.amount || 0), 0)
+    .reduce((sum, m) => sum + toNumber(m.amount), 0)
 }
 
 /** Returns total unreleased payment amount (paymentReleased !== true). */
 export function getUnreleasedAmount(project: ApiProject): number {
   return (project.milestones || [])
     .filter((m) => Boolean(m && !m.paymentReleased))
-    .reduce((sum, m) => sum + (m.amount || 0), 0)
+    .reduce((sum, m) => sum + toNumber(m.amount), 0)
 }
 
 /** Returns monetary value of completed work (status === "completed"). */
 export function getCompletedWorkAmount(project: ApiProject): number {
   return (project.milestones || [])
     .filter((m) => Boolean(m && m.status === "completed"))
-    .reduce((sum, m) => sum + (m.amount || 0), 0)
+    .reduce((sum, m) => sum + toNumber(m.amount), 0)
 }
 
 /** Returns approved but unpaid milestone payment amount (status === "completed" && !paymentReleased). */

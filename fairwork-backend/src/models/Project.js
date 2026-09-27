@@ -81,6 +81,33 @@ const projectSchema = new mongoose.Schema({
   deadlineMode: { type: String, enum: ["duration", "exact"], default: "duration" },
 }, { timestamps: true });
 
+// Auto-transform Decimal128 to clean numbers when serialized to JSON
+milestoneSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    if (ret.amount != null) {
+      ret.amount = parseFloat(ret.amount.toString());
+    }
+    return ret;
+  },
+});
+
+projectSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    if (ret.budget != null) {
+      ret.budget = parseFloat(ret.budget.toString());
+    }
+    if (Array.isArray(ret.milestones)) {
+      ret.milestones = ret.milestones.map((m) => {
+        if (m && m.amount != null) {
+          m.amount = parseFloat(m.amount.toString());
+        }
+        return m;
+      });
+    }
+    return ret;
+  },
+});
+
 projectSchema.index({ clientId: 1, status: 1 });
 projectSchema.index({ freelancerId: 1, status: 1 });
 projectSchema.index({ status: 1, createdAt: -1 });
