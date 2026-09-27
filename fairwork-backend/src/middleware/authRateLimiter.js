@@ -193,4 +193,40 @@ async function registerRateLimiter(req, res, next) {
   next();
 }
 
-module.exports = { authRateLimiter, registerRateLimiter };
+/**
+ * Rate limiter for financial escrow reconciliation endpoints (/api/escrow/deposit, /api/escrow/release).
+ * Keys by authenticated userId (or IP if unauthenticated).
+ * Window: 5 minutes, Max: 30 attempts per user.
+ */
+const ESCROW_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const ESCROW_MAX_ATTEMPTS = 30;
+
+async function escrowRateLimiter(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || "unknown";
+  const identity = req.user?.id || ip;
+  const key = `escrow:${identity}`;
+
+  const result = await rateCheck(key, ESCROW_WINDOW_MS, ESCROW_MAX_ATTEMPTS);
+
+  if (result === null) {
+    logger.error("CRITICAL: Redis unavailable for escrow rate limiting in production");
+    return res.status(503).json({
+      message: "Service temporarily unavailable. Please try again later.",
+      code: "RATE_LIMIT_BACKEND_UNAVAILABLE",
+    });
+  }
+
+  if (result.limited) {
+    const retryAfterSeconds = Math.ceil(result.retryAfterMs / 1000);
+    res.set("Retry-After", String(retryAfterSeconds));
+    return res.status(429).json({
+      message: `Too many escrow requests. Please wait ${Math.ceil(retryAfterSeconds / 60)} minute(s) before trying again.`,
+      code: "ESCROW_RATE_LIMIT_EXCEEDED",
+      retryAfterSeconds,
+    });
+  }
+  next();
+}
+
+module.exports = { authRateLimiter, registerRateLimiter, escrowRateLimiter };
+

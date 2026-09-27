@@ -21,7 +21,7 @@ exports.register = async (req, res) => {
     const existing = await User.findOne({ email: cleanEmail });
     if (existing) return res.status(409).json({ message: "Email already exists" });
 
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, 12);
     const verificationToken = crypto.randomBytes(32).toString("hex");
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -48,7 +48,7 @@ exports.register = async (req, res) => {
         { id: user._id, role: user.role, sessionId: crypto.randomUUID(), tokenVersion: 0 },
         process.env.JWT_SECRET,
         {
-          expiresIn: "7d",
+          expiresIn: process.env.JWT_EXPIRES_IN || "24h",
           algorithm: "HS256",
           ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
           ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
@@ -95,7 +95,7 @@ exports.login = async (req, res) => {
         { id: user._id, role: user.role, sessionId: crypto.randomUUID(), tokenVersion: user.tokenVersion || 0 },
         process.env.JWT_SECRET,
         {
-          expiresIn: "7d",
+          expiresIn: process.env.JWT_EXPIRES_IN || "24h",
           algorithm: "HS256",
           ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
           ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
@@ -257,7 +257,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Social login accounts cannot reset passwords." });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword, 12);
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user.tokenVersion = (user.tokenVersion || 0) + 1; // Invalidate all existing sessions

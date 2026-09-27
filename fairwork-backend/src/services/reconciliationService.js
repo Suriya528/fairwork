@@ -592,7 +592,10 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     )) {
       throw rpcErr;
     }
-    if (process.env.NODE_ENV === 'production') {
+    // C-3 FIX: Always fail on RPC errors unless explicitly bypassed.
+    // Previously, non-production silently swallowed RPC errors, allowing
+    // fake transaction hashes to be accepted without blockchain verification.
+    if (process.env.SKIP_CHAIN_VERIFICATION !== 'true') {
       throw new Error(`ON_CHAIN_RECEIPT_FETCH_FAILED: ${rpcErr.message}`);
     }
   }
@@ -799,7 +802,8 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     )) {
       throw rpcErr;
     }
-    if (process.env.NODE_ENV === 'production') {
+    // C-3 FIX: Always fail on RPC errors unless explicitly bypassed
+    if (process.env.SKIP_CHAIN_VERIFICATION !== 'true') {
       throw new Error(`ON_CHAIN_RECEIPT_FETCH_FAILED: ${rpcErr.message}`);
     }
   }
