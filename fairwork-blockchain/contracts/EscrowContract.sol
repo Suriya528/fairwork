@@ -75,6 +75,7 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
         Escrow storage e = escrows[projectId];
         require(e.client != address(0), "Escrow missing");
         require(msg.sender == e.client, "Only client");
+        require(e.isFunded && !e.isDisputed && !e.isCompleted, "Escrow unavailable");
         require(refundRequestedAt[projectId] != 0, "No refund requested");
         refundRequestedAt[projectId] = 0;
         emit RefundCancelled(projectId);
