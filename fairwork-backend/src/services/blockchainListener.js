@@ -402,24 +402,7 @@ async function startBlockchainListener(config = {}) {
       await pollAndProcessOutboxBatch(podId, 10, config.io);
 
     } catch (err) {
-      listenerStatus.consecutiveFailures++;
-      listenerStatus.lastError = err.message;
-      if (err.message?.includes("REORG_HISTORY_UNAVAILABLE") || err.message?.includes("REORG_EXCEEDS_MAX_DEPTH") || listenerStatus.consecutiveFailures >= 5) {
-        listenerStatus.healthy = false;
-        listenerStatus.halted = true;
-        logger.error(`CRITICAL INDEXER HALT: ${err.message}`);
-        try {
-          await QuarantineEvent.create({
-            category: "OPERATOR_REVIEW",
-            errorMessage: err.message,
-            stackTrace: err.stack,
-          });
-        } catch (qErr) {
-          logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent:`, qErr.message);
-        }
-      } else {
-        logger.error({ err: err.message }, `[Indexer ${podId}] Error in loop: ${err.message}`);
-      }
+      await handleListenerLoopError(err, podId);
     }
 
     // Schedule next iteration
@@ -456,9 +439,47 @@ async function startBlockchainListener(config = {}) {
   }
 }
 
+async function handleListenerLoopError(err, podId = "default-pod") {
+  listenerStatus.consecutiveFailures++;
+  listenerStatus.lastError = err?.message || String(err);
+  if (
+    err?.message?.includes("REORG_HISTORY_UNAVAILABLE") ||
+    err?.message?.includes("REORG_EXCEEDS_MAX_DEPTH") ||
+    listenerStatus.consecutiveFailures >= 5
+  ) {
+    listenerStatus.healthy = false;
+    listenerStatus.halted = true;
+    logger.error(`CRITICAL INDEXER HALT: ${err?.message}`);
+    try {
+      await QuarantineEvent.create({
+        category: "OPERATOR_REVIEW",
+        errorMessage: err?.message,
+        stackTrace: err?.stack,
+      });
+    } catch (qErr) {
+      logger.error(`[Indexer ${podId}] Failed to record QuarantineEvent:`, qErr.message);
+    }
+  } else {
+    logger.error({ err: err?.message }, `[Indexer ${podId}] Error in loop: ${err?.message}`);
+  }
+  return { ...listenerStatus };
+}
+
+function resetListenerStatusForTesting() {
+  listenerStatus.started = false;
+  listenerStatus.healthy = true;
+  listenerStatus.halted = false;
+  listenerStatus.consecutiveFailures = 0;
+  listenerStatus.lastError = null;
+  return { ...listenerStatus };
+}
+
 module.exports = {
   startBlockchainListener,
   getListenerStatus,
+  handleListenerLoopError,
+  resetListenerStatusForTesting,
   isRetryableRpcError,
   executeWithFullJitter,
 };
+

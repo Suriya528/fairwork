@@ -254,4 +254,38 @@ test("Integration-Gate Logic Suite", async (t) => {
     assert.equal(isRetryableRpcError({ status: 503, message: "service unavailable" }), true);
   });
 
+  await t.test("Gate 14: 5 Consecutive RPC Failures Flip Halted Flag & Halt Indexer Safely", async () => {
+    const {
+      handleListenerLoopError,
+      resetListenerStatusForTesting,
+      getListenerStatus,
+    } = require("../src/services/blockchainListener");
+
+    resetListenerStatusForTesting();
+    const initial = getListenerStatus();
+    assert.equal(initial.halted, false);
+    assert.equal(initial.healthy, true);
+    assert.equal(initial.consecutiveFailures, 0);
+
+    const rpc429Err = new Error("HTTP 429: Too Many Requests - RPC rate limit exceeded");
+
+    // Failures 1 through 4: Should remain NOT halted, but increment failure count
+    for (let i = 1; i <= 4; i++) {
+      const status = await handleListenerLoopError(rpc429Err, "test-pod");
+      assert.equal(status.consecutiveFailures, i);
+      assert.equal(status.halted, false, `Should not halt at failure ${i}`);
+      assert.equal(status.healthy, true, `Should remain healthy at failure ${i}`);
+    }
+
+    // 5th Failure: Must trigger emergency halt and flip healthy to false
+    const finalStatus = await handleListenerLoopError(rpc429Err, "test-pod");
+    assert.equal(finalStatus.consecutiveFailures, 5);
+    assert.equal(finalStatus.halted, true, "Must be halted after 5 consecutive failures");
+    assert.equal(finalStatus.healthy, false, "Must not be healthy after 5 consecutive failures");
+    assert.equal(finalStatus.lastError, rpc429Err.message);
+
+    // Clean up test state
+    resetListenerStatusForTesting();
+  });
+
 });
