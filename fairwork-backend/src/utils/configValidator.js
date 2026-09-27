@@ -39,7 +39,7 @@ function validateStartupConfig(env = process.env) {
     errors.push(`Escrow address is invalid EVM address: ${escrowAddr}`);
   }
 
-  const tokenAddr = env.CANONICAL_TOKEN_ADDRESS || env.TOKEN_CONTRACT_ADDRESS || env.USDC_ADDRESS;
+  const tokenAddr = env.CANONICAL_TOKEN_ADDRESS || env.TOKEN_CONTRACT_ADDRESS || env.USDC_ADDRESS || env.USDC_CONTRACT_ADDRESS;
   if (isProdOrStaging && !tokenAddr) {
     errors.push("Token contract address is missing in staging/production");
   } else if (tokenAddr && !isValidEthAddress(tokenAddr)) {
