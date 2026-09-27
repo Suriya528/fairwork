@@ -224,4 +224,34 @@ test("Integration-Gate Logic Suite", async (t) => {
     );
   });
 
+  await t.test("Gate 13: RPC 429 Rate-Limit During Reorg Check Rejection & Safe Halting", async () => {
+    // 1. Mock publicClient that returns HTTP 429 rate limit
+    const mockRpc429Client = {
+      getBlock: async () => {
+        const rpcErr = new Error("HTTP 429: Too Many Requests - rate limit exceeded");
+        rpcErr.status = 429;
+        throw rpcErr;
+      },
+    };
+
+    // 2. detectReorg must propagate the RPC rejection rather than proceeding with partial/corrupt rollback
+    await assert.rejects(
+      async () => {
+        await detectReorg({
+          publicClient: mockRpc429Client,
+          chainId: 11155111,
+          contractAddress: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
+          lastProcessedBlock: 100,
+          lastProcessedBlockHash: "0xabcd",
+        });
+      },
+      /rate limit exceeded/
+    );
+
+    // 3. Verify that blockchain listener classifies 429 as retryable for jittered backoff
+    const { isRetryableRpcError } = require("../src/services/blockchainListener");
+    assert.equal(isRetryableRpcError({ status: 429, message: "rate limit" }), true);
+    assert.equal(isRetryableRpcError({ status: 503, message: "service unavailable" }), true);
+  });
+
 });

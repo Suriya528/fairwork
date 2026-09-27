@@ -223,6 +223,36 @@ describe("FairWork ERC-20 milestone escrow", async () => {
     assert.equal(parties[4], true); // completed
   });
 
+  it("rejects malicious reentrancy hook during releaseMilestone via nonReentrant", async () => {
+    const { client, freelancer } = await deploy();
+    const badToken = await viem.deployContract("MaliciousReentrantToken");
+    const escrow = await viem.deployContract("EscrowContract");
+
+    // Mint and setup escrow with hostile token
+    await badToken.write.mint([client.account.address, 1000n]);
+    await badToken.write.approve([escrow.address, 300n], { account: client.account });
+    await escrow.write.createEscrow(["reentrancy-proj", freelancer.account.address, badToken.address, [100n, 200n]], {
+      account: client.account,
+    });
+    await escrow.write.fund(["reentrancy-proj"], { account: client.account });
+
+    // Arm the hostile token to execute a reentrant call back into releaseMilestone during transfer
+    await badToken.write.setAttackConfig([escrow.address, "reentrancy-proj", 1n], { account: client.account });
+
+    // Execute release: token.transfer() fires, attempts reentrancy, and nonReentrant BLOCKS the attack
+    await escrow.write.releaseMilestone(["reentrancy-proj", 0n], { account: client.account });
+
+    // Verify attack was actually attempted by the malicious token hook
+    const attackAttempted = await badToken.read.attackAttempted();
+    assert.equal(attackAttempted, true, "Malicious hook was not triggered");
+
+    // Verify milestone 0 was released but milestone 1 was NOT released via the blocked reentrant call
+    const m0 = await escrow.read.getMilestone(["reentrancy-proj", 0n]);
+    const m1 = await escrow.read.getMilestone(["reentrancy-proj", 1n]);
+    assert.equal(m0[1], true, "Milestone 0 should be released");
+    assert.equal(m1[1], false, "Milestone 1 must NOT be released (reentrancy blocked)");
+  });
+
   // `publicClient` is intentionally initialized above: this keeps the test
   // connection explicit and makes future event-log assertions straightforward.
   void publicClient;
