@@ -102,9 +102,27 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
         refundRequestedAt[projectId] = 0;
         emit EscrowDisputed(projectId);
     }
+    /**
+     * @notice Resolves an active dispute by transferring remaining funds to the designated winner.
+     * @dev Reentrancy safety guarantee:
+     *      1. Non-reentrant modifier (`nonReentrant`) prevents reentrancy via ERC-20 transfer hooks.
+     *      2. Strict Checks-Effects-Interactions (CEI): State flags (`isCompleted = true`,
+     *         `releasedAmount = totalAmount`, `isDisputed = false`) are written BEFORE external transfer.
+     *      3. Access controlled strictly to `onlyDisputeContract` (one-directional call graph).
+     */
     function resolveDispute(string calldata projectId, address winner) external nonReentrant onlyDisputeContract whenNotPaused {
-        Escrow storage e = escrows[projectId]; require(e.client != address(0), "Escrow missing"); require(e.isDisputed, "Not disputed"); require(winner == e.client || winner == e.freelancer, "Invalid winner");
-        uint256 amount = e.totalAmount - e.releasedAmount; e.releasedAmount = e.totalAmount; e.isCompleted = true; e.isDisputed = false; IERC20(e.token).safeTransfer(winner, amount); emit DisputeResolved(projectId, winner, amount);
+        Escrow storage e = escrows[projectId];
+        require(e.client != address(0), "Escrow missing");
+        require(e.isDisputed, "Not disputed");
+        require(winner == e.client || winner == e.freelancer, "Invalid winner");
+
+        uint256 amount = e.totalAmount - e.releasedAmount;
+        e.releasedAmount = e.totalAmount;
+        e.isCompleted = true;
+        e.isDisputed = false;
+
+        IERC20(e.token).safeTransfer(winner, amount);
+        emit DisputeResolved(projectId, winner, amount);
     }
     function getEscrowParties(string calldata projectId) external view returns (address client, address freelancer, bool isFunded, bool isDisputed, bool isCompleted) { Escrow storage e = escrows[projectId]; return (e.client, e.freelancer, e.isFunded, e.isDisputed, e.isCompleted); }
     function getBalance(string calldata projectId) external view returns (uint256) { Escrow storage e = escrows[projectId]; return e.totalAmount - e.releasedAmount; }
