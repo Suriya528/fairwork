@@ -24,72 +24,82 @@ const BlockchainSyncState = require("../src/models/BlockchainSyncState");
 
 test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
   await t.test("Scenario 25: Message reconnect catch-up (cursor pagination, orphaned exclusion)", async () => {
-    const dummyProjectId = new mongoose.Types.ObjectId();
-    const dummyUserId = new mongoose.Types.ObjectId();
-    const cursorMsgId = new mongoose.Types.ObjectId();
-    const cursorTs = new Date("2026-09-01T12:00:00.000Z");
+    const origProjectFindById = Project.findById;
+    const origMessageFindById = Message.findById;
+    const origMessageFind = Message.find;
 
-    const opaqueCursor = Buffer.from(
-      JSON.stringify({
-        createdAt: cursorTs.toISOString(),
-        _id: cursorMsgId.toString(),
-      })
-    ).toString("base64url");
+    try {
+      const dummyProjectId = new mongoose.Types.ObjectId();
+      const dummyUserId = new mongoose.Types.ObjectId();
+      const cursorMsgId = new mongoose.Types.ObjectId();
+      const cursorTs = new Date("2026-09-01T12:00:00.000Z");
 
-    // Mock project membership and retention check
-    Project.findById = () => ({
-      select: () => ({
-        clientId: dummyUserId,
-        freelancerId: null,
-      }),
-    });
+      const opaqueCursor = Buffer.from(
+        JSON.stringify({
+          createdAt: cursorTs.toISOString(),
+          _id: cursorMsgId.toString(),
+        })
+      ).toString("base64url");
 
-    Message.findById = async (id) => {
-      if (String(id) === String(cursorMsgId)) {
-        return { _id: cursorMsgId, createdAt: cursorTs };
-      }
-      return null;
-    };
-
-    let executedQuery = null;
-    Message.find = (q) => {
-      executedQuery = q;
-      return {
-        populate: () => ({
-          sort: () => ({
-            limit: async () => [
-              {
-                _id: new mongoose.Types.ObjectId(),
-                createdAt: new Date("2026-09-01T12:05:00.000Z"),
-                content: "Catchup message 1",
-                eventStatus: "ACTIVE",
-              },
-            ],
-          }),
+      // Mock project membership and retention check
+      Project.findById = () => ({
+        select: () => ({
+          clientId: dummyUserId,
+          freelancerId: null,
         }),
+      });
+
+      Message.findById = async (id) => {
+        if (String(id) === String(cursorMsgId)) {
+          return { _id: cursorMsgId, createdAt: cursorTs };
+        }
+        return null;
       };
-    };
 
-    let responseData = null;
-    const req = {
-      params: { projectId: dummyProjectId.toString() },
-      query: { cursor: opaqueCursor, limit: "10" },
-      user: { id: dummyUserId.toString(), role: "client" },
-    };
-    const res = {
-      json: (data) => {
-        responseData = data;
-        return res;
-      },
-      status: () => res,
-    };
+      let executedQuery = null;
+      Message.find = (q) => {
+        executedQuery = q;
+        return {
+          populate: () => ({
+            sort: () => ({
+              limit: async () => [
+                {
+                  _id: new mongoose.Types.ObjectId(),
+                  createdAt: new Date("2026-09-01T12:05:00.000Z"),
+                  content: "Catchup message 1",
+                  eventStatus: "ACTIVE",
+                },
+              ],
+            }),
+          }),
+        };
+      };
 
-    await getCatchUpMessages(req, res);
+      let responseData = null;
+      const req = {
+        params: { projectId: dummyProjectId.toString() },
+        query: { cursor: opaqueCursor, limit: "10" },
+        user: { id: dummyUserId.toString(), role: "client" },
+      };
+      const res = {
+        json: (data) => {
+          responseData = data;
+          return res;
+        },
+        status: () => res,
+      };
 
-    assert.ok(responseData, "Response data must be returned");
-    assert.equal(executedQuery.projectId, dummyProjectId.toString());
-    assert.deepEqual(executedQuery.eventStatus, { $ne: "ORPHANED_REORGED" }, "Must exclude ORPHANED_REORGED messages");
-    assert.ok(executedQuery.$or, "Cursor query must specify $or compound condition");
+      await getCatchUpMessages(req, res);
+
+      assert.ok(responseData, "Response data must be returned");
+      assert.equal(executedQuery.projectId, dummyProjectId.toString());
+      assert.deepEqual(executedQuery.eventStatus, { $ne: "ORPHANED_REORGED" }, "Must exclude ORPHANED_REORGED messages");
+      assert.ok(executedQuery.$or, "Cursor query must specify $or compound condition");
+    } finally {
+      Project.findById = origProjectFindById;
+      Message.findById = origMessageFindById;
+      Message.find = origMessageFind;
+    }
   });
 
   await t.test("Scenario 26: Equal-timestamp cursor pagination correctness", async () => {
@@ -118,30 +128,36 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 27: Suspended socket disconnect", async () => {
-    const activeUserId = new mongoose.Types.ObjectId();
-    const suspendedUserId = new mongoose.Types.ObjectId();
+    const origUserFindById = User.findById;
 
-    User.findById = (id) => ({
-      select: async () => {
-        if (String(id) === String(suspendedUserId)) {
-          return { _id: suspendedUserId, role: "freelancer", isSuspended: true, email: "suspended@fairwork.io" };
-        }
-        if (String(id) === String(activeUserId)) {
-          return { _id: activeUserId, role: "freelancer", isSuspended: false, email: "active@fairwork.io" };
-        }
-        return null;
-      },
-    });
+    try {
+      const activeUserId = new mongoose.Types.ObjectId();
+      const suspendedUserId = new mongoose.Types.ObjectId();
 
-    const suspendedResult = await isUserActiveAndAuthorized(suspendedUserId.toString());
-    assert.equal(suspendedResult, null, "Suspended user must return null to trigger socket disconnect");
+      User.findById = (id) => ({
+        select: async () => {
+          if (String(id) === String(suspendedUserId)) {
+            return { _id: suspendedUserId, role: "freelancer", isSuspended: true, email: "suspended@fairwork.io" };
+          }
+          if (String(id) === String(activeUserId)) {
+            return { _id: activeUserId, role: "freelancer", isSuspended: false, email: "active@fairwork.io" };
+          }
+          return null;
+        },
+      });
 
-    const activeResult = await isUserActiveAndAuthorized(activeUserId.toString());
-    assert.ok(activeResult, "Active user must return authorized user document");
-    assert.equal(activeResult.isSuspended, false);
+      const suspendedResult = await isUserActiveAndAuthorized(suspendedUserId.toString());
+      assert.equal(suspendedResult, null, "Suspended user must return null to trigger socket disconnect");
 
-    const invalidResult = await isUserActiveAndAuthorized("not-a-valid-object-id");
-    assert.equal(invalidResult, null, "Malformed userId must return null immediately");
+      const activeResult = await isUserActiveAndAuthorized(activeUserId.toString());
+      assert.ok(activeResult, "Active user must return authorized user document");
+      assert.equal(activeResult.isSuspended, false);
+
+      const invalidResult = await isUserActiveAndAuthorized("not-a-valid-object-id");
+      assert.equal(invalidResult, null, "Malformed userId must return null immediately");
+    } finally {
+      User.findById = origUserFindById;
+    }
   });
 
   await t.test("Scenario 28: REST project membership enforcement (non-member → 403)", async () => {
@@ -168,40 +184,48 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 30: OAuth suspension protection", async () => {
-    let capturedStatus = null;
-    let capturedBody = null;
-    const res = {
-      status: (code) => {
-        capturedStatus = code;
-        return res;
-      },
-      json: (body) => {
-        capturedBody = body;
-        return res;
-      },
-    };
+    const origOAuthCodeFindOneAndDelete = OAuthCode.findOneAndDelete;
+    const origUserFindById = User.findById;
 
-    const suspendedUserId = new mongoose.Types.ObjectId();
-    OAuthCode.findOneAndDelete = async () => ({
-      userId: suspendedUserId,
-      nonce: "test_nonce",
-    });
+    try {
+      let capturedStatus = null;
+      let capturedBody = null;
+      const res = {
+        status: (code) => {
+          capturedStatus = code;
+          return res;
+        },
+        json: (body) => {
+          capturedBody = body;
+          return res;
+        },
+      };
 
-    User.findById = async () => ({
-      _id: suspendedUserId,
-      isSuspended: true,
-      role: "freelancer",
-      suspendedReason: "Violation of terms",
-    });
+      const suspendedUserId = new mongoose.Types.ObjectId();
+      OAuthCode.findOneAndDelete = async () => ({
+        userId: suspendedUserId,
+        nonce: "test_nonce",
+      });
 
-    const req = {
-      body: { code: "oauth_test_code" },
-    };
+      User.findById = async () => ({
+        _id: suspendedUserId,
+        isSuspended: true,
+        role: "freelancer",
+        suspendedReason: "Violation of terms",
+      });
 
-    await exchangeOAuthCode(req, res);
+      const req = {
+        body: { code: "oauth_test_code" },
+      };
 
-    assert.equal(capturedStatus, 403, "Suspended OAuth account exchange must return 403 Forbidden");
-    assert.equal(capturedBody?.code, "ACCOUNT_SUSPENDED");
+      await exchangeOAuthCode(req, res);
+
+      assert.equal(capturedStatus, 403, "Suspended OAuth account exchange must return 403 Forbidden");
+      assert.equal(capturedBody?.code, "ACCOUNT_SUSPENDED");
+    } finally {
+      OAuthCode.findOneAndDelete = origOAuthCodeFindOneAndDelete;
+      User.findById = origUserFindById;
+    }
   });
 
   await t.test("Scenario 31: OAuth provider state isolation (separate cookies)", async () => {
@@ -281,32 +305,38 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
 
   await t.test("Scenario 35: Auth endpoint rate limiting (Redis fail-closed)", async () => {
     const origEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
     const origRedis = process.env.REDIS_URL;
-    delete process.env.REDIS_URL;
 
-    let statusCode = null;
-    let jsonBody = null;
-    const req = { ip: "127.0.0.1", body: { email: "attacker@test.com" } };
-    const res = {
-      status: (code) => {
-        statusCode = code;
-        return res;
-      },
-      json: (data) => {
-        jsonBody = data;
-        return res;
-      },
-    };
+    try {
+      process.env.NODE_ENV = "production";
+      delete process.env.REDIS_URL;
 
-    await authRateLimiter(req, res, () => {});
+      let statusCode = null;
+      let jsonBody = null;
+      const req = { ip: "127.0.0.1", body: { email: "attacker@test.com" } };
+      const res = {
+        status: (code) => {
+          statusCode = code;
+          return res;
+        },
+        json: (data) => {
+          jsonBody = data;
+          return res;
+        },
+      };
 
-    // Restore environment
-    process.env.NODE_ENV = origEnv;
-    if (origRedis) process.env.REDIS_URL = origRedis;
+      await authRateLimiter(req, res, () => {});
 
-    assert.equal(statusCode, 503, "Must fail closed with 503 when Redis is unavailable in production");
-    assert.equal(jsonBody?.code, "RATE_LIMIT_BACKEND_UNAVAILABLE");
+      assert.equal(statusCode, 503, "Must fail closed with 503 when Redis is unavailable in production");
+      assert.equal(jsonBody?.code, "RATE_LIMIT_BACKEND_UNAVAILABLE");
+    } finally {
+      process.env.NODE_ENV = origEnv;
+      if (origRedis !== undefined) {
+        process.env.REDIS_URL = origRedis;
+      } else {
+        delete process.env.REDIS_URL;
+      }
+    }
   });
 
   await t.test("Scenario 36: Decimal128 scale validation and business↔settlement separation", async () => {

@@ -30,11 +30,16 @@ const {
   reconcileVerifiedBlockchainEvent,
   buildBlockchainEventKey,
   decodeRawLogToVerifiedEvent,
+  isValidEthAddress,
 } = require("../src/services/reconciliationService");
 
 test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
-  // Shared in-memory lease simulation state
+  // In-memory lease simulation state
   let leaseDoc = null;
+  const origSyncStateFindOne = BlockchainSyncState.findOne;
+  const origSyncStateCreate = BlockchainSyncState.create;
+  const origSyncStateFindOneAndUpdate = BlockchainSyncState.findOneAndUpdate;
+
   BlockchainSyncState.findOne = async (q) => {
     if (leaseDoc && leaseDoc.key === q.key) return leaseDoc;
     return null;
@@ -61,7 +66,14 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
     return { ...leaseDoc };
   };
 
+  t.after(() => {
+    BlockchainSyncState.findOne = origSyncStateFindOne;
+    BlockchainSyncState.create = origSyncStateCreate;
+    BlockchainSyncState.findOneAndUpdate = origSyncStateFindOneAndUpdate;
+  });
+
   await t.test("Scenario 1: Lease initialization via ensureSyncState()", async () => {
+    // Explicit hermetic setup
     leaseDoc = null;
     await ensureSyncState("SEPOLIA_SYNC", 11155111, "0x1234567890123456789012345678901234567890");
     assert.equal(leaseDoc.key, "SEPOLIA_SYNC");
@@ -76,6 +88,15 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 2: Lease acquisition race (concurrent pods)", async () => {
+    // Explicit hermetic setup: lease exists but is unowned
+    leaseDoc = {
+      key: "SEPOLIA_SYNC",
+      leaseOwner: null,
+      leaseGeneration: 0,
+      leaseExpiresAt: new Date(0),
+      chainId: 11155111,
+    };
+
     const podA = await acquireLease("pod-a", "SEPOLIA_SYNC", 60000);
     assert.equal(podA.leaseOwner, "pod-a");
     assert.equal(podA.leaseGeneration, 1);
@@ -87,8 +108,14 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 3: Lease generation takeover (expired lease)", async () => {
-    // Simulate expired lease
-    leaseDoc.leaseExpiresAt = new Date(Date.now() - 1000);
+    // Explicit hermetic setup: lease is currently held by pod-a at generation 1, but expired
+    leaseDoc = {
+      key: "SEPOLIA_SYNC",
+      leaseOwner: "pod-a",
+      leaseGeneration: 1,
+      leaseExpiresAt: new Date(Date.now() - 1000), // Expired 1 second ago
+      chainId: 11155111,
+    };
 
     const takeover = await acquireLease("pod-b", "SEPOLIA_SYNC", 60000);
     assert.equal(takeover.leaseOwner, "pod-b");
@@ -96,14 +123,32 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 4: Heartbeat generation stability (renew does not increment)", async () => {
-    const genBefore = leaseDoc.leaseGeneration;
-    const renewed = await renewLease("pod-b", genBefore, "SEPOLIA_SYNC", 60000);
-    assert.equal(renewed.leaseGeneration, genBefore, "Renewing lease must not increment generation");
+    // Explicit hermetic setup: lease held by pod-b at generation 2
+    leaseDoc = {
+      key: "SEPOLIA_SYNC",
+      leaseOwner: "pod-b",
+      leaseGeneration: 2,
+      leaseExpiresAt: new Date(Date.now() + 10000),
+      chainId: 11155111,
+    };
+
+    const renewed = await renewLease("pod-b", 2, "SEPOLIA_SYNC", 60000);
+    assert.equal(renewed.leaseGeneration, 2, "Renewing lease must not increment generation");
     assert.ok(renewed.leaseExpiresAt > new Date());
   });
 
   await t.test("Scenario 5: Stale worker financial fencing (generation mismatch → abort)", async () => {
-    // Pod A still thinks it has generation 1; DB has generation 2
+    // Explicit hermetic setup: active lease is held by pod-b at generation 2
+    leaseDoc = {
+      key: "SEPOLIA_SYNC",
+      leaseOwner: "pod-b",
+      leaseGeneration: 2,
+      leaseExpiresAt: new Date(Date.now() + 60000),
+      lastFenceGeneration: 1,
+      chainId: 11155111,
+    };
+
+    // Stale Pod A (stuck on generation 1) attempts to validate fence against active generation 2 -> must abort
     await assert.rejects(
       () => validateFence("SEPOLIA_SYNC", "pod-a", 1),
       /STALE_GENERATION_FENCE_VIOLATION/
@@ -111,15 +156,25 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 6: Stale worker reorg fencing", async () => {
+    // Explicit hermetic setup: active lease is held by pod-b at generation 2
+    leaseDoc = {
+      key: "SEPOLIA_SYNC",
+      leaseOwner: "pod-b",
+      leaseGeneration: 2,
+      leaseExpiresAt: new Date(Date.now() + 60000),
+      lastFenceGeneration: 1,
+      chainId: 11155111,
+    };
+
     // Worker with mismatched podId must fail fencing
     await assert.rejects(
-      () => validateFence("SEPOLIA_SYNC", "pod-c", leaseDoc.leaseGeneration),
+      () => validateFence("SEPOLIA_SYNC", "pod-c", 2),
       /STALE_GENERATION_FENCE_VIOLATION/
     );
 
     // Legitimate owner with matching generation succeeds
-    const fenced = await validateFence("SEPOLIA_SYNC", "pod-b", leaseDoc.leaseGeneration);
-    assert.equal(fenced.lastFenceGeneration, leaseDoc.leaseGeneration);
+    const fenced = await validateFence("SEPOLIA_SYNC", "pod-b", 2);
+    assert.equal(fenced.lastFenceGeneration, 2);
   });
 
   await t.test("Scenario 7: Duplicate settlement event race (same sourceEventKey)", async () => {
@@ -202,10 +257,15 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 10: Wrong contract address rejection", async () => {
+    // Generate valid 20-byte address fixture (0x + exactly 40 hex digits = 42 chars)
+    const rogueAddress = "0x" + "9".repeat(40);
+    assert.equal(rogueAddress.length, 42, "Fixture must be exact 42-character string");
+    assert.equal(isValidEthAddress(rogueAddress), true, "Fixture must pass strict EVM address validation");
+
     assert.throws(
       () => decodeRawLogToVerifiedEvent({
         rawLog: {
-          address: "0x9999999999999999999999999999999999999999",
+          address: rogueAddress,
           topics: ["0x" + "0".repeat(64)],
           data: "0x",
         },
@@ -328,100 +388,126 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 15: Reorg common-ancestor rollback (canonical hash comparison)", async () => {
-    const mockPublicClientReorg = {
-      getBlock: async ({ blockNumber }) => {
-        const bn = Number(blockNumber);
-        if (bn === 105) return { hash: "0xFORK_HASH_105" };
-        if (bn === 104) return { hash: "0xCANONICAL_HASH_104" };
-        return null;
-      },
-    };
-    const mockCheckpoints = [
-      { blockNumber: 104, blockHash: "0xCANONICAL_HASH_104" },
-    ];
-    BlockCheckpoint.find = () => ({
-      sort: () => mockCheckpoints,
-    });
-    const reorgDetection = await detectReorg({
-      publicClient: mockPublicClientReorg,
-      chainId: 11155111,
-      contractAddress: "0x1234567890123456789012345678901234567890",
-      lastProcessedBlock: 105,
-      lastProcessedBlockHash: "0xOLD_BLOCK_HASH_105",
-    });
-    assert.equal(reorgDetection.hasReorg, true);
-    assert.equal(reorgDetection.commonAncestorBlock, 104);
-    assert.equal(reorgDetection.reorgDepth, 1);
+    const origBlockCheckpointFind = BlockCheckpoint.find;
+    try {
+      const mockPublicClientReorg = {
+        getBlock: async ({ blockNumber }) => {
+          const bn = Number(blockNumber);
+          if (bn === 105) return { hash: "0xFORK_HASH_105" };
+          if (bn === 104) return { hash: "0xCANONICAL_HASH_104" };
+          return null;
+        },
+      };
+      const mockCheckpoints = [
+        { blockNumber: 104, blockHash: "0xCANONICAL_HASH_104" },
+      ];
+      BlockCheckpoint.find = () => ({
+        sort: () => mockCheckpoints,
+      });
+      const reorgDetection = await detectReorg({
+        publicClient: mockPublicClientReorg,
+        chainId: 11155111,
+        contractAddress: "0x1234567890123456789012345678901234567890",
+        lastProcessedBlock: 105,
+        lastProcessedBlockHash: "0xOLD_BLOCK_HASH_105",
+      });
+      assert.equal(reorgDetection.hasReorg, true);
+      assert.equal(reorgDetection.commonAncestorBlock, 104);
+      assert.equal(reorgDetection.reorgDepth, 1);
+    } finally {
+      BlockCheckpoint.find = origBlockCheckpointFind;
+    }
   });
 
   await t.test("Scenario 16: Reorg deeper than MAX_REORG_DEPTH → HALT", async () => {
     assert.equal(MAX_REORG_DEPTH, 128);
-    const mockPublicClientReorg = {
-      getBlock: async () => ({ hash: "0xFORK_HASH" }),
-    };
-    BlockCheckpoint.find = () => ({
-      sort: () => [], // No matching checkpoint in depth
-    });
-    await assert.rejects(
-      () => detectReorg({
-        publicClient: mockPublicClientReorg,
-        chainId: 11155111,
-        contractAddress: "0x1234567890123456789012345678901234567890",
-        lastProcessedBlock: 200,
-        lastProcessedBlockHash: "0xOLD_BLOCK_HASH",
-      }),
-      /REORG_HISTORY_UNAVAILABLE/
-    );
+    const origBlockCheckpointFind = BlockCheckpoint.find;
+    try {
+      const mockPublicClientReorg = {
+        getBlock: async () => ({ hash: "0xFORK_HASH" }),
+      };
+      BlockCheckpoint.find = () => ({
+        sort: () => [], // No matching checkpoint in depth
+      });
+      await assert.rejects(
+        () => detectReorg({
+          publicClient: mockPublicClientReorg,
+          chainId: 11155111,
+          contractAddress: "0x1234567890123456789012345678901234567890",
+          lastProcessedBlock: 200,
+          lastProcessedBlockHash: "0xOLD_BLOCK_HASH",
+        }),
+        /REORG_HISTORY_UNAVAILABLE/
+      );
+    } finally {
+      BlockCheckpoint.find = origBlockCheckpointFind;
+    }
   });
 
   await t.test("Scenario 17: Reorg replacement settlement replay (Case 2 + Case 3)", async () => {
-    const dummyEventId = new mongoose.Types.ObjectId();
-    const dummyProjId = new mongoose.Types.ObjectId();
-    let settlementStatus = "ACTIVE";
-    let milestoneReleased = true;
+    const origSettlementFind = SettlementEvent.find;
+    const origSettlementUpdate = SettlementEvent.updateOne;
+    const origProjectUpdate = Project.updateOne;
+    const origOutboxUpdateMany = OutboxEvent.updateMany;
+    const origMessageUpdateMany = Message.updateMany;
+    const origCheckpointDeleteMany = BlockCheckpoint.deleteMany;
 
-    SettlementEvent.find = () => ({
-      session: () => [{
-        _id: dummyEventId,
-        projectId: dummyProjId,
-        milestoneIndex: 0,
-        sourceEventKey: "event_to_reorg",
-        eventName: "MilestoneReleased",
-      }],
-    });
-    SettlementEvent.updateOne = async (q, u) => {
-      if (u.$set && u.$set.status) settlementStatus = u.$set.status;
-      return { modifiedCount: 1 };
-    };
-    Project.updateOne = async (q, u) => {
-      if (u.$set && u.$set["milestones.0.paymentReleased"] !== undefined) {
-        milestoneReleased = u.$set["milestones.0.paymentReleased"];
-      }
-      return { modifiedCount: 1 };
-    };
-    OutboxEvent.updateMany = async () => ({ modifiedCount: 1 });
-    Message.updateMany = async () => ({ modifiedCount: 1 });
-    BlockCheckpoint.deleteMany = () => ({ session: async () => ({}) });
+    try {
+      const dummyEventId = new mongoose.Types.ObjectId();
+      const dummyProjId = new mongoose.Types.ObjectId();
+      let settlementStatus = "ACTIVE";
+      let milestoneReleased = true;
 
-    const mockSession = {
-      inTransaction: () => false,
-      startTransaction: () => {},
-      commitTransaction: async () => {},
-      abortTransaction: async () => {},
-      endSession: async () => {},
-    };
+      SettlementEvent.find = () => ({
+        session: () => [{
+          _id: dummyEventId,
+          projectId: dummyProjId,
+          milestoneIndex: 0,
+          sourceEventKey: "event_to_reorg",
+          eventName: "MilestoneReleased",
+        }],
+      });
+      SettlementEvent.updateOne = async (q, u) => {
+        if (u.$set && u.$set.status) settlementStatus = u.$set.status;
+        return { modifiedCount: 1 };
+      };
+      Project.updateOne = async (q, u) => {
+        if (u.$set && u.$set["milestones.0.paymentReleased"] !== undefined) {
+          milestoneReleased = u.$set["milestones.0.paymentReleased"];
+        }
+        return { modifiedCount: 1 };
+      };
+      OutboxEvent.updateMany = async () => ({ modifiedCount: 1 });
+      Message.updateMany = async () => ({ modifiedCount: 1 });
+      BlockCheckpoint.deleteMany = () => ({ session: async () => ({}) });
 
-    const reversal = await processReorgReversal({
-      chainId: 11155111,
-      contractAddress: "0x1234567890123456789012345678901234567890",
-      orphanedBlockStart: 105,
-      orphanedBlockEnd: 105,
-      session: mockSession,
-    });
+      const mockSession = {
+        inTransaction: () => false,
+        startTransaction: () => {},
+        commitTransaction: async () => {},
+        abortTransaction: async () => {},
+        endSession: async () => {},
+      };
 
-    assert.equal(reversal.reversedCount, 1);
-    assert.equal(settlementStatus, "ORPHANED_REORG");
-    assert.equal(milestoneReleased, false);
+      const reversal = await processReorgReversal({
+        chainId: 11155111,
+        contractAddress: "0x1234567890123456789012345678901234567890",
+        orphanedBlockStart: 105,
+        orphanedBlockEnd: 105,
+        session: mockSession,
+      });
+
+      assert.equal(reversal.reversedCount, 1);
+      assert.equal(settlementStatus, "ORPHANED_REORG");
+      assert.equal(milestoneReleased, false);
+    } finally {
+      SettlementEvent.find = origSettlementFind;
+      SettlementEvent.updateOne = origSettlementUpdate;
+      Project.updateOne = origProjectUpdate;
+      OutboxEvent.updateMany = origOutboxUpdateMany;
+      Message.updateMany = origMessageUpdateMany;
+      BlockCheckpoint.deleteMany = origCheckpointDeleteMany;
+    }
   });
 
   await t.test("Scenario 18: DLQ persistence failure → HALT", async () => {
@@ -493,96 +579,137 @@ test("Settlement Test Suite — 24 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 19: Outbox duplicate race (concurrent claim)", async () => {
-    const validSettlementId = new mongoose.Types.ObjectId();
-    SettlementEvent.findOneAndUpdate = async () => ({ _id: validSettlementId });
-    Message.findOneAndUpdate = async () => ({});
-    OutboxEvent.findOneAndUpdate = async () => null; // Stolen claim
-    const stolenOutcome = await processOutboxEntry({
-      _id: new mongoose.Types.ObjectId(),
-      settlementEventId: validSettlementId,
-      claimToken: "stale_token",
-      projectId: new mongoose.Types.ObjectId(),
-      sourceEventKey: "event_1",
-      content: "Milestone released",
-    });
-    assert.equal(stolenOutcome, "CLAIM_STOLEN");
+    const origSettlementFindOneAndUpdate = SettlementEvent.findOneAndUpdate;
+    const origMessageFindOneAndUpdate = Message.findOneAndUpdate;
+    const origOutboxFindOneAndUpdate = OutboxEvent.findOneAndUpdate;
+
+    try {
+      const validSettlementId = new mongoose.Types.ObjectId();
+      SettlementEvent.findOneAndUpdate = async () => ({ _id: validSettlementId });
+      Message.findOneAndUpdate = async () => ({});
+      OutboxEvent.findOneAndUpdate = async () => null; // Stolen claim
+      const stolenOutcome = await processOutboxEntry({
+        _id: new mongoose.Types.ObjectId(),
+        settlementEventId: validSettlementId,
+        claimToken: "stale_token",
+        projectId: new mongoose.Types.ObjectId(),
+        sourceEventKey: "event_1",
+        content: "Milestone released",
+      });
+      assert.equal(stolenOutcome, "CLAIM_STOLEN");
+    } finally {
+      SettlementEvent.findOneAndUpdate = origSettlementFindOneAndUpdate;
+      Message.findOneAndUpdate = origMessageFindOneAndUpdate;
+      OutboxEvent.findOneAndUpdate = origOutboxFindOneAndUpdate;
+    }
   });
 
   await t.test("Scenario 20: Outbox stale claim reclaim (expired lockedUntil)", async () => {
-    const validSettlementId = new mongoose.Types.ObjectId();
-    const expiredEntry = {
-      _id: new mongoose.Types.ObjectId(),
-      settlementEventId: validSettlementId,
-      projectId: new mongoose.Types.ObjectId(),
-      sourceEventKey: "event_poll_1",
-      content: "Test notification",
-      status: "PROCESSING",
-      lockedUntil: new Date(Date.now() - 5000),
-      attempts: 1,
-      maxAttempts: 5,
-    };
-    OutboxEvent.find = () => ({
-      limit: () => ({
-        lean: async () => [expiredEntry],
-      }),
-    });
-    let claimedBy = null;
-    OutboxEvent.findOneAndUpdate = async (q, u) => {
-      if (u.$set && u.$set.workerId) claimedBy = u.$set.workerId;
-      return { ...expiredEntry, ...u.$set };
-    };
-    SettlementEvent.findOneAndUpdate = async () => ({ _id: validSettlementId });
-    Message.findOneAndUpdate = async () => ({});
-    OutboxEvent.updateOne = async () => ({});
+    const origOutboxFind = OutboxEvent.find;
+    const origOutboxFindOneAndUpdate = OutboxEvent.findOneAndUpdate;
+    const origSettlementFindOneAndUpdate = SettlementEvent.findOneAndUpdate;
+    const origMessageFindOneAndUpdate = Message.findOneAndUpdate;
+    const origOutboxUpdateOne = OutboxEvent.updateOne;
 
-    const results = await pollAndProcessOutboxBatch("new-worker-pod", 1);
-    assert.equal(claimedBy, "new-worker-pod", "Expired lockedUntil entry must be reclaimed by new worker");
-    assert.equal(results.length, 1);
+    try {
+      const validSettlementId = new mongoose.Types.ObjectId();
+      const expiredEntry = {
+        _id: new mongoose.Types.ObjectId(),
+        settlementEventId: validSettlementId,
+        projectId: new mongoose.Types.ObjectId(),
+        sourceEventKey: "event_poll_1",
+        content: "Test notification",
+        status: "PROCESSING",
+        lockedUntil: new Date(Date.now() - 5000),
+        attempts: 1,
+        maxAttempts: 5,
+      };
+      OutboxEvent.find = () => ({
+        limit: () => ({
+          lean: async () => [expiredEntry],
+        }),
+      });
+      let claimedBy = null;
+      OutboxEvent.findOneAndUpdate = async (q, u) => {
+        if (u.$set && u.$set.workerId) claimedBy = u.$set.workerId;
+        return { ...expiredEntry, ...u.$set };
+      };
+      SettlementEvent.findOneAndUpdate = async () => ({ _id: validSettlementId });
+      Message.findOneAndUpdate = async () => ({});
+      OutboxEvent.updateOne = async () => ({});
+
+      const results = await pollAndProcessOutboxBatch("new-worker-pod", 1);
+      assert.equal(claimedBy, "new-worker-pod", "Expired lockedUntil entry must be reclaimed by new worker");
+      assert.equal(results.length, 1);
+    } finally {
+      OutboxEvent.find = origOutboxFind;
+      OutboxEvent.findOneAndUpdate = origOutboxFindOneAndUpdate;
+      SettlementEvent.findOneAndUpdate = origSettlementFindOneAndUpdate;
+      Message.findOneAndUpdate = origMessageFindOneAndUpdate;
+      OutboxEvent.updateOne = origOutboxUpdateOne;
+    }
   });
 
   await t.test("Scenario 21: Outbox crash recovery (idempotent Message + reclaim)", async () => {
-    const validSettlementId = new mongoose.Types.ObjectId();
-    SettlementEvent.findOneAndUpdate = async () => ({ _id: validSettlementId });
-    // Simulate crash recovery: Message upsert encounters E11000 duplicate key
-    Message.findOneAndUpdate = async () => {
-      const err = new Error("E11000 duplicate key error collection");
-      err.code = 11000;
-      err.keyPattern = { projectId: 1, systemEventKey: 1 };
-      throw err;
-    };
-    OutboxEvent.findOneAndUpdate = async () => ({ status: "PROCESSED" });
+    const origSettlementFindOneAndUpdate = SettlementEvent.findOneAndUpdate;
+    const origMessageFindOneAndUpdate = Message.findOneAndUpdate;
+    const origOutboxFindOneAndUpdate = OutboxEvent.findOneAndUpdate;
 
-    const recoveryOutcome = await processOutboxEntry({
-      _id: new mongoose.Types.ObjectId(),
-      settlementEventId: validSettlementId,
-      claimToken: "valid_token",
-      projectId: new mongoose.Types.ObjectId(),
-      sourceEventKey: "event_retry_1",
-      content: "Retried milestone notification",
-    });
-    assert.equal(recoveryOutcome, "PROCESSED", "E11000 on Message upsert must be treated idempotently as success");
+    try {
+      const validSettlementId = new mongoose.Types.ObjectId();
+      SettlementEvent.findOneAndUpdate = async () => ({ _id: validSettlementId });
+      Message.findOneAndUpdate = async () => {
+        const err = new Error("E11000 duplicate key error collection");
+        err.code = 11000;
+        err.keyPattern = { projectId: 1, systemEventKey: 1 };
+        throw err;
+      };
+      OutboxEvent.findOneAndUpdate = async () => ({ status: "PROCESSED" });
+
+      const recoveryOutcome = await processOutboxEntry({
+        _id: new mongoose.Types.ObjectId(),
+        settlementEventId: validSettlementId,
+        claimToken: "valid_token",
+        projectId: new mongoose.Types.ObjectId(),
+        sourceEventKey: "event_retry_1",
+        content: "Retried milestone notification",
+      });
+      assert.equal(recoveryOutcome, "PROCESSED", "E11000 on Message upsert must be treated idempotently as success");
+    } finally {
+      SettlementEvent.findOneAndUpdate = origSettlementFindOneAndUpdate;
+      Message.findOneAndUpdate = origMessageFindOneAndUpdate;
+      OutboxEvent.findOneAndUpdate = origOutboxFindOneAndUpdate;
+    }
   });
 
   await t.test("Scenario 22: Reorg↔outbox concurrent race (atomic serialization)", async () => {
-    // Concurrent reorg transaction orphaned the settlement event
-    SettlementEvent.findOneAndUpdate = async () => null;
-    let outboxCancelled = false;
-    OutboxEvent.findOneAndUpdate = async (q, u) => {
-      if (u.$set && u.$set.status === "CANCELLED_REORG") outboxCancelled = true;
-      return {};
-    };
+    const origSettlementFindOneAndUpdate = SettlementEvent.findOneAndUpdate;
+    const origOutboxFindOneAndUpdate = OutboxEvent.findOneAndUpdate;
 
-    const reorgRaceOutcome = await processOutboxEntry({
-      _id: new mongoose.Types.ObjectId(),
-      settlementEventId: new mongoose.Types.ObjectId(),
-      claimToken: "token_1",
-      projectId: new mongoose.Types.ObjectId(),
-      sourceEventKey: "event_orphaned_1",
-      content: "Orphaned milestone",
-    });
+    try {
+      // Concurrent reorg transaction orphaned the settlement event
+      SettlementEvent.findOneAndUpdate = async () => null;
+      let outboxCancelled = false;
+      OutboxEvent.findOneAndUpdate = async (q, u) => {
+        if (u.$set && u.$set.status === "CANCELLED_REORG") outboxCancelled = true;
+        return {};
+      };
 
-    assert.equal(reorgRaceOutcome, "CANCELLED_REORG");
-    assert.equal(outboxCancelled, true, "Outbox event must be transitioned to CANCELLED_REORG");
+      const reorgRaceOutcome = await processOutboxEntry({
+        _id: new mongoose.Types.ObjectId(),
+        settlementEventId: new mongoose.Types.ObjectId(),
+        claimToken: "token_1",
+        projectId: new mongoose.Types.ObjectId(),
+        sourceEventKey: "event_orphaned_1",
+        content: "Orphaned milestone",
+      });
+
+      assert.equal(reorgRaceOutcome, "CANCELLED_REORG");
+      assert.equal(outboxCancelled, true, "Outbox event must be transitioned to CANCELLED_REORG");
+    } finally {
+      SettlementEvent.findOneAndUpdate = origSettlementFindOneAndUpdate;
+      OutboxEvent.findOneAndUpdate = origOutboxFindOneAndUpdate;
+    }
   });
 
   await t.test("Scenario 23: Funding reconciliation mismatch rejection (on-chain total ≠ expected)", async () => {

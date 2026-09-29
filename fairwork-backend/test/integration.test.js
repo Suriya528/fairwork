@@ -67,17 +67,22 @@ test("Integration-Gate Logic Suite", async (t) => {
   });
 
   await t.test("Gate 3: Generation-Based Lease Fencing Takeover Simulation", async () => {
-    const syncDoc = { key: "GATE3_SYNC", leaseOwner: "pod-1", leaseGeneration: 2 };
-    BlockchainSyncState.findOneAndUpdate = async (q) => {
-      if (q.leaseGeneration === 2 && q.leaseOwner === "pod-1") return syncDoc;
-      return null;
-    };
-    await assert.rejects(
-      () => validateFence("GATE3_SYNC", "pod-1", 1),
-      /STALE_GENERATION_FENCE_VIOLATION/
-    );
-    const validFence = await validateFence("GATE3_SYNC", "pod-1", 2);
-    assert.equal(validFence.key, "GATE3_SYNC");
+    const origFindOneAndUpdate = BlockchainSyncState.findOneAndUpdate;
+    try {
+      const syncDoc = { key: "GATE3_SYNC", leaseOwner: "pod-1", leaseGeneration: 2 };
+      BlockchainSyncState.findOneAndUpdate = async (q) => {
+        if (q.leaseGeneration === 2 && q.leaseOwner === "pod-1") return syncDoc;
+        return null;
+      };
+      await assert.rejects(
+        () => validateFence("GATE3_SYNC", "pod-1", 1),
+        /STALE_GENERATION_FENCE_VIOLATION/
+      );
+      const validFence = await validateFence("GATE3_SYNC", "pod-1", 2);
+      assert.equal(validFence.key, "GATE3_SYNC");
+    } finally {
+      BlockchainSyncState.findOneAndUpdate = origFindOneAndUpdate;
+    }
   });
 
   await t.test("Gate 4: USD Exact Decimal128 Validation & Formatting", async () => {
@@ -137,25 +142,30 @@ test("Integration-Gate Logic Suite", async (t) => {
   });
 
   await t.test("Gate 8: Reorg Common-Ancestor Rollback Strategy", async () => {
-    const mockClient = {
-      getBlock: async ({ blockNumber }) => {
-        if (Number(blockNumber) === 200) return { hash: "0xNEW_FORK_HASH" };
-        if (Number(blockNumber) === 199) return { hash: "0xCOMMON_ANCESTOR_HASH" };
-        return null;
-      },
-    };
-    BlockCheckpoint.find = () => ({
-      sort: () => [{ blockNumber: 199, blockHash: "0xCOMMON_ANCESTOR_HASH" }],
-    });
-    const reorg = await detectReorg({
-      publicClient: mockClient,
-      chainId: 11155111,
-      contractAddress: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
-      lastProcessedBlock: 200,
-      lastProcessedBlockHash: "0xOLD_ORPHANED_HASH",
-    });
-    assert.equal(reorg.hasReorg, true);
-    assert.equal(reorg.commonAncestorBlock, 199);
+    const origBlockCheckpointFind = BlockCheckpoint.find;
+    try {
+      const mockClient = {
+        getBlock: async ({ blockNumber }) => {
+          if (Number(blockNumber) === 200) return { hash: "0xNEW_FORK_HASH" };
+          if (Number(blockNumber) === 199) return { hash: "0xCOMMON_ANCESTOR_HASH" };
+          return null;
+        },
+      };
+      BlockCheckpoint.find = () => ({
+        sort: () => [{ blockNumber: 199, blockHash: "0xCOMMON_ANCESTOR_HASH" }],
+      });
+      const reorg = await detectReorg({
+        publicClient: mockClient,
+        chainId: 11155111,
+        contractAddress: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
+        lastProcessedBlock: 200,
+        lastProcessedBlockHash: "0xOLD_ORPHANED_HASH",
+      });
+      assert.equal(reorg.hasReorg, true);
+      assert.equal(reorg.commonAncestorBlock, 199);
+    } finally {
+      BlockCheckpoint.find = origBlockCheckpointFind;
+    }
   });
 
   await t.test("Gate 9: Mongoose Models & Index Schema Validation", async () => {
@@ -216,22 +226,29 @@ test("Integration-Gate Logic Suite", async (t) => {
     }
 
     // Verify processReorgReversal handles reversal gracefully without throwing
-    SettlementEvent.find = () => ({ session: () => [] });
-    BlockCheckpoint.deleteMany = () => ({ session: async () => ({}) });
-    const reversalResult = await processReorgReversal({
-      chainId: 11155111,
-      contractAddress: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
-      orphanedBlockStart: 200,
-      orphanedBlockEnd: 200,
-      session: {
-        inTransaction: () => false,
-        startTransaction: () => {},
-        commitTransaction: async () => {},
-        abortTransaction: async () => {},
-        endSession: async () => {},
-      },
-    });
-    assert.equal(reversalResult.reversedCount, 0);
+    const origSettlementFind = SettlementEvent.find;
+    const origCheckpointDeleteMany = BlockCheckpoint.deleteMany;
+    try {
+      SettlementEvent.find = () => ({ session: () => [] });
+      BlockCheckpoint.deleteMany = () => ({ session: async () => ({}) });
+      const reversalResult = await processReorgReversal({
+        chainId: 11155111,
+        contractAddress: "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385",
+        orphanedBlockStart: 200,
+        orphanedBlockEnd: 200,
+        session: {
+          inTransaction: () => false,
+          startTransaction: () => {},
+          commitTransaction: async () => {},
+          abortTransaction: async () => {},
+          endSession: async () => {},
+        },
+      });
+      assert.equal(reversalResult.reversedCount, 0);
+    } finally {
+      SettlementEvent.find = origSettlementFind;
+      BlockCheckpoint.deleteMany = origCheckpointDeleteMany;
+    }
   });
 
   await t.test("Gate 12: Startup Validator with Optional vs Explicit OAuth", async () => {
