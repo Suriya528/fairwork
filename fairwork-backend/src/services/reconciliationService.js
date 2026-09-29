@@ -10,6 +10,7 @@ const QuarantineEvent = require("../models/QuarantineEvent");
 const Message = require("../models/Message");
 const Project = require("../models/Project.js");
 const { validateFence } = require("./leaseManager");
+const { notifyOperatorAlert } = require("../utils/alertNotifier");
 
 const FINANCIAL_INVARIANTS = {
   MIN_TRANSACTION_CENTS: 1n,
@@ -273,6 +274,12 @@ async function reconcileVerifiedBlockchainEvent({
       rawEventData: verifiedEvent,
       errorMessage: "MISSING_ON_CHAIN_ESCROW_STATE",
     });
+    notifyOperatorAlert({
+      level: "ERROR",
+      title: "SECURITY_VALIDATION_FAILURE",
+      message: "MISSING_ON_CHAIN_ESCROW_STATE",
+      details: { chainId, contractAddress, transactionHash, logIndex },
+    }).catch(() => {});
     throw new Error("MISSING_ON_CHAIN_ESCROW_STATE");
   }
 

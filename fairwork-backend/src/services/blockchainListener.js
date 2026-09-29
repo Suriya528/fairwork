@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { logger } = require("../utils/logger");
+const { notifyOperatorAlert } = require("../utils/alertNotifier");
 const { createPublicClient, http } = require("viem");
 const { resolveViemChain, getRpcUrl } = require("./chainResolver");
 const Project = require("../models/Project.js");
@@ -450,6 +451,13 @@ async function handleListenerLoopError(err, podId = "default-pod", QuarantineEve
     listenerStatus.healthy = false;
     listenerStatus.halted = true;
     logger.error(`CRITICAL INDEXER HALT: ${err?.message}`);
+    notifyOperatorAlert({
+      level: "CRITICAL",
+      title: "CRITICAL_INDEXER_HALT",
+      message: err?.message,
+      details: { podId, consecutiveFailures: listenerStatus.consecutiveFailures },
+      err,
+    }).catch(() => {});
     try {
       await QuarantineEventModel.create({
         category: "OPERATOR_REVIEW",
