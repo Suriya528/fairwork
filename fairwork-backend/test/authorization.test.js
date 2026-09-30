@@ -330,7 +330,11 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       assert.equal(statusCode, 503, "Must fail closed with 503 when Redis is unavailable in production");
       assert.equal(jsonBody?.code, "RATE_LIMIT_BACKEND_UNAVAILABLE");
     } finally {
-      process.env.NODE_ENV = origEnv;
+      if (origEnv !== undefined) {
+        process.env.NODE_ENV = origEnv;
+      } else {
+        delete process.env.NODE_ENV;
+      }
       if (origRedis !== undefined) {
         process.env.REDIS_URL = origRedis;
       } else {

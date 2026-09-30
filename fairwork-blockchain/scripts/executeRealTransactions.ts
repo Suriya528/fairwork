@@ -8,13 +8,14 @@ async function main() {
   const publicClient = await viem.getPublicClient();
 
   const tokenAddress = "0xf21bdf6737a3009359f9ec1fa515e6d74702f575";
-  const escrowAddress = "0x7d51b87db4df857cdd76ad63a9ace7b5c5599385";
-  const testProjectId = "6a8470454d7d6a9f4bc9375e"; // Valid 24-character MongoDB ObjectId
+  const escrowAddress = (process.env.CANONICAL_ESCROW_ADDRESS || "0xc0d1b74a30a82d6fb846e446758a8c2ff391376c") as `0x${string}`;
+  const testProjectId = "rehearsal_" + Date.now();
   const freelancerWallet = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
   const milestoneAmounts = [100n * 10n ** 6n, 200n * 10n ** 6n]; // $100 and $200 (6 decimals)
   const totalFunding = 300n * 10n ** 6n;
 
   console.log("Deployer / Client Wallet:", deployer.account.address);
+  console.log("Freelancer Wallet:       ", freelancerWallet);
   console.log("Test Project ID:         ", testProjectId);
   console.log("Token Address:           ", tokenAddress);
   console.log("Escrow Contract Address: ", escrowAddress);
