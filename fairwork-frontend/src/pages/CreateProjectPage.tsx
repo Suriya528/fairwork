@@ -389,6 +389,16 @@ export function CreateProjectPage() {
               >
                 Retry / Check Approval
               </Button>
+              {(isConnecting || isVerifying) && (
+                <button
+                  type="button"
+                  onClick={cancelPendingAction}
+                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-900 dark:text-rose-200 font-semibold text-xs transition-colors cursor-pointer"
+                  title="Cancel pending wallet request"
+                >
+                  Cancel
+                </button>
+              )}
               <button
                 type="button"
                 onClick={clearWalletError}

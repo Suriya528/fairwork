@@ -170,15 +170,27 @@ export function Web3WalletCard({
                   Install MetaMask
                   <FiExternalLink className="h-3 w-3" />
                 </a>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  loading={isConnecting || isVerifying}
-                  onClick={connectAndVerify}
-                  leftIcon={<FiShield className="h-3.5 w-3.5" />}
-                >
-                  Connect Wallet
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={isConnecting || isVerifying}
+                    onClick={connectAndVerify}
+                    leftIcon={<FiShield className="h-3.5 w-3.5" />}
+                  >
+                    Connect Wallet
+                  </Button>
+                  {(isConnecting || isVerifying) && (
+                    <button
+                      type="button"
+                      onClick={cancelPendingAction}
+                      className="text-xs text-muted hover:text-foreground underline px-1 py-1 cursor-pointer"
+                      title="Cancel pending wallet request"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </>
             ) : !connectedAccount ? (
               <div className="flex items-center gap-2">

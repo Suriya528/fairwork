@@ -64,7 +64,7 @@ const TARGET_CHAIN_HEX = `0x${TARGET_CHAIN_ID.toString(16)}`
  */
 export function withTimeout<T>(
   promise: Promise<T>,
-  timeoutMs = 35000,
+  timeoutMs = 12000,
   timeoutMessage = "Wallet request timed out or was closed in MetaMask."
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout>
@@ -135,6 +135,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const verifiedWalletAddress = user?.walletAddress ? user.walletAddress.toLowerCase() : null
   const verifiedWalletAddressRef = useRef(verifiedWalletAddress)
   verifiedWalletAddressRef.current = verifiedWalletAddress
+
+  const activeRequestIdRef = useRef(0)
+  const requestStartTimeRef = useRef(0)
 
   const isCorrectNetwork = chainId === TARGET_CHAIN_ID
   const isVerified = Boolean(
@@ -305,53 +308,100 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [connectedAccount, verifiedWalletAddress])
 
-  // Auto-detect when MetaMask extension popup is closed or dismissed without approving
+  // Active Watchdog to detect when user closed or dismissed MetaMask popup without approving
   useEffect(() => {
     if (typeof window === "undefined") return
+    if (walletState !== "CONNECTING" && walletState !== "VERIFYING") return
 
-    let focusTimer: ReturnType<typeof setTimeout>
+    let isCancelled = false
+    let hasBlurred = false
 
-    const handleWindowFocus = () => {
-      // If we are currently CONNECTING or VERIFYING when the window regains focus:
-      if (walletState === "CONNECTING" || walletState === "VERIFYING") {
-        clearTimeout(focusTimer)
-        focusTimer = setTimeout(async () => {
-          try {
-            const provider = getInjectedProvider()
-            if (!provider) return
+    const handleBlur = () => {
+      hasBlurred = true
+    }
 
-            const currentAccounts = await provider.request({ method: "eth_accounts" })
-            if (Array.isArray(currentAccounts) && currentAccounts.length > 0) {
-              const acc = currentAccounts[0].toLowerCase()
-              setConnectedAccount(acc)
-              const vAddr = verifiedWalletAddressRef.current
-              setWalletState(vAddr && acc === vAddr ? "VERIFIED" : "CONNECTED")
-              clearError()
-            } else if (walletState === "CONNECTING") {
-              // The user focused back on the tab, but no accounts were authorized.
-              // MetaMask popup was closed or dismissed without approving.
-              setWalletState("DISCONNECTED")
-              setErrorState("USER_REJECTED")
-              setErrorMessage("Wallet prompt was closed or cancelled in MetaMask. Click 'Connect Wallet' to try again.")
-            } else if (walletState === "VERIFYING") {
-              // The user focused back on the tab, but verification was not completed.
-              setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
-              setErrorState("USER_REJECTED")
-              setErrorMessage("Signature request was closed or cancelled in MetaMask. Click 'Sign EIP-712 Verification' to try again.")
-            }
-          } catch {
-            if (walletState === "CONNECTING") {
-              setWalletState("DISCONNECTED")
-            }
+    const checkAndRecoverIfClosed = async (delayMs = 200) => {
+      if (delayMs > 0) {
+        await new Promise((r) => setTimeout(r, delayMs))
+      }
+      if (isCancelled) return
+
+      try {
+        const provider = getInjectedProvider()
+        if (!provider) return
+
+        const currentAccounts = await provider.request({ method: "eth_accounts" })
+        if (Array.isArray(currentAccounts) && currentAccounts.length > 0) {
+          const acc = currentAccounts[0].toLowerCase()
+          setConnectedAccount(acc)
+          const vAddr = verifiedWalletAddressRef.current
+          if (walletState === "VERIFYING" && (!vAddr || acc !== vAddr)) {
+            activeRequestIdRef.current++
+            setWalletState("CONNECTED")
+            setErrorState("USER_REJECTED")
+            setErrorMessage("Signature request was closed or cancelled in MetaMask. Click 'Sign EIP-712 Verification' to try again.")
+          } else {
+            setWalletState(vAddr && acc === vAddr ? "VERIFIED" : "CONNECTED")
+            clearError()
           }
-        }, 1200)
+        } else {
+          // If no accounts authorized and user is back on the page:
+          activeRequestIdRef.current++
+          setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
+          setErrorState("USER_REJECTED")
+          setErrorMessage("Wallet prompt was closed or cancelled. Click 'Connect Wallet' to try again.")
+        }
+      } catch {
+        activeRequestIdRef.current++
+        setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
       }
     }
 
-    window.addEventListener("focus", handleWindowFocus)
+    // 1. User clicked anywhere on the webpage while connecting/verifying
+    // In Chromium, clicking on the webpage closes any open extension popup.
+    const handlePointerDown = () => {
+      if (Date.now() - requestStartTimeRef.current > 500) {
+        void checkAndRecoverIfClosed(150)
+      }
+    }
+
+    // 2. User pressed Escape key
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        activeRequestIdRef.current++
+        setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
+        clearError()
+      }
+    }
+
+    // 3. Window focus or visibility change
+    const handleFocusOrVisible = () => {
+      if (Date.now() - requestStartTimeRef.current > 500) {
+        void checkAndRecoverIfClosed(250)
+      }
+    }
+
+    // 4. If window blurred (MetaMask opened) and subsequently regained focus
+    const interval = setInterval(() => {
+      if (hasBlurred && document.hasFocus() && Date.now() - requestStartTimeRef.current > 800) {
+        void checkAndRecoverIfClosed(150)
+      }
+    }, 800)
+
+    window.addEventListener("blur", handleBlur)
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true })
+    window.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("focus", handleFocusOrVisible)
+    document.addEventListener("visibilitychange", handleFocusOrVisible)
+
     return () => {
-      clearTimeout(focusTimer)
-      window.removeEventListener("focus", handleWindowFocus)
+      isCancelled = true
+      clearInterval(interval)
+      window.removeEventListener("blur", handleBlur)
+      window.removeEventListener("pointerdown", handlePointerDown)
+      window.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener("focus", handleFocusOrVisible)
+      document.removeEventListener("visibilitychange", handleFocusOrVisible)
     }
   }, [walletState, connectedAccount, clearError])
 
@@ -407,6 +457,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Step 2: Connect Wallet Account
   const connect = useCallback(async (): Promise<string | null> => {
     clearError()
+    const currentReqId = ++activeRequestIdRef.current
+    requestStartTimeRef.current = Date.now()
 
     const provider = getInjectedProvider()
     if (!provider) {
@@ -441,10 +493,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         try {
           accounts = await withTimeout(
             wallet.requestAddresses(),
-            35000,
+            12000,
             "Wallet connection request timed out or was closed in MetaMask."
           )
         } catch (reqErr: any) {
+          if (currentReqId !== activeRequestIdRef.current) return null
           if (reqErr?.code === -32002 || (typeof reqErr?.message === "string" && reqErr.message.includes("already pending"))) {
             try {
               const retryAccounts = await provider.request({ method: "eth_accounts" })
@@ -461,6 +514,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           }
         }
       }
+
+      if (currentReqId !== activeRequestIdRef.current) return null
 
       const account = accounts[0]
       if (!account) {
@@ -484,6 +539,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setWalletState(isUserVerified ? "VERIFIED" : "CONNECTED")
       return normalizedAccount
     } catch (err: unknown) {
+      if (currentReqId !== activeRequestIdRef.current) return null
       const msg = err instanceof Error ? err.message : "Failed to connect wallet"
       if (msg.includes("rejected") || msg.includes("denied") || msg.includes("User rejected")) {
         setErrorState("USER_REJECTED")
@@ -506,6 +562,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         let pollCount = 0
         const pollInterval = setInterval(async () => {
           pollCount++
+          if (currentReqId !== activeRequestIdRef.current) {
+            clearInterval(pollInterval)
+            return
+          }
           try {
             const p = getInjectedProvider()
             if (p) {
@@ -541,7 +601,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           tone: "error",
         })
       }
-      setWalletState("DISCONNECTED")
+      if (currentReqId === activeRequestIdRef.current) {
+        setWalletState("DISCONNECTED")
+      }
       return null
     }
   }, [clearError, switchNetwork, toast, verifiedWalletAddress])
@@ -549,6 +611,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Step 3: Cryptographic EIP-712 Ownership Verification & Backend Link
   const verify = useCallback(async (providedAccount?: string): Promise<boolean> => {
     clearError()
+    const currentReqId = ++activeRequestIdRef.current
+    requestStartTimeRef.current = Date.now()
 
     if (!token) {
       setErrorState("VERIFICATION_FAILED")
@@ -577,7 +641,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     let activeAccount = providedAccount || connectedAccount
     if (!activeAccount) {
       const acc = await connect()
-      if (!acc) return false
+      if (!acc || currentReqId !== activeRequestIdRef.current) return false
       activeAccount = acc
     }
 
@@ -602,6 +666,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      if (currentReqId !== activeRequestIdRef.current) return false
+
       const challenge = await getWalletNonce(token)
 
       const signature = await withTimeout(
@@ -616,9 +682,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             purpose: challenge.purpose,
           },
         }),
-        45000,
+        15000,
         "EIP-712 signature request timed out or was closed in MetaMask."
       )
+
+      if (currentReqId !== activeRequestIdRef.current) return false
 
       const verifiedUser = await apiVerifyWallet(activeAccount, challenge.nonce, signature, token)
 
@@ -634,6 +702,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       })
       return true
     } catch (err: unknown) {
+      if (currentReqId !== activeRequestIdRef.current) return false
       const msg = err instanceof Error ? err.message : "Wallet verification failed"
 
       if (msg.includes("already associated") || msg.includes("already linked")) {
@@ -691,6 +760,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   // Explicitly cancel any pending connect / verify UI loading state
   const cancelPendingAction = useCallback(() => {
+    activeRequestIdRef.current++
     setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
     setErrorState(null)
     setErrorMessage("")
