@@ -55,6 +55,7 @@ export const ERC20_ABI = [
   { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ type: "address", name: "owner" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "allowance", stateMutability: "view", inputs: [{ type: "address", name: "owner" }, { type: "address", name: "spender" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ type: "address", name: "spender" }, { type: "uint256", name: "amount" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ type: "address", name: "to" }, { type: "uint256", name: "amount" }], outputs: [] },
 ] as const
 
 export const ESCROW_ABI = [
@@ -304,6 +305,73 @@ export async function claimEscrowRefund(projectId: string, verifiedWallet: strin
     abi: ESCROW_ABI,
     functionName: "refund",
     args: [projectId],
+  })
+  await confirm(txHash)
+  return txHash
+}
+
+/**
+ * Reads the token balance of an account on Sepolia.
+ */
+export async function getUsdcBalance(account?: string | null): Promise<{
+  rawBalance: bigint
+  formattedBalance: string
+  symbol: string
+  decimals: number
+  numericBalance: number
+}> {
+  if (!account || !publicClient || !usdcAddress) {
+    return { rawBalance: 0n, formattedBalance: "0", symbol: "USDC", decimals: 6, numericBalance: 0 }
+  }
+  try {
+    const decimals = await publicClient.readContract({
+      address: usdcAddress,
+      abi: ERC20_ABI,
+      functionName: "decimals",
+    })
+    let symbol = "USDC"
+    try {
+      symbol = await publicClient.readContract({
+        address: usdcAddress,
+        abi: ERC20_ABI,
+        functionName: "symbol",
+      })
+    } catch {
+      // fallback
+    }
+    const rawBalance = await publicClient.readContract({
+      address: usdcAddress,
+      abi: ERC20_ABI,
+      functionName: "balanceOf",
+      args: [account as `0x${string}`],
+    })
+    const formattedBalance = formatUnits(rawBalance, decimals)
+    const numericBalance = Number(formattedBalance) || 0
+    return { rawBalance, formattedBalance, symbol, decimals, numericBalance }
+  } catch (err) {
+    console.error("Failed to read USDC token balance:", err)
+    return { rawBalance: 0n, formattedBalance: "0", symbol: "USDC", decimals: 6, numericBalance: 0 }
+  }
+}
+
+/**
+ * Mints testnet mUSDC on Sepolia to fund project escrows.
+ */
+export async function mintTestnetUsdc(account: string, amountFormatted = "1000"): Promise<`0x${string}`> {
+  const c = configured()
+  const { wallet, account: connected } = await connectWallet()
+  const decimals = await c.publicClient.readContract({
+    address: c.usdcAddress,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+  })
+  const amountUnits = parseUnits(amountFormatted, decimals)
+  const txHash = await wallet.writeContract({
+    account: connected,
+    address: c.usdcAddress,
+    abi: ERC20_ABI,
+    functionName: "mint",
+    args: [account as `0x${string}`, amountUnits],
   })
   await confirm(txHash)
   return txHash

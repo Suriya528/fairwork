@@ -1,6 +1,16 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { FiPlus, FiTrash2, FiClock, FiCalendar, FiZap } from "react-icons/fi"
+import {
+  FiPlus,
+  FiTrash2,
+  FiClock,
+  FiCalendar,
+  FiZap,
+  FiShield,
+  FiRefreshCw,
+  FiAlertTriangle,
+  FiCheckCircle,
+} from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/Card"
 import { Input } from "@/components/ui/Input"
@@ -9,8 +19,10 @@ import { Textarea } from "@/components/ui/Textarea"
 import { Badge } from "@/components/ui/Badge"
 import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
+import { useWallet } from "@/context/WalletContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { createProject } from "@/services/projectsApi"
+import { getUsdcBalance, mintTestnetUsdc } from "@/services/web3"
 import { PROJECT_CATEGORIES } from "@/data/categories"
 import { formatDateTime, formatDeadlineCountdown } from "@/lib/format"
 import { AiProjectGeneratorModal } from "@/components/ai/AiProjectGeneratorModal"
@@ -60,6 +72,67 @@ export function CreateProjectPage() {
 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [verificationModalOpen, setVerificationModalOpen] = useState(false)
+
+  const {
+    isVerified,
+    connectedAccount,
+    connectAndVerify,
+    isConnecting,
+    isVerifying,
+  } = useWallet()
+
+  const hasVerifiedWallet = Boolean(isVerified || user?.walletAddress)
+  const [tokenBalance, setTokenBalance] = useState<{
+    formattedBalance: string
+    symbol: string
+    numericBalance: number
+  } | null>(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
+  const [mintingToken, setMintingToken] = useState(false)
+  const [mintSuccess, setMintSuccess] = useState("")
+
+  const activeAccount = connectedAccount || user?.walletAddress
+
+  const refreshBalance = useCallback(async () => {
+    if (!activeAccount) {
+      setTokenBalance(null)
+      return
+    }
+    setBalanceLoading(true)
+    try {
+      const res = await getUsdcBalance(activeAccount)
+      setTokenBalance(res)
+    } catch {
+      // ignore
+    } finally {
+      setBalanceLoading(false)
+    }
+  }, [activeAccount])
+
+  useEffect(() => {
+    void refreshBalance()
+  }, [refreshBalance])
+
+  const handleMintUsdc = async () => {
+    if (!activeAccount) return
+    setMintingToken(true)
+    setMintSuccess("")
+    setError("")
+    try {
+      await mintTestnetUsdc(activeAccount, "1000")
+      setMintSuccess("Successfully minted 1,000 testnet USDC into your connected wallet!")
+      await refreshBalance()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to mint testnet USDC.")
+    } finally {
+      setMintingToken(false)
+    }
+  }
+
+  const numBudget = Number(budget) || 0
+  const isBalanceInsufficient = Boolean(
+    hasVerifiedWallet && tokenBalance && numBudget > 0 && tokenBalance.numericBalance < numBudget,
+  )
 
   const handleApplyAiScope = (scope: {
     title: string
@@ -117,9 +190,13 @@ export function CreateProjectPage() {
     )
 
   const submit = async () => {
-    if (!user?.isEmailVerified) {
-      setVerificationModalOpen(true)
-      setError("Email verification required before creating a project. Please update and verify your email in Settings.")
+    if (!hasVerifiedWallet) {
+      setError("Web3 wallet required: Please connect and verify your Web3 wallet before creating a project. All project payments are funded via smart contract escrow.")
+      return
+    }
+
+    if (isBalanceInsufficient) {
+      setError(`Insufficient wallet balance: Your connected wallet has ${tokenBalance?.formattedBalance} ${tokenBalance?.symbol}, but this project budget is ${numBudget} ${tokenBalance?.symbol}. Please mint or deposit testnet tokens before creating the project.`)
       return
     }
 
@@ -194,6 +271,30 @@ export function CreateProjectPage() {
           title="Post a new project"
           description={`Describe the work, select a category, set the target deadline, and divide its budget into milestones (${currencyTag}).`}
         />
+
+        {!hasVerifiedWallet && (
+          <div className="mt-6 rounded-2xl border border-warning/30 bg-warning/10 p-5 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <FiShield className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-warning-foreground">Web3 Client Wallet Required</p>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  Before creating or approving a project, you must connect and verify your Web3 wallet and maintain sufficient USDC balance to fund the project escrow.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={connectAndVerify}
+              loading={isConnecting || isVerifying}
+              className="shrink-0"
+            >
+              Connect &amp; Verify Wallet
+            </Button>
+          </div>
+        )}
+
         <Card className="mt-6">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Project details</CardTitle>
@@ -270,9 +371,27 @@ export function CreateProjectPage() {
             </div>
 
             <div>
-              <Label htmlFor="budget" required>
-                Total budget ({currencyTag})
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="budget" required>
+                  Total budget ({currencyTag})
+                </Label>
+                {hasVerifiedWallet && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-subtle">Wallet Balance:</span>
+                    <span className={`font-mono font-semibold ${isBalanceInsufficient ? "text-danger" : "text-emerald-400"}`}>
+                      {balanceLoading ? "Checking..." : tokenBalance ? `${tokenBalance.formattedBalance} ${tokenBalance.symbol}` : "0 USDC"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void refreshBalance()}
+                      className="text-subtle hover:text-foreground transition-colors p-1"
+                      title="Refresh wallet balance"
+                    >
+                      <FiRefreshCw className={`h-3 w-3 ${balanceLoading ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
+                )}
+              </div>
               <Input
                 id="budget"
                 type="number"
@@ -280,7 +399,37 @@ export function CreateProjectPage() {
                 placeholder="e.g. 500"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
+                className={isBalanceInsufficient ? "border-danger focus:ring-danger/40" : ""}
               />
+
+              {/* Insufficient balance alert + one-click testnet faucet */}
+              {isBalanceInsufficient && (
+                <div className="mt-2.5 rounded-xl border border-danger/30 bg-danger/10 p-3.5 text-xs text-danger flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2">
+                    <FiAlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>
+                      <strong className="font-semibold">Insufficient wallet balance:</strong> Your wallet has {tokenBalance?.formattedBalance} {tokenBalance?.symbol}, but this project budget requires {numBudget} {tokenBalance?.symbol}. You must have enough funds before posting.
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    loading={mintingToken}
+                    onClick={handleMintUsdc}
+                    className="shrink-0 text-xs h-7"
+                  >
+                    Mint 1,000 Testnet USDC
+                  </Button>
+                </div>
+              )}
+
+              {mintSuccess && (
+                <div className="mt-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400 flex items-center gap-2">
+                  <FiCheckCircle className="h-4 w-4 shrink-0" />
+                  <span>{mintSuccess}</span>
+                </div>
+              )}
             </div>
 
             {/* DEADLINE SYSTEM CONFIGURATION */}
@@ -453,10 +602,35 @@ export function CreateProjectPage() {
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}
           </CardContent>
-          <CardFooter className="justify-end">
-            <Button loading={saving} onClick={submit}>
-              Post project
-            </Button>
+          <CardFooter className="justify-end gap-3">
+            {!hasVerifiedWallet ? (
+              <Button
+                type="button"
+                onClick={connectAndVerify}
+                loading={isConnecting || isVerifying}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Connect &amp; Verify Wallet to Post
+              </Button>
+            ) : isBalanceInsufficient ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={mintingToken}
+                  onClick={handleMintUsdc}
+                >
+                  Mint 1,000 Testnet USDC
+                </Button>
+                <Button disabled title="Insufficient wallet balance to cover project budget">
+                  Insufficient Balance to Post
+                </Button>
+              </div>
+            ) : (
+              <Button loading={saving} onClick={submit}>
+                Post project
+              </Button>
+            )}
           </CardFooter>
         </Card>
       </div>

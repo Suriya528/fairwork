@@ -724,6 +724,12 @@ export function ProjectDetailPage() {
   const handleHire = async (applicationId: string) => {
     if (!token || !project) return
     setActionError("")
+
+    if (!user?.walletAddress) {
+      setActionError("Client wallet required: Please connect and verify your Web3 client wallet before hiring a freelancer or approving a project.")
+      return
+    }
+
     setHiringId(applicationId)
     try {
       const app = (applications as ApiApplication[]).find((a) => a.id === applicationId)
@@ -785,12 +791,12 @@ export function ProjectDetailPage() {
   const handleMilestoneApprove = async (milestoneId: string) => {
     if (!token || !project) return
     setActionError("")
-    if (!user?.isEmailVerified) {
-      setVerificationActionName("approve milestones")
-      setVerificationModalOpen(true)
-      setActionError("Email verification required. Please update and verify your email address in Settings before approving milestones.")
+
+    if (!user?.walletAddress) {
+      setActionError("Client wallet required: Please connect and verify your Web3 client wallet before approving milestone deliverables.")
       return
     }
+
     try {
       const updated = await approveMilestone(project.id, milestoneId, token)
       setProject(updated)
@@ -1093,6 +1099,17 @@ export function ProjectDetailPage() {
             {tab === "applications" && isClient && (
               <div className="flex flex-col gap-4">
                 {actionError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-danger">{actionError}</div>}
+                {!user?.walletAddress && (
+                  <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-xs text-warning flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <FiShield className="h-4 w-4 shrink-0 text-warning" />
+                      <span>Web3 Client Wallet Required: Connect your wallet before hiring a freelancer or approving proposals.</span>
+                    </div>
+                    <Link to="/wallet" className="font-semibold underline ml-2 shrink-0">
+                      Connect Wallet →
+                    </Link>
+                  </div>
+                )}
                 {appsLoading ? (
                   <div className="py-12 text-center text-xs text-muted">Loading applications...</div>
                 ) : applications.length === 0 ? (
