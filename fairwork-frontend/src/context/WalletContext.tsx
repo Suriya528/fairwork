@@ -237,6 +237,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setConnectedAccount(newAcc)
         const vAddr = verifiedWalletAddressRef.current
         setWalletState(vAddr && newAcc === vAddr ? "VERIFIED" : "CONNECTED")
+        setErrorState(null)
+        setErrorMessage("")
       } else {
         setConnectedAccount(null)
         setWalletState("DISCONNECTED")
@@ -349,9 +351,44 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     try {
       const wallet = createWalletClient({ chain: targetChain, transport: custom(provider) })
-      const [account] = await wallet.requestAddresses()
-      const currentChain = await wallet.getChainId()
 
+      let accounts: string[] = []
+      try {
+        const existing = await provider.request({ method: "eth_accounts" })
+        if (Array.isArray(existing) && existing.length > 0) {
+          accounts = existing
+        }
+      } catch {
+        // Fall back to requesting
+      }
+
+      if (accounts.length === 0) {
+        try {
+          accounts = await wallet.requestAddresses()
+        } catch (reqErr: any) {
+          if (reqErr?.code === -32002 || (typeof reqErr?.message === "string" && reqErr.message.includes("already pending"))) {
+            try {
+              const retryAccounts = await provider.request({ method: "eth_accounts" })
+              if (Array.isArray(retryAccounts) && retryAccounts.length > 0) {
+                accounts = retryAccounts
+              } else {
+                throw reqErr
+              }
+            } catch {
+              throw reqErr
+            }
+          } else {
+            throw reqErr
+          }
+        }
+      }
+
+      const account = accounts[0]
+      if (!account) {
+        throw new Error("No account authorized.")
+      }
+
+      const currentChain = await wallet.getChainId()
       const normalizedAccount = account.toLowerCase()
       setConnectedAccount(normalizedAccount)
       setChainId(currentChain)
@@ -379,12 +416,43 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         })
       } else if (msg.includes("already pending") || (err as any)?.code === -32002) {
         setErrorState("PROVIDER_UNAVAILABLE")
-        setErrorMessage("A connection prompt is already pending in MetaMask. Please open your MetaMask extension and approve it.")
+        setErrorMessage("A connection prompt is already pending in MetaMask. Please click the MetaMask extension icon in your browser toolbar to approve it.")
         toast({
           title: "MetaMask Prompt Pending",
-          description: "Please click on the MetaMask extension icon in your browser to approve the connection.",
+          description: "Please click on the MetaMask extension icon in your browser toolbar to approve the connection.",
           tone: "warning",
         })
+
+        // Poll eth_accounts in background for up to 15s to auto-detect approval
+        let pollCount = 0
+        const pollInterval = setInterval(async () => {
+          pollCount++
+          try {
+            const p = getInjectedProvider()
+            if (p) {
+              const pendingAccs = await p.request({ method: "eth_accounts" })
+              if (Array.isArray(pendingAccs) && pendingAccs.length > 0) {
+                clearInterval(pollInterval)
+                const newAcc = pendingAccs[0].toLowerCase()
+                setConnectedAccount(newAcc)
+                setErrorState(null)
+                setErrorMessage("")
+                const vAddr = verifiedWalletAddressRef.current
+                setWalletState(vAddr && newAcc === vAddr ? "VERIFIED" : "CONNECTED")
+                toast({
+                  title: "Wallet Connected",
+                  description: `Connected to ${newAcc.slice(0, 6)}...${newAcc.slice(-4)}. You can now verify wallet ownership.`,
+                  tone: "info",
+                })
+              }
+            }
+          } catch {
+            // ignore
+          }
+          if (pollCount >= 15) {
+            clearInterval(pollInterval)
+          }
+        }, 1000)
       } else {
         setErrorState("PROVIDER_UNAVAILABLE")
         setErrorMessage(msg)

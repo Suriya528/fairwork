@@ -284,14 +284,14 @@ export function CreateProjectPage() {
                 <FiShield className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-amber-600 dark:text-amber-300">
+                <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
                   {connectedAccount
                     ? !isCorrectNetwork
                       ? "Sepolia Network Switch Required"
                       : `Wallet Connected (${connectedAccount.slice(0, 6)}...${connectedAccount.slice(-4)}) — Verification Required`
                     : "Web3 Client Wallet Required"}
                 </p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed font-normal">
+                <p className="text-xs text-amber-950/90 dark:text-amber-100/90 mt-1 leading-relaxed font-medium">
                   {connectedAccount
                     ? !isCorrectNetwork
                       ? "Your wallet is connected to an unsupported network. Please switch to Ethereum Sepolia testnet to proceed."
@@ -339,15 +339,39 @@ export function CreateProjectPage() {
         )}
 
         {walletErrorMessage && (
-          <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3.5 flex items-center justify-between text-xs text-red-600 dark:text-red-400">
-            <span className="font-medium">{walletErrorMessage}</span>
-            <button
-              type="button"
-              onClick={clearWalletError}
-              className="text-xs underline hover:no-underline ml-3 font-semibold cursor-pointer shrink-0"
-            >
-              Dismiss
-            </button>
+          <div className="mt-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 dark:bg-rose-950/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-800 dark:text-rose-100 shadow-sm backdrop-blur-xs">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-300">
+                <FiAlertTriangle className="h-4 w-4" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-bold text-rose-900 dark:text-rose-200">
+                  Wallet Action Required
+                </p>
+                <p className="leading-relaxed text-rose-950/90 dark:text-rose-100/90 font-medium">
+                  {walletErrorMessage}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={connectAndVerify}
+                loading={isConnecting || isVerifying}
+                className="bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs border border-rose-400/30"
+              >
+                Retry / Check Approval
+              </Button>
+              <button
+                type="button"
+                onClick={clearWalletError}
+                className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-900 dark:text-rose-200 font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
