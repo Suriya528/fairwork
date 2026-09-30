@@ -13,7 +13,6 @@ import {
   FiTrash2,
   FiCamera,
   FiImage,
-  FiAlertTriangle,
   FiMail,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
@@ -35,7 +34,6 @@ import { useAuth } from "@/context/AuthContext"
 import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { updateProfile, updatePreferences, type NotificationPreferences, type PortfolioItem } from "@/services/userApi"
 import { apiFetch } from "@/services/apiClient"
-import { resendVerificationEmail } from "@/services/authApi"
 
 export function SettingsPage() {
   const { user, token } = useAuth()
@@ -77,29 +75,7 @@ export function SettingsPage() {
   const [emailInput, setEmailInput] = useState(user?.email || "")
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailSuccess, setEmailSuccess] = useState("")
-  const [resendingVerification, setResendingVerification] = useState(false)
-  const [resendCooldown, setResendCooldown] = useState(0)
 
-  useEffect(() => {
-    if (resendCooldown <= 0) return
-    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [resendCooldown])
-
-  async function handleResendVerification() {
-    if (!user?.email || resendCooldown > 0) return
-    setResendingVerification(true)
-    setEmailSuccess("")
-    try {
-      await resendVerificationEmail(user.email)
-      setEmailSuccess(`Verification link dispatched to ${user.email}. Please check your inbox!`)
-      setResendCooldown(60)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resend verification link")
-    } finally {
-      setResendingVerification(false)
-    }
-  }
 
   useEffect(() => {
     if (user) {
@@ -342,55 +318,18 @@ export function SettingsPage() {
 
         {error && <div className="p-3 text-xs bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl">{error}</div>}
 
-        {/* Account Email & Real-World Verification Card */}
+        {/* Account Email Card */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FiShield className="text-primary-400" /> Account Email &amp; Verification Status
-              </CardTitle>
-              {user?.isEmailVerified ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                  <FiCheck className="h-3.5 w-3.5" /> Verified
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                  Unverified
-                </span>
-              )}
-            </div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FiMail className="text-primary" /> Account Contact Email
+            </CardTitle>
             <CardDescription>
-              Manage your account contact email. Unverified or sample placeholder emails must be updated to a valid real-world inbox.
+              Manage your primary contact email address for milestone notifications, project updates, and account recovery.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleUpdateEmail}>
             <CardContent className="space-y-4">
-              {!user?.isEmailVerified && (
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-xs text-amber-200 backdrop-blur-xs">
-                  <div className="flex items-center gap-2 font-semibold text-amber-100">
-                    <FiAlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-                    <span>Action Required: Email Verification Pending</span>
-                  </div>
-                  <p className="mt-1.5 leading-relaxed text-amber-200/90">
-                    Your current account email address (<code className="font-mono text-amber-100 bg-amber-500/15 px-1.5 py-0.5 rounded">{user?.email}</code>) is unverified. Please enter your valid email address below and click <strong className="font-semibold text-amber-100">Update to Verify</strong> to receive security alerts and unlock full platform access.
-                  </p>
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      loading={resendingVerification}
-                      disabled={resendCooldown > 0}
-                      onClick={handleResendVerification}
-                      className="text-xs h-8 bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 border border-amber-500/30"
-                    >
-                      <FiMail className="mr-1.5 h-3.5 w-3.5" />
-                      {resendCooldown > 0 ? `Resend link in ${resendCooldown}s` : "Resend Verification Link"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {emailSuccess && (
                 <div className="p-3 text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl flex items-center gap-2">
                   <FiCheck className="h-4 w-4" /> {emailSuccess}
@@ -412,8 +351,8 @@ export function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end border-t border-border/60 pt-4">
-              <Button type="submit" loading={savingEmail} variant={user?.isEmailVerified ? "secondary" : "primary"} size="sm">
-                {user?.isEmailVerified ? "Save Email Address" : "Update to Verify"}
+              <Button type="submit" loading={savingEmail} variant="primary" size="sm">
+                Save Email Address
               </Button>
             </CardFooter>
           </form>

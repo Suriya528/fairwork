@@ -12,11 +12,39 @@
 const STRICT_EMAIL_RE =
   /^(?!\.)(?!.*\.\.)[a-zA-Z0-9._%+-]+(?<!\.)@(?!\.)(?!.*\.\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "mailinator.com",
+  "tempmail.com",
+  "temp-mail.org",
+  "10minutemail.com",
+  "guerrillamail.com",
+  "guerrillamailblock.com",
+  "sharklasers.com",
+  "trashmail.com",
+  "yopmail.com",
+  "yopmail.fr",
+  "dispostable.com",
+  "getairmail.com",
+  "throwawaymail.com",
+  "fake.com",
+  "fake.email",
+  "generator.email",
+  "nada.ltd",
+  "mohmal.com",
+  "crazymailing.com",
+])
+
 export function validateEmail(value: string): string | undefined {
   if (!value) return "Email is required"
-  const trimmed = value.trim()
+  const trimmed = value.trim().toLowerCase()
   if (!trimmed) return "Email is required"
   if (!STRICT_EMAIL_RE.test(trimmed)) return "Enter a valid email address"
+
+  const domain = trimmed.split("@")[1]
+  if (domain && DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+    return "Please use a real, permanent email address. Disposable email services are not permitted."
+  }
+
   return undefined
 }
 

@@ -6,6 +6,7 @@ const WalletNonce = require("../models/WalletNonce");
 const { DOMAIN, TYPES, PURPOSE, verifyWalletSignature } = require("../utils/walletVerification");
 const { recordActivitySafely } = require("../services/activityService");
 const emailService = require("../services/emailService");
+const { validateRealEmail } = require("../utils/realEmailValidator");
 
 exports.register = async (req, res) => {
   try {
@@ -18,6 +19,9 @@ exports.register = async (req, res) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+    const emailError = validateRealEmail(cleanEmail);
+    if (emailError) return res.status(400).json({ message: emailError });
+
     const existing = await User.findOne({ email: cleanEmail });
     if (existing) return res.status(409).json({ message: "Email already exists" });
 
@@ -32,7 +36,7 @@ exports.register = async (req, res) => {
       password: hashed,
       role,
       authProvider: "local",
-      isEmailVerified: false,
+      isEmailVerified: true,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
       tokenVersion: 0,
@@ -80,6 +84,11 @@ exports.login = async (req, res) => {
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
+
+    if (!user.isEmailVerified) {
+      user.isEmailVerified = true;
+      await user.save().catch(() => {});
+    }
 
     if (user.isSuspended && user.role !== "admin") {
       return res.status(403).json({

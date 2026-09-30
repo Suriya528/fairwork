@@ -57,9 +57,7 @@ const userSchema = new mongoose.Schema({
   githubId: { type: String, default: undefined },
   isEmailVerified: {
     type: Boolean,
-    default: function () {
-      return this.authProvider === "google" || this.authProvider === "github";
-    },
+    default: true,
   },
   emailVerificationToken: { type: String, default: undefined },
   emailVerificationExpires: { type: Date, default: undefined },

@@ -41,6 +41,14 @@ export function DisputesPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <PageHeader title="Disputes" description="Raise and review disputes on your projects." />
+        {user?.role === "admin" && (
+          <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/10 p-4 text-xs text-primary">
+            <span>You are logged in as Administrator. To arbitrate, review evidence, and execute smart contract settlements, visit the Admin Dispute Console.</span>
+            <Link to="/admin/disputes" className="font-semibold underline ml-3 shrink-0">
+              Open Admin Disputes →
+            </Link>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <MetricCard label="Open" value={String(openDisputeCount)} icon={FiAlertTriangle} />
           <MetricCard label="Resolved" value={String(disputes.filter((dispute) => dispute.status === "resolved").length)} icon={FiFile} />

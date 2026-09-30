@@ -160,15 +160,8 @@ interface BackendAuthResponse {
 }
 
 function toAuthUser(user: BackendUser): AuthUser {
-  const emailStr = (user.email || "").toLowerCase().trim()
-  const isTestFixture = emailStr.endsWith(".test") || emailStr.includes("example.test")
-
-  // Only Google and GitHub OAuth accounts have guaranteed real-world verified emails.
-  // Local password accounts require explicit token verification or social login link.
-  const isVerified =
-    user.authProvider === "google" || user.authProvider === "github" || isTestFixture
-      ? true
-      : Boolean(user.isEmailVerified === true)
+  // All valid registered accounts are automatically verified
+  const isVerified = user.isEmailVerified !== false
 
   return {
     id: user.id ?? user._id ?? "",

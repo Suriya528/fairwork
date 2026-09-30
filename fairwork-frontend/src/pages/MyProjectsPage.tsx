@@ -90,7 +90,11 @@ export function MyProjectsPage() {
               <Button size="sm" leftIcon={<FiPlus />} onClick={() => navigate("/projects/new")}>
                 Post project
               </Button>
-            ) : undefined
+            ) : (
+              <Button size="sm" variant="secondary" leftIcon={<FiBriefcase />} onClick={() => navigate("/projects")}>
+                Explore Marketplace
+              </Button>
+            )
           }
         />
         <div className="grid gap-4 sm:grid-cols-3">

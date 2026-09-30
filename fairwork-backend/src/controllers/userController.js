@@ -200,19 +200,17 @@ exports.updateProfile = async (req, res) => {
     if (req.body.email !== undefined) {
       const cleanEmail = String(req.body.email).toLowerCase().trim();
       if (cleanEmail && cleanEmail !== user.email) {
+        const { validateRealEmail } = require("../utils/realEmailValidator");
+        const emailErr = validateRealEmail(cleanEmail);
+        if (emailErr) {
+          return res.status(400).json({ message: emailErr });
+        }
         const existing = await User.findOne({ email: cleanEmail, _id: { $ne: userId } });
         if (existing) {
           return res.status(409).json({ message: "Email address is already in use by another account." });
         }
         user.email = cleanEmail;
-        user.isEmailVerified = false;
-        const verificationToken = crypto.randomBytes(32).toString("hex");
-        user.emailVerificationToken = verificationToken;
-        user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        if (process.env.NODE_ENV !== "production") {
-          const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-          console.log(`[DEV] New Email Verification Link for ${cleanEmail}: ${clientUrl}/verify-email?token=${verificationToken}`);
-        }
+        user.isEmailVerified = true;
       }
     }
 

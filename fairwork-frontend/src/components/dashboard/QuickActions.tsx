@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { FiArrowRight, FiFileText, FiFolder, FiPlusCircle } from "react-icons/fi"
+import { FiArrowRight, FiFileText, FiFolder, FiPlusCircle, FiCheckSquare } from "react-icons/fi"
 import type { IconType } from "react-icons"
 import { Card } from "@/components/ui/Card"
 
@@ -10,7 +10,8 @@ const clientActions: { title: string; description: string; to: string; icon: Ico
 ]
 const freelancerActions: { title: string; description: string; to: string; icon: IconType }[] = [
   { title: "Browse projects", description: "Explore available project opportunities", to: "/projects", icon: FiFolder },
-  { title: "My projects", description: "Review projects assigned to you", to: "/projects/mine", icon: FiFileText },
+  { title: "Assigned projects", description: "Review projects assigned to you", to: "/projects/mine", icon: FiFileText },
+  { title: "My applications", description: "Track your active proposals & bids", to: "/applications", icon: FiCheckSquare },
 ]
 
 export function QuickActions({ role }: { role: "client" | "freelancer" }) {

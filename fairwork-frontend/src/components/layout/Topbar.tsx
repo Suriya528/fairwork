@@ -288,8 +288,13 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
       </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        {/* Compact Wallet Status Badge */}
-        {isUserVerified ? (
+        {/* Compact Wallet Status Badge (Clients and Freelancers only) */}
+        {user?.role === "admin" ? (
+          <Badge tone="primary" className="hidden md:inline-flex items-center gap-1.5 font-medium bg-primary/10 text-primary border-primary/25">
+            <FiShield className="h-3 w-3" />
+            Admin Console
+          </Badge>
+        ) : isUserVerified ? (
           <Badge tone="success" className="hidden md:inline-flex items-center gap-1 font-medium">
             <FiCheckCircle className="h-3 w-3" />
             Wallet Verified ✓

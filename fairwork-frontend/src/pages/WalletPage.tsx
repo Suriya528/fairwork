@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import { FiCreditCard, FiLock, FiRepeat } from "react-icons/fi"
+import { Link, useNavigate } from "react-router-dom"
+import { FiCreditCard, FiLock, FiRepeat, FiShield } from "react-icons/fi"
 import { PageHeader } from "@/components/common/PageHeader"
 import { MetricCard } from "@/components/common/MetricCard"
 import { ConfirmDialog } from "@/components/common/ConfirmDialog"
 import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
+import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
@@ -14,6 +15,7 @@ import { getPendingPayoutAmount, getReleasedAmount, getUnreleasedAmount } from "
 
 export function WalletPage() {
   const { user, token } = useAuth()
+  const navigate = useNavigate()
   const { formatAmount } = useCurrency()
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,6 +85,41 @@ export function WalletPage() {
   }
 
   if (!user) return null
+
+  if (user?.role === "admin") {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+          <PageHeader
+            title="Administrator Financial Overview"
+            description="System administrators supervise platform escrows and transactions without personal wallet binding."
+          />
+          <div className="rounded-2xl border border-primary/25 bg-surface p-6 shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <FiShield className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="font-semibold text-foreground text-base">No Wallet Connection Required</h3>
+                <p className="text-xs text-subtle">Administrator accounts operate outside client &amp; freelancer Web3 wallets.</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-muted leading-relaxed">
+              As a platform administrator, you do not need to connect a personal Web3 wallet. Platform transaction logs, escrow contracts, and system fees can be inspected and managed directly in the Admin Console.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button size="sm" onClick={() => navigate("/admin/escrows")}>
+                View All Platform Escrows
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate("/admin/transactions")}>
+                View All Transactions
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
