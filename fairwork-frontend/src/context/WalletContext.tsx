@@ -9,6 +9,7 @@ import {
 } from "react"
 import { createWalletClient, custom } from "viem"
 import { useAuth } from "./AuthContext"
+import { useToast } from "@/components/ui/Toast"
 import { getWalletNonce, verifyWallet as apiVerifyWallet } from "@/services/authApi"
 import { NoWalletModal } from "@/components/wallet/NoWalletModal"
 import { targetChain } from "@/services/web3"
@@ -44,7 +45,7 @@ interface WalletContextValue {
   closeNoWalletModal: () => void
   redetectProvider: () => Promise<boolean>
   connect: () => Promise<string | null>
-  verify: () => Promise<boolean>
+  verify: (providedAccount?: string) => Promise<boolean>
   connectAndVerify: () => Promise<boolean>
   switchNetwork: () => Promise<boolean>
   disconnect: () => void
@@ -56,26 +57,48 @@ const WalletContext = createContext<WalletContextValue | undefined>(undefined)
 const TARGET_CHAIN_ID = targetChain.id
 const TARGET_CHAIN_HEX = `0x${TARGET_CHAIN_ID.toString(16)}`
 
+// Global EIP-6963 announced provider registry
+const announcedProviders: any[] = []
+
+if (typeof window !== "undefined") {
+  window.addEventListener("eip6963:announceProvider", (event: any) => {
+    if (event?.detail?.provider && !announcedProviders.some((p) => p === event.detail.provider)) {
+      announcedProviders.push(event.detail.provider)
+    }
+  })
+  window.dispatchEvent(new Event("eip6963:requestProvider"))
+}
+
 /**
  * Safely inspects browser window for injected Web3 EVM provider.
- * Supports provider arrays (e.g., when multiple wallets like MetaMask + Coinbase are injected).
+ * Supports window.ethereum, multiple injected providers, and EIP-6963 discovered providers.
  */
 export function getInjectedProvider(): any {
   if (typeof window === "undefined") return null
 
   const eth = (window as any).ethereum
-  if (!eth) return null
-
-  if (Array.isArray(eth.providers) && eth.providers.length > 0) {
-    const mm = eth.providers.find((p: any) => p && p.isMetaMask)
-    return mm || eth.providers[0]
+  if (eth) {
+    if (Array.isArray(eth.providers) && eth.providers.length > 0) {
+      const mm = eth.providers.find((p: any) => p && p.isMetaMask)
+      return mm || eth.providers[0]
+    }
+    return eth
   }
 
-  return eth
+  if (announcedProviders.length > 0) {
+    const mm = announcedProviders.find((p: any) => p && p.isMetaMask)
+    return mm || announcedProviders[0]
+  }
+
+  const legacy = (window as any).web3?.currentProvider
+  if (legacy) return legacy
+
+  return null
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { user, token, updateWallet } = useAuth()
+  const { toast } = useToast()
 
   const [walletState, setWalletState] = useState<WalletState>("DISCONNECTED")
   const [errorState, setErrorState] = useState<WalletErrorState>(null)
@@ -136,8 +159,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return false
   }, [checkProviderState, clearError])
 
-  // EIP-6963 & ethereum#initialized late-injection listener
+  // EIP-6963 & ethereum#initialized late-injection listener with periodic async polling
   useEffect(() => {
+    checkProviderState()
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("eip6963:requestProvider"))
+    }
+
+    const pollTimers = [
+      setTimeout(checkProviderState, 150),
+      setTimeout(checkProviderState, 500),
+      setTimeout(checkProviderState, 1200),
+      setTimeout(checkProviderState, 2500),
+    ]
+
     const handleInitialized = () => {
       checkProviderState()
     }
@@ -148,6 +184,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
 
     return () => {
+      pollTimers.forEach(clearTimeout)
       if (typeof window !== "undefined") {
         window.removeEventListener("ethereum#initialized", handleInitialized)
         window.removeEventListener("eip6963:announceProvider", handleInitialized as EventListener)
@@ -232,7 +269,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         // Ignore unmount cleanup errors on custom providers
       }
     }
-  }, [])
+  }, [isProviderAvailable])
 
   // Sync walletState with user.walletAddress
   useEffect(() => {
@@ -245,63 +282,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [connectedAccount, verifiedWalletAddress])
 
-  // Step 1: Connect Wallet Account
-  const connect = useCallback(async (): Promise<string | null> => {
-    clearError()
-
-    const provider = getInjectedProvider()
-    if (!provider) {
-      setErrorState("PROVIDER_UNAVAILABLE")
-      setErrorMessage("No compatible wallet detected. Install MetaMask, create or import your wallet there, then return to FairWork and connect it.")
-      setIsProviderAvailable(false)
-      setNoWalletModalOpen(true)
-      return null
-    }
-
-    setWalletState("CONNECTING")
-
-    try {
-      const wallet = createWalletClient({ chain: targetChain, transport: custom(provider) })
-      const [account] = await wallet.requestAddresses()
-      const currentChain = await wallet.getChainId()
-
-      const normalizedAccount = account.toLowerCase()
-      setConnectedAccount(normalizedAccount)
-      setChainId(currentChain)
-
-      if (currentChain !== TARGET_CHAIN_ID) {
-        setErrorState("WRONG_NETWORK")
-        setErrorMessage(`Connected to incorrect network. Please switch to ${targetChain.name}.`)
-        try {
-          await wallet.switchChain({ id: TARGET_CHAIN_ID })
-          setChainId(TARGET_CHAIN_ID)
-          setErrorState(null)
-          setErrorMessage("")
-        } catch {
-          // Switch prompt failed or was dismissed
-        }
-      }
-
-      const isUserVerified = Boolean(
-        verifiedWalletAddress && normalizedAccount === verifiedWalletAddress,
-      )
-      setWalletState(isUserVerified ? "VERIFIED" : "CONNECTED")
-      return normalizedAccount
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to connect wallet"
-      if (msg.includes("rejected") || msg.includes("denied") || msg.includes("User rejected")) {
-        setErrorState("USER_REJECTED")
-        setErrorMessage("Wallet connection request was cancelled.")
-      } else {
-        setErrorState("PROVIDER_UNAVAILABLE")
-        setErrorMessage(msg)
-      }
-      setWalletState("DISCONNECTED")
-      return null
-    }
-  }, [clearError, verifiedWalletAddress])
-
-  // Step 2: Switch Network to Sepolia
+  // Step 1: Switch Network to Sepolia
   const switchNetwork = useCallback(async (): Promise<boolean> => {
     const provider = getInjectedProvider()
     if (!provider) return false
@@ -346,13 +327,90 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [clearError])
 
+  // Step 2: Connect Wallet Account
+  const connect = useCallback(async (): Promise<string | null> => {
+    clearError()
+
+    const provider = getInjectedProvider()
+    if (!provider) {
+      setErrorState("PROVIDER_UNAVAILABLE")
+      setErrorMessage("No compatible wallet detected. Install MetaMask, create or import your wallet there, then return to FairWork and connect it.")
+      setIsProviderAvailable(false)
+      setNoWalletModalOpen(true)
+      toast({
+        title: "No Wallet Detected",
+        description: "Please install or unlock MetaMask, then try again.",
+        tone: "warning",
+      })
+      return null
+    }
+
+    setWalletState("CONNECTING")
+
+    try {
+      const wallet = createWalletClient({ chain: targetChain, transport: custom(provider) })
+      const [account] = await wallet.requestAddresses()
+      const currentChain = await wallet.getChainId()
+
+      const normalizedAccount = account.toLowerCase()
+      setConnectedAccount(normalizedAccount)
+      setChainId(currentChain)
+
+      if (currentChain !== TARGET_CHAIN_ID) {
+        setErrorState("WRONG_NETWORK")
+        setErrorMessage(`Connected to incorrect network. Please switch to ${targetChain.name}.`)
+        await switchNetwork()
+      }
+
+      const isUserVerified = Boolean(
+        verifiedWalletAddress && normalizedAccount === verifiedWalletAddress,
+      )
+      setWalletState(isUserVerified ? "VERIFIED" : "CONNECTED")
+      return normalizedAccount
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to connect wallet"
+      if (msg.includes("rejected") || msg.includes("denied") || msg.includes("User rejected")) {
+        setErrorState("USER_REJECTED")
+        setErrorMessage("Wallet connection request was cancelled.")
+        toast({
+          title: "Connection Cancelled",
+          description: "Wallet connection request was cancelled in your wallet.",
+          tone: "info",
+        })
+      } else if (msg.includes("already pending") || (err as any)?.code === -32002) {
+        setErrorState("PROVIDER_UNAVAILABLE")
+        setErrorMessage("A connection prompt is already pending in MetaMask. Please open your MetaMask extension and approve it.")
+        toast({
+          title: "MetaMask Prompt Pending",
+          description: "Please click on the MetaMask extension icon in your browser to approve the connection.",
+          tone: "warning",
+        })
+      } else {
+        setErrorState("PROVIDER_UNAVAILABLE")
+        setErrorMessage(msg)
+        toast({
+          title: "Connection Failed",
+          description: msg,
+          tone: "error",
+        })
+      }
+      setWalletState("DISCONNECTED")
+      return null
+    }
+  }, [clearError, switchNetwork, toast, verifiedWalletAddress])
+
   // Step 3: Cryptographic EIP-712 Ownership Verification & Backend Link
-  const verify = useCallback(async (): Promise<boolean> => {
+  const verify = useCallback(async (providedAccount?: string): Promise<boolean> => {
     clearError()
 
     if (!token) {
       setErrorState("VERIFICATION_FAILED")
       setErrorMessage("You must be logged in to FairWork to verify a wallet.")
+      toast({
+        title: "Authentication Required",
+        description: "You must be signed in to link a Web3 wallet.",
+        tone: "error",
+      })
       return false
     }
 
@@ -361,10 +419,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setErrorState("PROVIDER_UNAVAILABLE")
       setErrorMessage("No compatible wallet detected. Please install MetaMask.")
       setNoWalletModalOpen(true)
+      toast({
+        title: "No Wallet Detected",
+        description: "Please install or unlock MetaMask, then try again.",
+        tone: "warning",
+      })
       return false
     }
 
-    let activeAccount = connectedAccount
+    let activeAccount = providedAccount || connectedAccount
     if (!activeAccount) {
       const acc = await connect()
       if (!acc) return false
@@ -378,13 +441,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const currentChain = await wallet.getChainId()
 
       if (currentChain !== TARGET_CHAIN_ID) {
-        try {
-          await wallet.switchChain({ id: TARGET_CHAIN_ID })
-          setChainId(TARGET_CHAIN_ID)
-        } catch {
+        const switched = await switchNetwork()
+        if (!switched) {
           setErrorState("WRONG_NETWORK")
           setErrorMessage(`Please switch to the ${targetChain.name} network to complete verification.`)
           setWalletState("CONNECTED")
+          toast({
+            title: "Network Switch Required",
+            description: `Please switch to ${targetChain.name} in MetaMask to verify.`,
+            tone: "warning",
+          })
           return false
         }
       }
@@ -405,11 +471,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       const verifiedUser = await apiVerifyWallet(activeAccount, challenge.nonce, signature, token)
 
-      await updateWallet(verifiedUser.walletAddress)
+      await updateWallet(verifiedUser.walletAddress, verifiedUser)
 
       setWalletState("VERIFIED")
       setErrorState(null)
       setErrorMessage("Wallet ownership verified successfully!")
+      toast({
+        title: "Wallet Verified",
+        description: `Wallet ${activeAccount.slice(0, 6)}...${activeAccount.slice(-4)} linked successfully!`,
+        tone: "success",
+      })
       return true
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Wallet verification failed"
@@ -417,24 +488,47 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (msg.includes("already associated") || msg.includes("already linked")) {
         setErrorState("WALLET_ALREADY_LINKED")
         setErrorMessage("This wallet address is already linked to another FairWork account.")
+        toast({
+          title: "Wallet Already Linked",
+          description: "This wallet address is already associated with another account.",
+          tone: "error",
+        })
       } else if (msg.includes("rejected") || msg.includes("User rejected")) {
         setErrorState("USER_REJECTED")
         setErrorMessage("EIP-712 signature request was cancelled.")
+        toast({
+          title: "Signature Cancelled",
+          description: "Verification signature was cancelled in your wallet.",
+          tone: "info",
+        })
+      } else if (msg.includes("already pending") || (err as any)?.code === -32002) {
+        setErrorState("PROVIDER_UNAVAILABLE")
+        setErrorMessage("A signature request is already pending in MetaMask. Please open MetaMask to sign.")
+        toast({
+          title: "MetaMask Prompt Pending",
+          description: "Please click on the MetaMask extension icon in your browser to sign the verification request.",
+          tone: "warning",
+        })
       } else {
         setErrorState("VERIFICATION_FAILED")
         setErrorMessage(msg)
+        toast({
+          title: "Verification Failed",
+          description: msg,
+          tone: "error",
+        })
       }
 
       setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
       return false
     }
-  }, [clearError, connectedAccount, connect, token, updateWallet])
+  }, [clearError, connectedAccount, connect, switchNetwork, toast, token, updateWallet])
 
   // Full Flow: Connect + Verify
   const connectAndVerify = useCallback(async (): Promise<boolean> => {
     const acc = await connect()
     if (!acc) return false
-    return await verify()
+    return await verify(acc)
   }, [connect, verify])
 
   // Disconnect Browser Wallet Session
@@ -502,7 +596,7 @@ export function useWallet(): WalletContextValue {
       closeNoWalletModal: () => {},
       redetectProvider: async () => false,
       connect: async () => null,
-      verify: async () => false,
+      verify: async (_providedAccount?: string) => false,
       connectAndVerify: async () => false,
       switchNetwork: async () => false,
       disconnect: () => {},

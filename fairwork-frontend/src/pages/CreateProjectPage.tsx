@@ -77,6 +77,11 @@ export function CreateProjectPage() {
     isVerified,
     connectedAccount,
     connectAndVerify,
+    verify,
+    switchNetwork,
+    isCorrectNetwork,
+    errorMessage: walletErrorMessage,
+    clearError: clearWalletError,
     isConnecting,
     isVerifying,
   } = useWallet()
@@ -280,23 +285,69 @@ export function CreateProjectPage() {
               </div>
               <div>
                 <p className="text-sm font-bold text-amber-600 dark:text-amber-300">
-                  Web3 Client Wallet Required
+                  {connectedAccount
+                    ? !isCorrectNetwork
+                      ? "Sepolia Network Switch Required"
+                      : `Wallet Connected (${connectedAccount.slice(0, 6)}...${connectedAccount.slice(-4)}) — Verification Required`
+                    : "Web3 Client Wallet Required"}
                 </p>
                 <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed font-normal">
-                  Before creating or approving a project, you must connect and verify your Web3 wallet and maintain sufficient USDC balance to fund the project escrow.
+                  {connectedAccount
+                    ? !isCorrectNetwork
+                      ? "Your wallet is connected to an unsupported network. Please switch to Ethereum Sepolia testnet to proceed."
+                      : "Your browser wallet is connected. Please sign the cryptographic EIP-712 verification in MetaMask to link this wallet with your FairWork account."
+                    : "Before creating or approving a project, you must connect and verify your Web3 wallet and maintain sufficient USDC balance to fund the project escrow."}
                 </p>
               </div>
             </div>
-            <Button
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+              {connectedAccount && !isCorrectNetwork ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={switchNetwork}
+                  leftIcon={<FiShield className="h-4 w-4" />}
+                  className="shrink-0 cursor-pointer bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-md shadow-amber-600/25 border border-amber-400/30 transition-all duration-200"
+                >
+                  Switch to Sepolia
+                </Button>
+              ) : connectedAccount ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => verify()}
+                  loading={isVerifying}
+                  leftIcon={<FiShield className="h-4 w-4 text-emerald-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                  className="shrink-0 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-600/25 hover:shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-emerald-400/30 hover:border-emerald-300/50 transition-all duration-200 ease-out"
+                >
+                  Sign EIP-712 Verification
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={connectAndVerify}
+                  loading={isConnecting || isVerifying}
+                  leftIcon={<FiShield className="h-4 w-4 text-sky-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                  className="shrink-0 cursor-pointer bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold shadow-md shadow-sky-600/25 hover:shadow-lg hover:shadow-sky-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-sky-400/30 hover:border-sky-300/50 transition-all duration-200 ease-out"
+                >
+                  Connect &amp; Verify Wallet
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {walletErrorMessage && (
+          <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3.5 flex items-center justify-between text-xs text-red-600 dark:text-red-400">
+            <span className="font-medium">{walletErrorMessage}</span>
+            <button
               type="button"
-              size="sm"
-              onClick={connectAndVerify}
-              loading={isConnecting || isVerifying}
-              leftIcon={<FiShield className="h-4 w-4 text-sky-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
-              className="shrink-0 cursor-pointer bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold shadow-md shadow-sky-600/25 hover:shadow-lg hover:shadow-sky-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-sky-400/30 hover:border-sky-300/50 transition-all duration-200 ease-out"
+              onClick={clearWalletError}
+              className="text-xs underline hover:no-underline ml-3 font-semibold cursor-pointer shrink-0"
             >
-              Connect &amp; Verify Wallet
-            </Button>
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -609,15 +660,36 @@ export function CreateProjectPage() {
           </CardContent>
           <CardFooter className="justify-end gap-3">
             {!hasVerifiedWallet ? (
-              <Button
-                type="button"
-                onClick={connectAndVerify}
-                loading={isConnecting || isVerifying}
-                leftIcon={<FiShield className="h-4 w-4 text-amber-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
-                className="cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold shadow-md shadow-amber-600/25 hover:shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-amber-400/30 hover:border-amber-300/50 transition-all duration-200 ease-out"
-              >
-                Connect &amp; Verify Wallet to Post
-              </Button>
+              connectedAccount && !isCorrectNetwork ? (
+                <Button
+                  type="button"
+                  onClick={switchNetwork}
+                  leftIcon={<FiShield className="h-4 w-4 text-amber-200" />}
+                  className="cursor-pointer bg-amber-600 hover:bg-amber-500 text-white font-semibold border border-amber-400/30"
+                >
+                  Switch to Sepolia Network
+                </Button>
+              ) : connectedAccount ? (
+                <Button
+                  type="button"
+                  onClick={() => verify()}
+                  loading={isVerifying}
+                  leftIcon={<FiShield className="h-4 w-4 text-emerald-200" />}
+                  className="cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-600/25 border border-emerald-400/30"
+                >
+                  Sign EIP-712 Verification to Post
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={connectAndVerify}
+                  loading={isConnecting || isVerifying}
+                  leftIcon={<FiShield className="h-4 w-4 text-amber-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                  className="cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold shadow-md shadow-amber-600/25 hover:shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-amber-400/30 hover:border-amber-300/50 transition-all duration-200 ease-out"
+                >
+                  Connect &amp; Verify Wallet to Post
+                </Button>
+              )
             ) : isBalanceInsufficient ? (
               <div className="flex flex-wrap items-center gap-3">
                 <Button

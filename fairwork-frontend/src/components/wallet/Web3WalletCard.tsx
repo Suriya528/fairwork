@@ -31,7 +31,6 @@ export function Web3WalletCard({
     isConnecting,
     isVerifying,
     isProviderAvailable,
-    openNoWalletModal,
     verify,
     connectAndVerify,
     switchNetwork,
@@ -173,7 +172,8 @@ export function Web3WalletCard({
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={openNoWalletModal}
+                  loading={isConnecting || isVerifying}
+                  onClick={connectAndVerify}
                   leftIcon={<FiShield className="h-3.5 w-3.5" />}
                 >
                   Connect Wallet
@@ -204,7 +204,7 @@ export function Web3WalletCard({
                 size="sm"
                 variant="primary"
                 loading={isVerifying}
-                onClick={verify}
+                onClick={() => verify()}
                 leftIcon={<FiLock className="h-4 w-4" />}
               >
                 Sign EIP-712 Verification

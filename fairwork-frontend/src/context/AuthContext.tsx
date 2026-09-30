@@ -13,7 +13,6 @@ import {
   getStoredSession,
   login as apiLogin,
   register as apiRegister,
-  updateWallet as apiUpdateWallet,
   storeSession,
   updateStoredSession,
 } from "@/services/authApi"
@@ -34,7 +33,7 @@ interface AuthContextValue {
   loginSession: (session: AuthSession, remember?: boolean) => void
   register: (payload: RegisterPayload) => Promise<AuthSession>
   logout: () => void
-  updateWallet: (walletAddress: string) => Promise<void>
+  updateWallet: (walletAddress: string, verifiedUser?: AuthUser) => Promise<void>
   refreshUser: () => Promise<void>
 }
 
@@ -166,14 +165,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const updateWallet = useCallback(
-    async (walletAddress: string) => {
+    async (walletAddress: string, verifiedUser?: AuthUser) => {
       if (!token) return
-      const updatedUser = await apiUpdateWallet(walletAddress, token)
-      setUser(updatedUser)
-      if (user) {
+      let updatedUserObj = verifiedUser
+      if (!updatedUserObj) {
+        try {
+          updatedUserObj = await getMe(token)
+        } catch {
+          if (user) {
+            updatedUserObj = { ...user, walletAddress }
+          }
+        }
+      }
+      if (updatedUserObj) {
+        setUser(updatedUserObj)
         const stored = getStoredSession()
         if (stored) {
-          updateStoredSession({ ...stored, user: updatedUser })
+          updateStoredSession({ ...stored, user: updatedUserObj })
         }
       }
     },
