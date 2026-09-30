@@ -91,16 +91,16 @@
 
   --color-success: #34d399;
   --color-success-soft: #062b1e;
-  --color-success-foreground: #021a11;
+  --color-success-foreground: #ecfdf5;
   --color-warning: #fbbf24;
   --color-warning-soft: #2e2410;
-  --color-warning-foreground: #1a1305;
+  --color-warning-foreground: #fef3c7;
   --color-danger: #f87171;
   --color-danger-soft: #300f12;
   --color-danger-foreground: #ffffff;
   --color-info: #38bdf8;
   --color-info-soft: #0c263d;
-  --color-info-foreground: #04121f;
+  --color-info-foreground: #f0f9ff;
 }
 
 /* Light Mode Tokens (Crisp, High-Contrast Slate Palette) */

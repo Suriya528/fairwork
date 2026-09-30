@@ -273,12 +273,16 @@ export function CreateProjectPage() {
         />
 
         {!hasVerifiedWallet && (
-          <div className="mt-6 rounded-2xl border border-warning/30 bg-warning/10 p-5 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <FiShield className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/30 p-5 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-500 dark:text-amber-300">
+                <FiShield className="h-5 w-5" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-warning-foreground">Web3 Client Wallet Required</p>
-                <p className="text-xs text-muted mt-1 leading-relaxed">
+                <p className="text-sm font-bold text-amber-600 dark:text-amber-300">
+                  Web3 Client Wallet Required
+                </p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed font-normal">
                   Before creating or approving a project, you must connect and verify your Web3 wallet and maintain sufficient USDC balance to fund the project escrow.
                 </p>
               </div>
@@ -288,7 +292,7 @@ export function CreateProjectPage() {
               size="sm"
               onClick={connectAndVerify}
               loading={isConnecting || isVerifying}
-              className="shrink-0"
+              className="shrink-0 bg-primary-600 hover:bg-primary-500 text-white font-semibold shadow-xs"
             >
               Connect &amp; Verify Wallet
             </Button>
