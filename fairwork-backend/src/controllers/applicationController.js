@@ -1,6 +1,7 @@
 const Application = require("../models/Application");
 const Project = require("../models/Project");
 const User = require("../models/User");
+const Contract = require("../models/Contract");
 const { recordActivitySafely } = require("../services/activityService");
 
 // Freelancer submits an application/proposal for an open project
@@ -109,7 +110,7 @@ exports.getProjectApplications = async (req, res) => {
     }
 
     const applications = await Application.find({ projectId })
-      .populate("freelancerId", "firstName lastName avatarUrl walletAddress rating reviewCount")
+      .populate("freelancerId", "firstName lastName avatarUrl walletAddress rating reviewCount createdAt bio tagline skills githubUrl githubIdentity hourlyRate availability")
       .sort({ createdAt: -1 });
 
     res.json(applications);
@@ -141,7 +142,6 @@ exports.acceptApplication = async (req, res) => {
     }
 
     // Fetch freelancer's wallet address to ensure on-chain escrow can be created
-    const User = require("../models/User");
     const freelancerUser = await User.findById(application.freelancerId).select("walletAddress");
 
     // Atomic single-hire invariant check: update project ONLY if freelancerId is currently null & status is open
@@ -157,6 +157,41 @@ exports.acceptApplication = async (req, res) => {
 
     if (!updatedProject) {
       return res.status(409).json({ message: "Project has already been assigned to another freelancer" });
+    }
+
+    // Auto-create contract agreement on hire if not already created
+    try {
+      let contract = await Contract.findOne({ projectId: project._id });
+      if (!contract) {
+        const defaultAgreement = `FREELANCE SERVICES AGREEMENT
+
+1. PROJECT SCOPE
+Project Title: ${updatedProject.title}
+Description: ${updatedProject.description || "Project deliverables as agreed."}
+
+2. PAYMENT TERMS
+Total Project Budget: $${updatedProject.budget} USDC
+Payment Model: Escrow-protected milestone payouts upon client review and approval.
+
+3. MILESTONES & DELIVERABLES
+${(updatedProject.milestones || []).map((m, idx) => `Milestone ${idx + 1}: ${m.title || "Deliverable"} - $${m.amount || 0}`).join("\n") || "Deliverables as defined in project scope."}
+
+4. INTELLECTUAL PROPERTY & TERMINATION
+All deliverables and intellectual property belong strictly to the Client upon milestone payment release.
+Either party may initiate dispute resolution or contract termination through the FairWork Escrow Protocol.`;
+
+        contract = await Contract.create({
+          projectId: updatedProject._id,
+          clientId: project.clientId,
+          freelancerId: application.freelancerId,
+          aiGeneratedText: defaultAgreement,
+        });
+
+        await Project.findByIdAndUpdate(updatedProject._id, { contractId: contract._id });
+        updatedProject.contractId = contract._id;
+      }
+    } catch (contractErr) {
+      console.warn("[ApplicationController] Auto-contract generation warning:", contractErr.message);
     }
 
     // Accept this target application
@@ -180,8 +215,8 @@ exports.acceptApplication = async (req, res) => {
     });
 
     const populated = await application.populate([
-      { path: "projectId", select: "title budget status category clientId freelancerId" },
-      { path: "freelancerId", select: "firstName lastName avatarUrl walletAddress rating reviewCount" },
+      { path: "projectId", select: "title budget status category clientId freelancerId contractId" },
+      { path: "freelancerId", select: "firstName lastName avatarUrl walletAddress rating reviewCount createdAt bio tagline skills githubUrl githubIdentity" },
     ]);
 
     res.json({ application: populated, project: updatedProject });

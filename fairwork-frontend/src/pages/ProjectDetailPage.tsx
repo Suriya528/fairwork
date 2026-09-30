@@ -19,6 +19,7 @@ import {
   FiStar,
   FiUnlock,
   FiUploadCloud,
+  FiUser,
   FiUserCheck,
   FiX,
 } from "react-icons/fi"
@@ -36,6 +37,7 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { LoadingState } from "@/components/feedback/LoadingState"
 import { ErrorState } from "@/components/feedback/ErrorState"
 import { ApplyModal } from "@/components/applications/ApplyModal"
+import { FreelancerProfileModal } from "@/components/applications/FreelancerProfileModal"
 import { formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "@/lib/format"
 import { sanitizeUrl } from "@/lib/sanitizeUrl"
 import { useAuth } from "@/context/AuthContext"
@@ -67,6 +69,7 @@ import {
 import {
   generateContract,
   getContract,
+  getContractByProjectId,
   signContract,
   type ApiContract,
 } from "@/services/contractsApi"
@@ -546,20 +549,51 @@ export function ProjectDetailPage() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const isClient = user?.id === project?.clientId
-  const isFreelancer = user?.role === "freelancer"
-  const isParty = user?.id === project?.clientId || user?.id === project?.freelancerId
+  const currentUserId = (user?.id || (user as any)?._id || "").toString().toLowerCase()
+  const projectClientId = (
+    typeof project?.clientId === "object" && project?.clientId !== null
+      ? (project.clientId as any)._id || (project.clientId as any).id
+      : project?.clientId || ""
+  ).toString().toLowerCase()
+  const projectFreelancerId = (
+    typeof project?.freelancerId === "object" && project?.freelancerId !== null
+      ? (project.freelancerId as any)._id || (project.freelancerId as any).id
+      : project?.freelancerId || ""
+  ).toString().toLowerCase()
+
+  const isClient = Boolean(currentUserId && projectClientId && currentUserId === projectClientId)
+  const isAssignedFreelancer = Boolean(currentUserId && projectFreelancerId && currentUserId === projectFreelancerId)
+  const isFreelancer = isAssignedFreelancer || user?.role === "freelancer"
+  const isParty = isClient || isAssignedFreelancer
   const escrowActive = Boolean(project?.escrowFunded)
+  const hasFreelancer = Boolean(projectFreelancerId)
+
+  const [selectedProfileFreelancerId, setSelectedProfileFreelancerId] = useState<string | null>(null)
+
+  const loadContract = useCallback(async () => {
+    if (!id || !token) return
+    setContractLoading(true)
+    try {
+      let c: ApiContract | null = null
+      if (project?.contractId) {
+        c = await getContract(project.contractId, token).catch(() => null)
+      }
+      if (!c) {
+        c = await getContractByProjectId(id, token).catch(() => null)
+      }
+      setContract(c)
+    } catch {
+      setContract(null)
+    } finally {
+      setContractLoading(false)
+    }
+  }, [id, token, project?.contractId])
 
   useEffect(() => {
-    if (project?.contractId && token) {
-      setContractLoading(true)
-      getContract(project.contractId, token)
-        .then(setContract)
-        .catch(() => setContract(null))
-        .finally(() => setContractLoading(false))
+    if (id && token) {
+      void loadContract()
     }
-  }, [project?.contractId, token])
+  }, [id, token, loadContract])
 
   useEffect(() => {
     if (!id || !token) return
@@ -589,11 +623,11 @@ export function ProjectDetailPage() {
   }, [id, token])
 
   const handleGenerateContract = async () => {
-    if (!token || !project || !project.freelancerId) return
+    if (!token || !project || !hasFreelancer) return
     setContractBusy(true)
     setContractError("")
     try {
-      const created = await generateContract(project.id, project.freelancerId, token)
+      const created = await generateContract(project.id, projectFreelancerId, token)
       setContract(created)
       setProject((prev) => (prev ? { ...prev, contractId: created.id } : prev))
     } catch (err) {
@@ -635,7 +669,7 @@ export function ProjectDetailPage() {
     if (!id || !token || !project) return
     setAppsLoading(true)
     try {
-      if (user?.id === project.clientId) {
+      if (isClient) {
         const list = await getProjectApplications(id, token)
         setApplications(list)
       } else if (user?.role === "freelancer") {
@@ -648,7 +682,7 @@ export function ProjectDetailPage() {
     } finally {
       setAppsLoading(false)
     }
-  }, [id, token, project, user])
+  }, [id, token, project, user, isClient])
 
   useEffect(() => {
     if (project && token) {
@@ -733,10 +767,13 @@ export function ProjectDetailPage() {
     setHiringId(applicationId)
     try {
       const app = (applications as ApiApplication[]).find((a) => a.id === applicationId)
-      if (app?.freelancerId) {
-        await assignFreelancer(project.id, app.freelancerId, token)
+      const targetFreelancerId = app?.freelancerId || app?.freelancer?.id
+      if (targetFreelancerId) {
+        await assignFreelancer(project.id, targetFreelancerId, token)
         await loadProject()
         await loadApplications()
+        await loadContract()
+        setSelectedProfileFreelancerId(null)
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to hire freelancer.")
@@ -1124,11 +1161,16 @@ export function ProjectDetailPage() {
                       <Card key={app.id}>
                         <CardContent className="flex flex-col gap-4 p-5">
                           <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
+                            <div
+                              className="flex items-center gap-3 cursor-pointer group"
+                              onClick={() => setSelectedProfileFreelancerId(app.freelancerId || app.freelancer?.id || null)}
+                              title="Click to view freelancer profile"
+                            >
                               <Avatar name={`${app.freelancer?.firstName || "Freelancer"} ${app.freelancer?.lastName || ""}`} size="md" />
                               <div>
-                                <h4 className="text-sm font-semibold text-foreground">
-                                  {app.freelancer?.firstName} {app.freelancer?.lastName}
+                                <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition flex items-center gap-1.5">
+                                  <span>{app.freelancer?.firstName} {app.freelancer?.lastName}</span>
+                                  <span className="text-[10px] text-primary underline opacity-0 group-hover:opacity-100 transition">View Profile</span>
                                 </h4>
                                 <div className="flex items-center gap-2 mt-0.5 text-xs text-muted">
                                   <span className="flex items-center gap-1 text-warning font-medium">
@@ -1150,31 +1192,42 @@ export function ProjectDetailPage() {
                             {app.proposalText}
                           </p>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-border">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border">
                             <Badge tone={app.status === "accepted" ? "success" : app.status === "rejected" ? "danger" : "warning"}>
                               Status: {app.status === "accepted" ? "Hired ✓" : app.status === "rejected" ? "Rejected" : "Pending Review"}
                             </Badge>
 
-                            {app.status === "pending" && !project.freelancerId && (
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleReject(app.id)}
-                                >
-                                  Reject
-                                </Button>
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  loading={hiringId === app.id}
-                                  leftIcon={<FiUserCheck className="h-4 w-4" />}
-                                  onClick={() => handleHire(app.id)}
-                                >
-                                  Hire Freelancer
-                                </Button>
-                              </div>
-                            )}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<FiUser className="h-4 w-4" />}
+                                onClick={() => setSelectedProfileFreelancerId(app.freelancerId || app.freelancer?.id || null)}
+                              >
+                                View Profile
+                              </Button>
+
+                              {app.status === "pending" && !hasFreelancer && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleReject(app.id)}
+                                  >
+                                    Reject
+                                  </Button>
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    loading={hiringId === app.id}
+                                    leftIcon={<FiUserCheck className="h-4 w-4" />}
+                                    onClick={() => handleHire(app.id)}
+                                  >
+                                    Hire Freelancer
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -1426,14 +1479,16 @@ export function ProjectDetailPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ) : isClient && project.freelancerId ? (
+                ) : hasFreelancer ? (
                   <Card>
-                    <CardContent className="flex items-center justify-between p-6">
+                    <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6">
                       <div>
                         <h4 className="font-semibold text-foreground">Generate Legal Agreement</h4>
-                        <p className="text-xs text-muted mt-1">A freelancer has been hired for this project. Generate the AI legal contract now.</p>
+                        <p className="text-xs text-muted mt-1">
+                          A freelancer has been hired for this project. Generate the formal AI legal contract agreement now.
+                        </p>
                       </div>
-                      <Button size="sm" loading={contractBusy} onClick={handleGenerateContract}>
+                      <Button size="sm" loading={contractBusy} onClick={handleGenerateContract} leftIcon={<FiFileText className="h-4 w-4" />}>
                         Generate Contract
                       </Button>
                     </CardContent>
@@ -1445,7 +1500,7 @@ export function ProjectDetailPage() {
                     <p className="text-xs text-muted max-w-sm mt-1">
                       {isClient
                         ? "Hire a freelancer from proposals to generate a formal agreement."
-                        : "The client will generate the formal legal contract agreement once hiring is complete."}
+                        : "The formal legal contract agreement will be generated once hiring is complete."}
                     </p>
                   </div>
                 )}
@@ -1463,7 +1518,7 @@ export function ProjectDetailPage() {
                       milestone={milestone}
                       project={project}
                       isClient={isClient}
-                      isFreelancer={Boolean(isFreelancer && project.freelancerId === user?.id)}
+                      isFreelancer={isAssignedFreelancer}
                       canRelease={Boolean(isClient && escrowActive && !milestone.paymentReleased)}
                       releasing={Boolean(actionState)}
                       deliverables={deliverables || []}
@@ -1493,7 +1548,7 @@ export function ProjectDetailPage() {
                   )}
 
                   {/* Freelancer Guidance Banner: Uploads are consolidated into Milestone Submit Work flow */}
-                  {isFreelancer && project.freelancerId === user?.id && (
+                  {isAssignedFreelancer && (
                     <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs text-foreground flex items-center justify-between gap-3">
                       <span>💡 Submit your work and attach milestone deliverables directly by clicking <strong>Submit Work</strong> on the corresponding milestone under the <strong>Milestones</strong> tab.</span>
                       <Button size="sm" variant="secondary" onClick={() => setTab("milestones")}>
@@ -1743,6 +1798,21 @@ export function ProjectDetailPage() {
         open={verificationModalOpen}
         onClose={() => setVerificationModalOpen(false)}
         actionName={verificationActionName}
+      />
+
+      <FreelancerProfileModal
+        open={Boolean(selectedProfileFreelancerId)}
+        onClose={() => setSelectedProfileFreelancerId(null)}
+        freelancerId={selectedProfileFreelancerId}
+        onHire={() => {
+          const app = (applications as ApiApplication[]).find(
+            (a) => (a.freelancerId || a.freelancer?.id) === selectedProfileFreelancerId
+          )
+          if (app) void handleHire(app.id)
+        }}
+        hiring={Boolean(hiringId)}
+        isHired={Boolean(hasFreelancer && projectFreelancerId === selectedProfileFreelancerId?.toLowerCase())}
+        canHire={isClient && !hasFreelancer}
       />
     </div>
   )

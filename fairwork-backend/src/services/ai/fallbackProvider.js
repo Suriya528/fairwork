@@ -12,21 +12,30 @@ class FallbackProvider {
     const q = (userQuery || "").toLowerCase();
     let responseText = "";
 
-    if (q.includes("escrow") || q.includes("fund") || q.includes("payment")) {
+    if (q.includes("not release") || q.includes("payment") || q.includes("release") || q.includes("escrow") || q.includes("fund")) {
       responseText =
-        "FairWork Smart Contract Escrow protects both clients and freelancers. Client funds are locked in EscrowContract.sol (0x7d51b87db4df857cdd76ad63a9ace7b5c5599385) on Sepolia using USDC. Upon milestone review and approval, USDC is released directly to the freelancer's verified Web3 wallet address.";
-    } else if (q.includes("gas") || q.includes("fee") || q.includes("sepolia")) {
+        "Payments on FairWork are secured in the Sepolia USDC Escrow contract (0xc0d1b74a30a82d6fb846e446758a8c2ff391376c). Payment is released once: 1) The freelancer submits the deliverable for the milestone, and 2) The client reviews and clicks 'Approve Milestone & Release Payment'. Once approved, USDC transfers directly into the freelancer's wallet. If a payment is not releasing, ensure the deliverable is submitted and the client wallet is connected with sufficient gas to approve.";
+    } else if (q.includes("contract") || q.includes("agreement") || q.includes("generate")) {
       responseText =
-        "FairWork operates on the Ethereum Sepolia Testnet settling in USDC. Small amounts of Sepolia ETH are required for transaction gas when funding escrows, signing contracts, or releasing milestone payments. Sepolia ETH can be obtained from free public testnet faucets.";
-    } else if (q.includes("dispute") || q.includes("refund")) {
+        "FairWork freelance contracts are legally structured agreements tied to your project milestones and budget. Contracts are generated automatically when a client accepts a freelancer's proposal. To view or generate your contract, open the project's 'Contract' tab and click 'Generate Contract'. Both client and freelancer can digitally sign the agreement directly on FairWork.";
+    } else if (q.includes("profile") || q.includes("hire") || q.includes("applicant") || q.includes("freelancer")) {
       responseText =
-        "If a deliverable disagreement occurs, either party can open a dispute. The dispute is arbitrated on-chain via DisputeContract.sol (0x8ddbfe20695a1ddf8488ab80b443574c28024962), ensuring fair resolution based on submitted evidence.";
-    } else if (q.includes("oauth") || q.includes("verify") || q.includes("email") || q.includes("login")) {
+        "Before approving a proposal, clients can inspect the applicant's complete profile by clicking 'View Profile' on any proposal in the Applications tab. The profile displays their join date, reputation score, star ratings, verified GitHub account link and identity badge, bio, hourly rate, skills, and past completed projects. If satisfied, the client can click 'Hire Freelancer' to accept their proposal.";
+    } else if (q.includes("faucet") || q.includes("balance") || q.includes("usdc") || q.includes("token")) {
       responseText =
-        "FairWork enforces Google & GitHub OAuth 2.0 with PKCE security and verified email assertion. Local email signups start as Unverified and must be verified in Settings before funding escrows, posting projects, submitting proposals, or sending chat messages.";
+        "FairWork uses USDC on Ethereum Sepolia Testnet (0xf21bdf6737a3009359f9ec1fa515e6d74702f575). Clients must have enough USDC in their connected Web3 wallet to post projects and fund escrows. You can mint 1,000 free testnet USDC with 1 click using the 'Mint Testnet USDC' faucet in your Wallet tab.";
+    } else if (q.includes("gas") || q.includes("fee") || q.includes("sepolia") || q.includes("eth")) {
+      responseText =
+        "FairWork operates on Ethereum Sepolia Testnet settling in USDC. Small amounts of Sepolia ETH are required for transaction gas when funding escrows or releasing milestone payments. Sepolia ETH can be obtained from free public testnet faucets.";
+    } else if (q.includes("dispute") || q.includes("refund") || q.includes("arbitrat")) {
+      responseText =
+        "If a deliverable disagreement occurs, either party can open a dispute. The dispute is arbitrated on-chain via DisputeContract.sol (0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193), ensuring fair resolution based on submitted evidence.";
+    } else if (q.includes("oauth") || q.includes("verify") || q.includes("email") || q.includes("login") || q.includes("sign")) {
+      responseText =
+        "FairWork enforces Google & GitHub OAuth 2.0 with PKCE security and verified email assertion. Real-world email signups are automatically verified, giving you full access to create projects, submit proposals, fund escrows, and chat in the workroom.";
     } else {
       responseText =
-        "Hello! I am FairWork Ask AI, your expert assistant for the FairWork Web3 Freelance Marketplace. I can assist you with project scope generation, USDC escrow workflows, proposal drafting, EIP-712 wallet verification, and platform navigation. How can I assist you today?";
+        "Hello! I am FairWork Ask AI, your expert assistant for the FairWork Web3 Freelance Marketplace. I can assist you with project scopes, milestone payments, contract agreements, freelancer profile inspection, and Web3 wallet escrow. How can I help you today?";
     }
 
     const words = responseText.split(" ");

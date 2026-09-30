@@ -51,6 +51,13 @@ export interface UserProfileDTO {
     avatarUrl?: string
     bannerUrl?: string
     githubUrl?: string
+    githubIdentity?: {
+      username: string
+      avatarUrl?: string
+      profileUrl?: string
+      connectedAt?: string
+      visibility?: string
+    } | null
     linkedinUrl?: string
     portfolio?: string
     portfolioItems?: PortfolioItem[]

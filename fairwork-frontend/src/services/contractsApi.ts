@@ -94,19 +94,29 @@ function toApiContract(c: BackendContract): ApiContract {
 
 export async function generateContract(
   projectId: string,
-  freelancerId: string,
+  freelancerId: string | { _id?: string; id?: string },
   token: string,
 ): Promise<ApiContract> {
+  const normalizedFreelancerId =
+    typeof freelancerId === "object" && freelancerId !== null
+      ? freelancerId._id || freelancerId.id || ""
+      : String(freelancerId || "");
+
   const raw = await apiFetch<BackendContract>("/contracts/generate", {
     method: "POST",
     token,
-    body: { projectId, freelancerId },
+    body: { projectId, freelancerId: normalizedFreelancerId },
   })
   return toApiContract(raw)
 }
 
 export async function getContract(contractId: string, token: string): Promise<ApiContract> {
   const raw = await apiFetch<BackendContract>(`/contracts/${contractId}`, { token })
+  return toApiContract(raw)
+}
+
+export async function getContractByProjectId(projectId: string, token: string): Promise<ApiContract> {
+  const raw = await apiFetch<BackendContract>(`/contracts/project/${projectId}`, { token })
   return toApiContract(raw)
 }
 

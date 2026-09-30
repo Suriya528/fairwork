@@ -40,7 +40,7 @@ exports.getPublicProfile = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id).select(
-      "firstName lastName role walletAddress bio tagline hourlyRate availability skills avatarUrl bannerUrl githubUrl linkedinUrl portfolio portfolioItems stats reputationScore totalReviews createdAt"
+      "firstName lastName role walletAddress bio tagline hourlyRate availability skills avatarUrl bannerUrl githubUrl linkedinUrl portfolio portfolioItems stats reputationScore totalReviews githubIdentity createdAt"
     );
 
     if (!user) {
@@ -90,6 +90,21 @@ exports.getPublicProfile = async (req, res) => {
       completedAt: p.updatedAt,
     }));
 
+    const resolvedGithubUrl =
+      user.githubUrl ||
+      (user.githubIdentity?.profileUrl ||
+        (user.githubIdentity?.username ? `https://github.com/${user.githubIdentity.username}` : ""));
+
+    const resolvedGithubIdentity =
+      user.githubIdentity && (user.githubIdentity.visibility === "PUBLIC" || !user.githubIdentity.visibility)
+        ? {
+            username: user.githubIdentity.username,
+            avatarUrl: user.githubIdentity.avatarUrl,
+            profileUrl: user.githubIdentity.profileUrl,
+            connectedAt: user.githubIdentity.connectedAt,
+          }
+        : null;
+
     res.json({
       user: {
         id: user._id,
@@ -105,7 +120,8 @@ exports.getPublicProfile = async (req, res) => {
         skills: user.skills || [],
         avatarUrl: user.avatarUrl,
         bannerUrl: user.bannerUrl || "",
-        githubUrl: user.githubUrl,
+        githubUrl: resolvedGithubUrl,
+        githubIdentity: resolvedGithubIdentity,
         linkedinUrl: user.linkedinUrl,
         portfolio: user.portfolio,
         portfolioItems: user.portfolioItems || [],

@@ -1,5 +1,7 @@
+const mongoose = require("mongoose");
 const Contract = require("../models/Contract");
 const Project = require("../models/Project");
+const User = require("../models/User");
 const { GoogleGenAI } = require("@google/genai");
 
 // Initialize Google Gemini AI client using GEMINI_API_KEY
@@ -22,8 +24,15 @@ exports.generateContract = async (req, res) => {
 
     if (!project) return res.status(404).json({ message: "Project not found" });
 
-    if (String(project.clientId._id || project.clientId) !== String(req.user.id)) {
-      return res.status(403).json({ message: "Only the project client can generate a contract" });
+    const clientUserId = String(project.clientId._id || project.clientId);
+    const hiredFreelancerId = String(project.freelancerId?._id || project.freelancerId || "");
+    const currentUserId = String(req.user.id);
+    const isClient = clientUserId === currentUserId;
+    const isFreelancer = hiredFreelancerId && hiredFreelancerId === currentUserId;
+    const isAdmin = req.user.role === "admin";
+
+    if (!isClient && !isFreelancer && !isAdmin) {
+      return res.status(403).json({ message: "Only contract parties or admin can generate this contract" });
     }
 
     const existingContract = await Contract.findOne({ projectId });
@@ -32,7 +41,12 @@ exports.generateContract = async (req, res) => {
       return res.json(contract);
     }
 
-    const freelancerId = project.freelancerId || req.body.freelancerId;
+    const rawFreelancer = project.freelancerId || req.body.freelancerId;
+    const freelancerId =
+      typeof rawFreelancer === "object" && rawFreelancer !== null
+        ? rawFreelancer._id || rawFreelancer.id || rawFreelancer
+        : rawFreelancer;
+
     if (!freelancerId) {
       return res.status(400).json({
         message: "No freelancer has been hired for this project yet. Please hire a freelancer from applications first.",
@@ -61,7 +75,7 @@ Make it professional, comprehensive, and legally structured.`;
     let aiGeneratedText = "";
 
     if (ai) {
-      const modelsToTry = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
+      const modelsToTry = ["gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"];
       for (const model of modelsToTry) {
         try {
           const response = await ai.models.generateContent({
@@ -87,7 +101,7 @@ Project Title: ${project.title}
 Description: ${project.description}
 
 2. PAYMENT TERMS
-Total Project Budget: $${project.budget}
+Total Project Budget: $${project.budget} USDC
 Payment Model: Escrow-protected milestone payouts upon client review and approval.
 
 3. MILESTONES & DELIVERABLES
@@ -100,7 +114,7 @@ Either party may initiate dispute resolution or contract termination through the
 
     const created = await Contract.create({
       projectId,
-      clientId: req.user.id,
+      clientId: clientUserId,
       freelancerId,
       aiGeneratedText,
     });
@@ -123,11 +137,29 @@ Either party may initiate dispute resolution or contract termination through the
 
 exports.getContract = async (req, res) => {
   try {
-    const contract = await populateContractQuery(Contract.findById(req.params.id));
+    const paramId = req.params.id;
+    let query;
+    if (mongoose.isValidObjectId(paramId)) {
+      query = { $or: [{ _id: paramId }, { projectId: paramId }] };
+    } else {
+      query = { projectId: paramId };
+    }
+    const contract = await populateContractQuery(Contract.findOne(query));
     if (!contract) return res.status(404).json({ message: "Contract not found" });
     res.json(contract);
   } catch (err) {
     console.error("[ContractController] error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getContractByProjectId = async (req, res) => {
+  try {
+    const contract = await populateContractQuery(Contract.findOne({ projectId: req.params.projectId }));
+    if (!contract) return res.status(404).json({ message: "Contract not found" });
+    res.json(contract);
+  } catch (err) {
+    console.error("[ContractController] getContractByProjectId error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
