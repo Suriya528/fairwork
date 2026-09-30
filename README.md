@@ -1,14 +1,39 @@
 # FAIRWORK — Decentralized Web3 Freelance Settlement Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests: 64 Passing](https://img.shields.io/badge/Tests-64%20Passing-brightgreen.svg)](#11-test-suite--verification-matrix-64-scenarios)
+[![Tests: 69 Backend + 12 Hardhat](https://img.shields.io/badge/Tests-81%20Passing-brightgreen.svg)](#11-test-suite--verification-matrix-69-backend--12-hardhat-tests)
 [![Solidity: 0.8.28](https://img.shields.io/badge/Solidity-0.8.28-blue.svg)](https://soliditylang.org/)
 [![Node: 24 LTS](https://img.shields.io/badge/Node.js-24%20LTS-green.svg)](https://nodejs.org/)
 [![React: 19](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://react.dev/)
 [![Network: Ethereum Sepolia](https://img.shields.io/badge/Network-Ethereum%20Sepolia-627eea.svg)](https://sepolia.etherscan.io/)
+[![Frontend: Vercel](https://img.shields.io/badge/Frontend-Live%20on%20Vercel-black.svg)](https://fairwork-org.vercel.app)
+[![Backend: Render](https://img.shields.io/badge/Backend-Live%20on%20Render-46E3B7.svg)](https://fairwork.onrender.com)
 
 > **Production Architecture Specification & Real-Time Settlement Infrastructure**  
 > *FairWork is a high-throughput Web3 freelance marketplace engineered with trustless Solidity escrow contracts (`EscrowContract.sol`), a 5-pillar distributed settlement engine, EIP-712 cryptographic wallet binding, OAuth 2.0 PKCE social authentication, and exclusive US Dollar (USDC) milestone settlement.*
+
+---
+
+## 🌐 Live Deployments & Testnet Links
+
+| Component | Provider | Live URL / Endpoint | Status |
+| :--- | :--- | :--- | :---: |
+| **Web Application** | **Vercel** | [**https://fairwork-org.vercel.app**](https://fairwork-org.vercel.app) | 🟢 Live |
+| **Secondary App Alias** | Vercel | [https://fairwork-frontend-mu.vercel.app](https://fairwork-frontend-mu.vercel.app) | 🟢 Live |
+| **Backend API Gateway** | **Render** | [**https://fairwork.onrender.com**](https://fairwork.onrender.com) | 🟢 Active |
+| **API Healthcheck** | Render | [`/health`](https://fairwork.onrender.com/health) | `status: "ok"` |
+| **Kubernetes / Pod Readiness** | Render | [`/readyz`](https://fairwork.onrender.com/readyz) | DB & Indexer Synced |
+
+### 📜 Deployed Smart Contracts (Ethereum Sepolia Testnet)
+
+All smart contracts have been compiled with Solidity `0.8.28` (optimizer runs: `200`), deployed to Ethereum Sepolia, and verified on public block explorers:
+
+| Contract | Address | Explorer Link | Source Verification |
+| :--- | :--- | :--- | :---: |
+| **EscrowContract** | `0xc0d1b74a30a82d6fb846e446758a8c2ff391376c` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c) |
+| **ReputationContract** | `0xfa25823ccf7343fdfd7fa20a785d996331e66674` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xfa25823ccf7343fdfd7fa20a785d996331e66674) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0xfa25823ccf7343fdfd7fa20a785d996331e66674) |
+| **DisputeContract** | `0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193) |
+| **Mock USDC (mUSDC)** | `0xf21bdf6737a3009359f9ec1fa515e6d74702f575` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xf21bdf6737a3009359f9ec1fa515e6d74702f575) | Active (6 decimals) |
 
 ---
 
@@ -24,7 +49,7 @@
 - [8. Technology Stack & Installed Toolchain](#8-technology-stack--installed-toolchain)
 - [9. Complete Directory Structure](#9-complete-directory-structure)
 - [10. Getting Started & Installation](#10-getting-started--installation)
-- [11. Test Suite & Verification Matrix (64 Scenarios)](#11-test-suite--verification-matrix-64-scenarios)
+- [11. Test Suite & Verification Matrix (69 Backend + 12 Hardhat Tests)](#11-test-suite--verification-matrix-69-backend--12-hardhat-tests)
 - [12. Production Deployment Guidelines](#12-production-deployment-guidelines)
 - [13. License & Authors](#13-license--authors)
 
@@ -117,13 +142,14 @@ All platform components are implemented in production code and verified through 
 
 | Component | Status | Implementation / Verification Evidence |
 | :--- | :---: | :--- |
-| **Escrow Smart Contracts** | ✅ **Verified** | `EscrowContract.sol` (Solidity 0.8.28, OpenZeppelin 5.0, SafeERC20, ReentrancyGuard). |
+| **Escrow Smart Contracts** | ✅ **Verified** | `EscrowContract.sol` (Solidity 0.8.28, OpenZeppelin 5.0, SafeERC20, ReentrancyGuard, 48h timelock). |
 | **Dispute & Arbitration Engine** | ✅ **Verified** | `DisputeContract.sol` single-key arbitration boundary with mutual evidence submission. |
 | **5-Pillar Settlement Processor** | ✅ **Verified** | 24-scenario test suite passing: epoch lease fencing, reorg rollback, ABI checksum, outbox races. |
 | **OAuth 2.0 PKCE & Role Tokens** | ✅ **Verified** | PKCE code verifiers, state JWTs, signed `roleSelectionToken`, unit test suite passing 10/10. |
 | **GitHub Profile & Contribution Heatmap** | ✅ **Verified** | AES-256-GCM + HKDF encryption, GraphQL viewer fetch, 52-week heatmap, passing 4/4 tests. |
 | **Web3 Wallet Binding (EIP-712)** | ✅ **Verified** | Cryptographic signature verification, EIP-712 domain binding, `Web3WalletCard` frontend component. |
-| **Security & Reverse Proxy Hardening** | ✅ **Verified** | `trust proxy` Nginx resolution, crash traps (`unhandledRejection`), rate limiting, error masking. |
+| **Security & Reverse Proxy Hardening** | ✅ **Verified** | `trust proxy` resolution, crash traps (`unhandledRejection`), rate limiting, error masking. |
+| **Operator Alerting & Circuit Breaker** | ✅ **Verified** | Webhook dispatcher (`alertNotifier.js`), 5-failure indexer halt, runbook documented. |
 | **US Dollar Currency Settlement** | ✅ **Verified** | System-wide fixed-budget USD standard, Decimal128 scale validation, zero floating-point math. |
 
 ---
@@ -136,6 +162,7 @@ FairWork operates exclusively on a **US Dollar (USD / USDC) milestone escrow sta
 2. **Strict Currency Invariant**: All commitments, deposits, and releases occur strictly in US Dollars. Dual-currency display estimation (e.g. INR) has been formally purged to avoid exchange rate divergence between UI display and on-chain escrow locks.
 3. **Exact Decimal128 Representation**: Off-chain balances, milestone allocations, and fee calculations are stored in MongoDB using `Decimal128` (via `MoneyDomain`) with a scale constraint $\le 2$. Floating-point arithmetic is strictly prohibited in settlement routines.
 4. **Token Scaling Invariant**: On-chain, USDC uses 6 decimals ($1\text{ USD} = 1{,}000{,}000\text{ units}$). Conversion between `Decimal128` and EVM integer units is validated during reconciliation startup.
+5. **48-Hour Refund Timelock**: Invariant protection prevents sudden capital drains. When a client requests a refund, funds enter a 48-hour challenge timelock window allowing freelancers to review deliverables or file for arbitrator review before capital withdrawal.
 
 ---
 
@@ -143,9 +170,10 @@ FairWork operates exclusively on a **US Dollar (USD / USDC) milestone escrow sta
 
 ### A. Reverse Proxy & Rate Limiting Hardening
 - **Trust Proxy Configuration**: In production (`NODE_ENV === "production"`), Express is configured with `app.set("trust proxy", 1)`, ensuring client IPs are accurately resolved behind Nginx, Cloudflare, or Docker reverse proxies for rate limiting.
-- **Fail-Closed Auth Rate Limiting**: All sensitive endpoints (`/api/auth/login`, `/api/auth/register`, `/api/auth/resend-verification`, `/api/auth/forgot-password`) enforce strict rate limits backed by Redis fail-closed evaluation.
+- **Fail-Closed Auth Rate Limiting**: All sensitive endpoints (`/api/auth/login`, `/api/auth/register`, `/api/auth/resend-verification`, `/api/auth/forgot-password`) enforce strict rate limits backed by Redis fail-closed evaluation in production, with in-memory sliding-windows during development.
 - **Process Crash Traps**: `process.on("unhandledRejection")` and `process.on("uncaughtException")` handlers log structured diagnostic metadata and prevent unmonitored node process crashes.
 - **Error Masking**: Database exceptions, Mongoose validation internals, and database stack traces are sanitized from all client-facing responses, returning standardized domain constants.
+- **Operator Alert Dispatcher**: Immediate notifications sent via webhooks for critical conditions (`INDEXER_HALTED`, `REORG_DEEP`, `DLQ_PERSISTENCE_FAILURE`).
 
 ### B. OAuth 2.0 PKCE & Social Authentication
 ```
@@ -169,7 +197,7 @@ FairWork operates exclusively on a **US Dollar (USD / USDC) milestone escrow sta
 ```
 - **PKCE Code Verification (S256)**: Protects against authorization code interception attacks across Google and GitHub OAuth flows.
 - **Signed Role Selection Tokens**: Unregistered social OAuth users receive a 5-minute signed JWT `roleSelectionToken` preventing role forgery or client profile tampering before onboarding completion.
-- **Unified `authVerifier`**: Shared verification logic across Express HTTP routes and Socket.IO handshake handlers enforcing `HS256`, `issuer: "FairWork"`, `audience: "FairWork-App"`, token expiration, and instant suspension eviction.
+- **Unified `authVerifier`**: Shared verification logic across Express HTTP routes and Socket.IO handshake handlers enforcing `HS256`, `issuer: "fairwork-api"`, `audience: "fairwork-client"`, token expiration, and instant suspension eviction.
 
 ---
 
@@ -179,10 +207,10 @@ The blockchain infrastructure is located in `fairwork-blockchain/` and compiled 
 
 ```text
 fairwork-blockchain/contracts/
-├── EscrowContract.sol        # Core milestone escrow (Ownable, Pausable, ReentrancyGuard, SafeERC20)
+├── EscrowContract.sol        # Core milestone escrow (Ownable, Pausable, ReentrancyGuard, SafeERC20, 48h Timelock)
 ├── DisputeContract.sol       # Independent arbitrator dispute locking and allocation
 ├── ReputationContract.sol    # On-chain freelancer performance and completion scoring
-└── test/MockERC20.sol        # Testnet mock USDC token for local and staging verification
+└── test/MockERC20.sol        # Testnet mock USDC token (6 decimals)
 ```
 
 ### Milestone Release Invariant
@@ -204,8 +232,6 @@ function releaseMilestone(string calldata projectId, uint256 index) external non
     emit MilestoneReleased(projectId, index, e.freelancer, m.amount);
 }
 ```
-
-> **Architecture Reality Note**: In the current smart contract design, `refund()` is client-triggered when an escrow is not disputed or completed. Unilateral milestone withholding is prevented by entering dispute mode via `markDisputed()`, which locks contract funds pending arbitrator resolution.
 
 ---
 
@@ -230,10 +256,9 @@ Freelancers can link their GitHub account to display an authentic open-source co
   └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Encrypted Token Storage (`GithubOAuthCredential.js`)**: Access tokens encrypted with AES-256-GCM using HKDF-SHA256 derived keys (`{ version: 1, keyId: "hkdf-sha256-v1", iv, ciphertext, authTag }`). Supports zero-downtime key rotation.
+- **Encrypted Token Storage (`GithubOAuthCredential.js`)**: Access tokens encrypted with AES-256-GCM using HKDF-SHA256 derived keys (`{ version: 1, keyId: "hkdf-sha256-v1", iv, ciphertext, authTag }`).
 - **Stale-While-Revalidate Caching (`GithubActivityCache.js`)**: Serves cached GraphQL activity snapshots instantly (`expiresAt = 1h`), triggering background refresh queries asynchronously.
 - **Derived Metrics Algorithm**: A contribution day is defined as a UTC calendar day with $\ge 1$ qualifying commit/PR. Streaks and language distributions are calculated deterministically.
-- **Privacy Controls**: Freelancers can toggle contribution graph visibility between `PUBLIC` and `PRIVATE`.
 
 ---
 
@@ -241,10 +266,11 @@ Freelancers can link their GitHub account to display an authentic open-source co
 
 | Area | Technologies | Version |
 | :--- | :--- | :--- |
-| **Frontend** | React, TypeScript, Vite, TailwindCSS, Viem, Ethers.js | React 19, TS 5.7, Vite 6, Tailwind v4 |
-| **Backend** | Node.js, Express, Socket.IO, MongoDB, Mongoose | Node 24 LTS, Express 4.x, Mongoose 8.x |
-| **Blockchain** | Solidity, Hardhat, OpenZeppelin, Hardhat-Toolbox-Viem | Solidity 0.8.28, OZ 5.0, Viem v2 |
-| **Security** | JWT, Bcrypt, AES-256-GCM, HKDF-SHA256, PKCE | Enterprise standard |
+| **Frontend** | React, TypeScript, Vite, TailwindCSS, Viem, React Router | React 19, TS 5.7, Vite 6, Tailwind v4 |
+| **Backend** | Node.js, Express, Socket.IO, MongoDB, Mongoose, ioredis | Node 24 LTS, Express 5.x, Mongoose 8.x |
+| **Blockchain** | Solidity, Hardhat 3, OpenZeppelin 5.x, Viem | Solidity 0.8.28, OZ 5.0, Viem v2 |
+| **Cloud Hosting** | Vercel (Frontend SPA), Render (API Gateway), MongoDB Atlas | Production Live |
+| **Security** | JWT, Bcrypt, AES-256-GCM, HKDF-SHA256, PKCE | Enterprise Grade |
 
 ---
 
@@ -254,38 +280,40 @@ Freelancers can link their GitHub account to display an authentic open-source co
 FAIRWORK/
 ├── fairwork-backend/               # Node.js API & Settlement Engine
 │   ├── src/
+│   │   ├── abi/                    # EscrowContract.abi.json & checksum
+│   │   ├── config/                 # Environment validation & db connection
 │   │   ├── controllers/            # Auth, OAuth, Escrow, Project, User controllers
 │   │   ├── middleware/             # JWT auth, rate limiters, admin guards, suspension eviction
 │   │   ├── models/                 # User, Project, Escrow, SyncState, OutboxEvent, SettlementEvent
 │   │   ├── routes/                 # Express API routers (auth, users, escrow, projects, githubConnect)
-│   │   ├── services/               # reconciliationService, reorgService, outboxWorker, MoneyDomain
-│   │   ├── utils/                  # authVerifier, crypto helpers, configValidator
-│   │   └── index.js                # Server initialization, Socket.IO gateway, process crash traps
-│   ├── test/                       # Node.js native test runner test suites (64 scenarios)
-│   │   ├── auth.test.js            # Authorization test suite (14 scenarios)
+│   │   ├── services/               # blockchainListener, leaseManager, reorgEngine, outboxWorker
+│   │   ├── utils/                  # authVerifier, alertNotifier, crypto helpers, decimalUtils
+│   │   └── index.js                # Express gateway, Socket.IO, healthcheck & readyz endpoints
+│   ├── test/                       # Node.js native test runner test suites (69 scenarios)
+│   │   ├── authorization.test.js   # Authorization test suite (14 scenarios)
 │   │   ├── github.test.js          # GitHub integration test suite (4 scenarios)
-│   │   ├── integration.test.js     # Integration gate test suite (9 scenarios)
+│   │   ├── integration.test.js     # Integration gate test suite (14 scenarios)
 │   │   ├── oauth.test.js           # OAuth security test suite (10 scenarios)
 │   │   └── settlement.test.js      # Settlement test suite (24 scenarios)
-│   ├── scripts/                    # run-staging-verification.js and maintenance scripts
 │   └── package.json
 │
 ├── fairwork-frontend/              # React 19 Client Web Application
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── auth/               # LoginForm, RegisterForm, SocialAuth
-│   │   │   ├── common/             # Logo, PageHeader, ThemeToggle, FlagIcons
-│   │   │   ├── landing/            # HeroSection, HowItWorks, TrustSection, CategoryGrid, Footer
+│   │   │   ├── common/             # Logo, PageHeader, FlagIcons
+│   │   │   ├── landing/            # HeroSection, EscrowFlowBlueprint, CuratedSpecialists, Footer
 │   │   │   ├── layout/             # Topbar, AccountMenu, Sidebar
 │   │   │   ├── profile/            # GithubContributionHeatmap, Portfolio
 │   │   │   ├── ui/                 # Accessible Card, Button, Input, Modal, Badge primitives
 │   │   │   └── wallet/             # Web3WalletCard (EIP-712 binding)
 │   │   ├── context/                # AuthContext, CurrencyContext, WalletContext
-│   │   ├── pages/                  # LandingPage, ProjectsPage, WorkroomPage, WalletPage, SettingsPage
+│   │   ├── pages/                  # LandingPage, ProjectsPage, DashboardPage, WalletPage
 │   │   ├── services/               # authApi, userApi, projectsApi, escrowApi, web3
-│   │   ├── styles/                 # globals.css (Tailwind v4 tokens, glassmorphic surface utilities)
+│   │   ├── styles/                 # globals.css (Tailwind v4 tokens)
 │   │   ├── App.tsx                 # Full application route tree
 │   │   └── main.tsx                # Client entry point
+│   ├── vercel.json                 # SPA rewrite rules for single-page routing
 │   └── package.json
 │
 ├── fairwork-blockchain/            # Solidity Smart Contract Suite
@@ -295,11 +323,15 @@ FAIRWORK/
 │   │   ├── ReputationContract.sol  # On-chain reputation ledger contract
 │   │   └── test/MockERC20.sol      # Test token for local and staging verification
 │   ├── scripts/
-│   │   ├── deploy.ts               # Deployment script for Sepolia and local chains
-│   │   └── deployControlledToken.ts# Test token deployment script
+│   │   ├── deploy.ts               # Deployment script for Sepolia and mainnets
+│   │   ├── mintTokensToUser.ts     # Faucet script for test mUSDC
+│   │   └── executeRealTransactions.ts # End-to-end on-chain rehearsal script
+│   ├── test/                       # Hardhat test suites (12 passing tests)
 │   ├── hardhat.config.ts           # Hardhat 3 configuration (Solidity 0.8.28, optimizer: 200)
 │   └── package.json
 │
+├── docs/
+│   └── INCIDENT_RUNBOOK.md         # Production operator procedures & alert responses
 └── README.md
 ```
 
@@ -309,8 +341,9 @@ FAIRWORK/
 
 ### Prerequisites
 - **Node.js**: `v20.0.0` or higher (`v24.x LTS` recommended)
-- **MongoDB**: `v6.0` or higher (Replica set required for ACID snapshot transactions)
+- **MongoDB**: `v6.0` or higher (Replica set or MongoDB Atlas required for ACID snapshot transactions)
 - **Git**: `v2.30` or higher
+- **MetaMask / EVM Wallet**: Configured for **Ethereum Sepolia Testnet**
 
 ### 1. Clone Repository & Install Dependencies
 
@@ -334,37 +367,37 @@ cd ../fairwork-blockchain && npm install
 ```env
 PORT=5000
 NODE_ENV=development
-MONGO_URI=mongodb://localhost:27017/fairwork?replicaSet=rs0
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/users
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
-ENCRYPTION_SECRET=your-super-secret-encryption-key-min-32-chars
-CLIENT_URL=http://localhost:5173
-BACKEND_URL=http://localhost:5000
+CLIENT_URL=https://fairwork-org.vercel.app,http://localhost:5173
+BACKEND_URL=https://fairwork.onrender.com
 
-# Blockchain Parameters
+# Sepolia Blockchain Parameters
 CHAIN_ID=11155111
-RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
-ESCROW_CONTRACT_ADDRESS=0xYourDeployedEscrowContractAddress
-SETTLEMENT_TOKEN_ADDRESS=0xYourSepoliaUSDCTokenAddress
-
-# OAuth Credentials
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
+START_BLOCK=11808800
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
+ESCROW_CONTRACT_ADDRESS=0xc0d1b74a30a82d6fb846e446758a8c2ff391376c
+CANONICAL_ESCROW_ADDRESS=0xc0d1b74a30a82d6fb846e446758a8c2ff391376c
+USDC_CONTRACT_ADDRESS=0xf21bdf6737a3009359f9ec1fa515e6d74702f575
+REPUTATION_CONTRACT_ADDRESS=0xfa25823ccf7343fdfd7fa20a785d996331e66674
+DISPUTE_CONTRACT_ADDRESS=0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193
+EXPECTED_ESCROW_BYTECODE_HASH=5e8141742fa5c5a42d897b88e6c08c3038ebc42ea65dec2a556df152ffb490ad
 ```
 
 #### Frontend (`fairwork-frontend/.env`)
 ```env
-VITE_API_URL=http://localhost:5000/api
-VITE_CHAIN_ID=11155111
-VITE_ESCROW_CONTRACT_ADDRESS=0xYourDeployedEscrowContractAddress
-VITE_SETTLEMENT_TOKEN_ADDRESS=0xYourSepoliaUSDCTokenAddress
+VITE_API_URL=https://fairwork.onrender.com/api
+VITE_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
+VITE_ESCROW_CONTRACT_ADDRESS=0xc0d1b74a30a82d6fb846e446758a8c2ff391376c
+VITE_DISPUTE_CONTRACT_ADDRESS=0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193
+VITE_USDC_ADDRESS=0xf21bdf6737a3009359f9ec1fa515e6d74702f575
+VITE_REPUTATION_ADDRESS=0xfa25823ccf7343fdfd7fa20a785d996331e66674
 ```
 
 ### 3. Launch Development Servers
 
 ```bash
-# Terminal 1: Backend API & Socket Server
+# Terminal 1: Backend API & Real-time Event Indexer
 cd fairwork-backend && npm run dev
 
 # Terminal 2: Frontend Web Application
@@ -373,9 +406,9 @@ cd fairwork-frontend && npm run dev
 
 ---
 
-## 11. Test Suite & Verification Matrix (64 Scenarios)
+## 11. Test Suite & Verification Matrix (69 Backend + 12 Hardhat Tests)
 
-The backend features an automated test suite executed via the native Node.js test runner (`node --test`). All **64 scenarios** pass with 0 failures:
+The backend features an automated test suite executed via the native Node.js test runner (`node --test`). All **69 backend scenarios** and **12 Hardhat contract tests** pass with 0 failures:
 
 ```bash
 cd fairwork-backend
@@ -393,7 +426,7 @@ npm test
   ✔ Scenario 31: OAuth provider state isolation (separate cookies)
   ✔ Scenario 32: GitHub login PKCE verifier mismatch rejection
   ✔ Scenario 33: URL scheme rejection (javascript:, data:, credentials in URL)
-  ✔ Scenario 34: Deleted-user token rejection
+  ✔ Scenario 34: Token verification preserves sessionId and tokenVersion claims
   ✔ Scenario 35: Auth endpoint rate limiting (Redis fail-closed)
   ✔ Scenario 36: Decimal128 scale validation and business<->settlement separation
   ✔ Scenario 37: Settlement-token decimal startup verification
@@ -405,7 +438,7 @@ npm test
   ✔ 3. Top Languages Aggregation - Percentage Distribution Calculation
   ✔ 4. Decrypted Secret Confidentiality Guard
 
-▶ Integration-Gate Logic Suite
+▶ Integration-Gate Logic Suite — 14 Gates
   ✔ Gate 1: Fail-fast Startup Validator (Staging Invariants)
   ✔ Gate 2: Single Controlled Write Boundary for Settlement Snapshot
   ✔ Gate 3: Generation-Based Lease Fencing Takeover Simulation
@@ -415,6 +448,11 @@ npm test
   ✔ Gate 7: End-to-End Settlement Traceability Correlation
   ✔ Gate 8: Reorg Common-Ancestor Rollback Strategy
   ✔ Gate 9: Mongoose Models & Index Schema Validation
+  ✔ Gate 10: Dynamic Multi-Chain Resolver Verification (Mainnet, L2s, Sepolia)
+  ✔ Gate 11: SettlementEvent Schema & Reorg Reversal Functionality
+  ✔ Gate 12: Startup Validator with Optional vs Explicit OAuth
+  ✔ Gate 13: RPC 429 Rate-Limit During Reorg Check Rejection & Safe Halting
+  ✔ Gate 14: 5 Consecutive RPC Failures Flip Halted Flag & Halt Indexer Safely
 
 ▶ OAuth Security Suite
   ✔ initiateGoogleAuth generates PKCE challenge and signed state cookie
@@ -454,15 +492,25 @@ npm test
   ✔ Scenario 23: Funding reconciliation mismatch rejection (on-chain total != expected)
   ✔ Scenario 24: On-chain escrow project identity mismatch rejection
 
-ℹ tests 64 | suites 5 | pass 64 | fail 0
+ℹ tests 69 | suites 5 | pass 69 | fail 0
 ```
 
-### Run Frontend Typecheck & Build
+### Run Hardhat Smart Contract Tests
+
+```bash
+cd fairwork-blockchain
+npx hardhat test
+```
+```text
+  12 passing
+```
+
+### Run Frontend Production Verification
 
 ```bash
 cd fairwork-frontend
 npm run lint    # tsc --noEmit -> 0 errors
-npm run build   # tsc -b && vite build -> Clean production build
+npm run build   # tsc -b && vite build -> Clean production bundle
 ```
 
 ---
@@ -470,10 +518,10 @@ npm run build   # tsc -b && vite build -> Clean production build
 ## 12. Production Deployment Guidelines
 
 1. **MongoDB Replica Set Mandatory**: All financial settlement writes require a MongoDB replica set supporting `writeConcern: { w: "majority" }` and `readConcern: { level: "snapshot" }`.
-2. **Reverse Proxy Configuration**: Ensure reverse proxies (Nginx / Cloudflare / AWS ALB) forward `X-Forwarded-For` and `X-Forwarded-Proto` headers with `trust proxy` enabled.
-3. **Clock Drift Invariant**: Host instances must run NTP/Chrony with clock drift bounded to $\le 50\text{ms}$ for epoch lease lease synchronization.
+2. **Reverse Proxy Configuration**: Ensure reverse proxies (Nginx / Cloudflare / Render) forward `X-Forwarded-For` and `X-Forwarded-Proto` headers with `trust proxy` enabled.
+3. **Clock Drift Invariant**: Host instances must run NTP/Chrony with clock drift bounded to $\le 50\text{ms}$ for epoch lease synchronization.
 4. **RPC Redundancy**: Provide high-availability RPC URLs with fallback endpoints to ensure continuous chain head synchronization.
-5. **Staging Verification Gate**: Execute `node scripts/run-staging-verification.js` prior to traffic cutover to validate environment variables, MongoDB indexes, and contract ABI checksums.
+5. **Operator Runbooks**: Refer to [`docs/INCIDENT_RUNBOOK.md`](docs/INCIDENT_RUNBOOK.md) for automated alert routing, emergency pause procedures, and reorg manual intervention workflows.
 
 ---
 
@@ -482,3 +530,4 @@ npm run build   # tsc -b && vite build -> Clean production build
 - **License**: [MIT License](LICENSE)
 - **Authors**: Suriya E & Vignesh V
 - **Repository**: [https://github.com/Suriya528/fairwork](https://github.com/Suriya528/fairwork)
+- **Live Demo**: [https://fairwork-org.vercel.app](https://fairwork-org.vercel.app)
