@@ -185,7 +185,8 @@ export function Web3WalletCard({
                 variant="primary"
                 loading={isConnecting || isVerifying}
                 onClick={connectAndVerify}
-                leftIcon={<FiShield className="h-4 w-4" />}
+                leftIcon={<FiShield className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                className="cursor-pointer shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 ease-out"
               >
                 Connect &amp; Verify Wallet
               </Button>

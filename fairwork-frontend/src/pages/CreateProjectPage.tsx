@@ -292,7 +292,8 @@ export function CreateProjectPage() {
               size="sm"
               onClick={connectAndVerify}
               loading={isConnecting || isVerifying}
-              className="shrink-0 bg-primary-600 hover:bg-primary-500 text-white font-semibold shadow-xs"
+              leftIcon={<FiShield className="h-4 w-4 text-sky-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+              className="shrink-0 cursor-pointer bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold shadow-md shadow-sky-600/25 hover:shadow-lg hover:shadow-sky-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-sky-400/30 hover:border-sky-300/50 transition-all duration-200 ease-out"
             >
               Connect &amp; Verify Wallet
             </Button>
@@ -612,7 +613,8 @@ export function CreateProjectPage() {
                 type="button"
                 onClick={connectAndVerify}
                 loading={isConnecting || isVerifying}
-                className="bg-amber-600 hover:bg-amber-700 text-white"
+                leftIcon={<FiShield className="h-4 w-4 text-amber-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                className="cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold shadow-md shadow-amber-600/25 hover:shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-amber-400/30 hover:border-amber-300/50 transition-all duration-200 ease-out"
               >
                 Connect &amp; Verify Wallet to Post
               </Button>

@@ -26,7 +26,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm hover:shadow-primary/20",
+    "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm hover:shadow-md hover:shadow-primary/30",
   secondary:
     "bg-elevated text-foreground hover:bg-surface-hover border border-border-strong hover:border-primary/40",
   outline:
@@ -70,10 +70,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={cn(
-          "group relative inline-flex items-center justify-center rounded-xl font-semibold overflow-hidden",
+          "group relative inline-flex items-center justify-center rounded-xl font-semibold overflow-hidden cursor-pointer",
           "transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "disabled:pointer-events-none disabled:opacity-50 disabled:transform-none",
+          "disabled:pointer-events-none disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed",
           variantStyles[variant],
           sizeStyles[size],
           fullWidth && "w-full",
