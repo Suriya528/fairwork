@@ -52,7 +52,13 @@ export function TransactionsPage() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!token) return
+    if (user?.role === "admin") {
+      navigate("/admin/transactions", { replace: true })
+    }
+  }, [user?.role, navigate])
+
+  useEffect(() => {
+    if (!token || user?.role === "admin") return
     let cancelled = false
     setLoading(true)
     getMyProjects(token)

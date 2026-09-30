@@ -17,6 +17,13 @@ import { getGreeting } from "@/data/dashboard"
 export function DashboardPage() {
   const { user, token } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      navigate("/admin", { replace: true })
+    }
+  }, [user?.role, navigate])
+
   const role = user?.role === "freelancer" ? "freelancer" : "client"
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)

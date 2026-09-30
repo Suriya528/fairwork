@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   FiCheck,
   FiCheckCircle,
@@ -24,11 +25,18 @@ import {
 
 export function ContractsPage() {
   const { user, token } = useAuth()
+  const navigate = useNavigate()
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [contracts, setContracts] = useState<ApiContract[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      navigate("/admin/contracts", { replace: true })
+    }
+  }, [user?.role, navigate])
 
   const formatDDMMYYYY = (dateInput?: string | Date | null): string => {
     if (!dateInput) return "____________________________________________"
@@ -49,7 +57,7 @@ export function ContractsPage() {
   const isClient = user?.role === "client"
 
   const load = async () => {
-    if (!token) return
+    if (!token || user?.role === "admin") return
     try {
       const p = await getMyProjects(token)
       setProjects(p)

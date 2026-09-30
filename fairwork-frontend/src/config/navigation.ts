@@ -98,7 +98,17 @@ export const navSections: NavSection[] = [
  */
 export function getNavSectionsForRole(role?: string): NavSection[] {
   if (role === "admin") {
-    return navSections.filter((section) => section.title === "Administration")
+    return [
+      ...navSections.filter((section) => section.title === "Administration"),
+      {
+        title: "Account",
+        items: [
+          { label: "Profile", path: "/profile", icon: FiUser },
+          { label: "Settings", path: "/settings", icon: FiSettings },
+          { label: "Help Center", path: "/help", icon: FiHelpCircle },
+        ],
+      },
+    ]
   }
 
   const isFreelancer = role === "freelancer"

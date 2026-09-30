@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { FiBarChart2, FiCheckCircle, FiDollarSign, FiFolder } from "react-icons/fi"
 import { EmptyState } from "@/components/feedback/EmptyState"
 import { MetricCard } from "@/components/common/MetricCard"
@@ -9,6 +10,7 @@ import { getClientAnalytics, getFreelancerAnalytics, type ApiAnalytics } from "@
 
 export function AnalyticsPage() {
   const { user, token } = useAuth()
+  const navigate = useNavigate()
   const { formatAmount } = useCurrency()
   const [data, setData] = useState<ApiAnalytics | null>(null)
   const [error, setError] = useState("")
@@ -16,7 +18,13 @@ export function AnalyticsPage() {
   const isFreelancer = user?.role === "freelancer"
 
   useEffect(() => {
-    if (!token || !user) return
+    if (user?.role === "admin") {
+      navigate("/admin/analytics", { replace: true })
+    }
+  }, [user?.role, navigate])
+
+  useEffect(() => {
+    if (!token || !user || user.role === "admin") return
     ;(isFreelancer ? getFreelancerAnalytics(token) : getClientAnalytics(token))
       .then(setData)
       .catch((e: Error) => setError(e.message))

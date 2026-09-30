@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { FiShield } from "react-icons/fi"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { EmptyState } from "@/components/feedback/EmptyState"
 import { PageHeader } from "@/components/common/PageHeader"
 import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
@@ -10,10 +10,17 @@ import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 
 export function EscrowPage() {
   const { user, token } = useAuth()
+  const navigate = useNavigate()
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [error, setError] = useState("")
 
   const isClient = user?.role === "client"
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      navigate("/admin/escrows", { replace: true })
+    }
+  }, [user?.role, navigate])
 
   useEffect(() => {
     if (token) getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
@@ -55,14 +62,16 @@ export function EscrowPage() {
             </p>
           </div>
         </div>
-        <Web3WalletCard
-          title="Escrow Web3 Wallet Verification"
-          description={
-            isClient
-              ? "Your connected wallet must be verified via EIP-712 to fund project escrows on Sepolia."
-              : "Your connected wallet must be verified via EIP-712 to receive milestone payment releases."
-          }
-        />
+        {user?.role !== "admin" && (
+          <Web3WalletCard
+            title="Escrow Web3 Wallet Verification"
+            description={
+              isClient
+                ? "Your connected wallet must be verified via EIP-712 to fund project escrows on Sepolia."
+                : "Your connected wallet must be verified via EIP-712 to receive milestone payment releases."
+            }
+          />
+        )}
 
         {error && <p className="text-sm text-danger">{error}</p>}
         {projects.length ? (

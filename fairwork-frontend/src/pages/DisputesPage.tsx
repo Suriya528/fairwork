@@ -1,6 +1,6 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { FiAlertTriangle, FiFile } from "react-icons/fi"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/Button"
 import { Textarea } from "@/components/ui/Textarea"
 import { EmptyState } from "@/components/feedback/EmptyState"
@@ -13,7 +13,14 @@ import { raiseEscrowDispute } from "@/services/web3"
 
 export function DisputesPage() {
   const { user, token } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      navigate("/admin/disputes", { replace: true })
+    }
+  }, [user?.role, navigate])
   const { projects, disputes, openDisputeCount, error, refresh } = useDisputeSummary()
   const [reason, setReason] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState("")

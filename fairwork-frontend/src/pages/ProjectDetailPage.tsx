@@ -669,7 +669,7 @@ export function ProjectDetailPage() {
     if (!id || !token || !project) return
     setAppsLoading(true)
     try {
-      if (isClient) {
+      if (isClient || user?.role === "admin") {
         const list = await getProjectApplications(id, token)
         setApplications(list)
       } else if (user?.role === "freelancer") {
@@ -1031,7 +1031,7 @@ export function ProjectDetailPage() {
 
   const tabItems: TabItem[] = [
     { label: "Overview", value: "overview" },
-    ...(isClient ? [{ label: "Applications", value: "applications", count: applications.length }] : []),
+    ...((isClient || user?.role === "admin") ? [{ label: "Applications", value: "applications", count: applications.length }] : []),
     { label: "Contract", value: "contract" },
     { label: "Milestones", value: "milestones", count: milestonesList.length },
     { label: "Files", value: "files" },
@@ -1207,7 +1207,7 @@ export function ProjectDetailPage() {
                                 View Profile
                               </Button>
 
-                              {app.status === "pending" && !hasFreelancer && (
+                              {isClient && app.status === "pending" && !hasFreelancer && (
                                 <>
                                   <Button
                                     variant="ghost"

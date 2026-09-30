@@ -298,27 +298,31 @@ export function ProfilePage() {
                     />
                   </label>
                 )}
-                <div className="absolute -bottom-6 left-0">
-                  <Badge tone={availabilityTone} className="text-[10px] px-2 py-0.5 shadow-sm">
-                    {availabilityLabel}
-                  </Badge>
-                </div>
+                {displayUser.role === "freelancer" && (
+                  <div className="absolute -bottom-6 left-0">
+                    <Badge tone={availabilityTone} className="text-[10px] px-2 py-0.5 shadow-sm">
+                      {availabilityLabel}
+                    </Badge>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons Suite */}
               <div className="flex items-center gap-2 w-full sm:w-auto pt-4 sm:pt-0">
                 {isPublicView ? (
                   <>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<FiBriefcase />}
-                      onClick={handleHireClick}
-                      disabled={displayUser.availability === "not_available"}
-                      className="bg-primary-600 hover:bg-primary-500 text-white font-medium"
-                    >
-                      Hire Freelancer
-                    </Button>
+                    {displayUser.role === "freelancer" && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<FiBriefcase />}
+                        onClick={handleHireClick}
+                        disabled={displayUser.availability === "not_available"}
+                        className="bg-primary-600 hover:bg-primary-500 text-white font-medium"
+                      >
+                        Hire Freelancer
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -355,7 +359,13 @@ export function ProfilePage() {
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="text-2xl font-extrabold text-foreground">{displayUser.name}</h1>
-                  <Badge tone="primary">{displayUser.role === "client" ? "Client" : "Freelancer"}</Badge>
+                  <Badge tone={displayUser.role === "admin" ? "warning" : "primary"}>
+                    {displayUser.role === "admin"
+                      ? "Platform Administrator"
+                      : displayUser.role === "client"
+                      ? "Client"
+                      : "Freelancer"}
+                  </Badge>
                   {displayUser.walletAddress && (
                     <Badge tone="success" className="text-[10px] gap-1 font-mono">
                       <FiShield className="h-3 w-3" />
@@ -383,7 +393,7 @@ export function ProfilePage() {
                   <FiAward className="h-3.5 w-3.5" />
                   100% Clean Escrow Record
                 </span>
-                {displayUser.hourlyRate ? (
+                {displayUser.role === "freelancer" && displayUser.hourlyRate ? (
                   <span className="flex items-center gap-1 text-foreground font-mono font-bold">
                     <FiClock className="text-muted" /> ${displayUser.hourlyRate} USDC / hr
                   </span>
@@ -434,23 +444,42 @@ export function ProfilePage() {
         </Card>
 
         {/* Top Summary Metrics */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Active Projects"
-            value={String(isPublicView && publicData ? publicData.stats.completedProjectsCount : activeCount)}
-            icon={FiFolder}
-          />
-          <MetricCard
-            label="Completed Milestones"
-            value={String(stats.completedMilestonesCount || completedCount)}
-            icon={FiCheckCircle}
-          />
-          <MetricCard
-            label={displayUser.role === "client" ? "Total Spent" : "Total Earned"}
-            value={formatAmount(stats.totalEarnedUSDC || totalVolume)}
-            icon={FiDollarSign}
-          />
-        </div>
+        {displayUser.role === "admin" ? (
+          <div className="rounded-2xl border border-primary/25 bg-surface p-5 shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <FiShield className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">Platform Administrator Account</h3>
+                <p className="text-xs text-subtle">Authorized for system maintenance, dispute adjudication, and compliance oversight.</p>
+              </div>
+            </div>
+            {!isPublicView && (
+              <Button size="sm" variant="outline" onClick={() => navigate("/admin")}>
+                Open Admin Console
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <MetricCard
+              label={displayUser.role === "client" ? "Posted Projects" : "Active Projects"}
+              value={String(isPublicView && publicData ? publicData.stats.completedProjectsCount : activeCount)}
+              icon={FiFolder}
+            />
+            <MetricCard
+              label="Completed Milestones"
+              value={String(stats.completedMilestonesCount || completedCount)}
+              icon={FiCheckCircle}
+            />
+            <MetricCard
+              label={displayUser.role === "client" ? "Total Escrow Committed" : "Total Earned"}
+              value={formatAmount(displayUser.role === "client" ? stats.totalSpentUSDC || totalVolume : stats.totalEarnedUSDC || totalVolume)}
+              icon={FiDollarSign}
+            />
+          </div>
+        )}
 
         {/* Multi-Tab Navigation Subsystem */}
         <div className="border-b border-border/80 flex gap-6">
@@ -464,42 +493,76 @@ export function ProfilePage() {
                 : "text-muted hover:text-foreground",
             )}
           >
-            Overview &amp; Portfolio
+            {displayUser.role === "admin"
+              ? "Administrator Overview"
+              : displayUser.role === "client"
+              ? "Overview & Company"
+              : "Overview & Portfolio"}
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className={cn(
-              "pb-3 text-sm font-semibold transition-colors relative flex items-center gap-1.5",
-              activeTab === "history"
-                ? "text-primary border-b-2 border-primary"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            On-Chain Work History
-            <Badge tone="neutral" className="text-[10px]">
-              {publicData?.workHistory?.length || completedCount}
-            </Badge>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("reviews")}
-            className={cn(
-              "pb-3 text-sm font-semibold transition-colors relative flex items-center gap-1.5",
-              activeTab === "reviews"
-                ? "text-primary border-b-2 border-primary"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            Client Reviews ({userReviewCount})
-          </button>
+          {displayUser.role !== "admin" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("history")}
+                className={cn(
+                  "pb-3 text-sm font-semibold transition-colors relative flex items-center gap-1.5",
+                  activeTab === "history"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                On-Chain Work History
+                <Badge tone="neutral" className="text-[10px]">
+                  {publicData?.workHistory?.length || completedCount}
+                </Badge>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("reviews")}
+                className={cn(
+                  "pb-3 text-sm font-semibold transition-colors relative flex items-center gap-1.5",
+                  activeTab === "reviews"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted hover:text-foreground",
+                )}
+              >
+                {displayUser.role === "client" ? "Freelancer Reviews" : "Client Reviews"} ({userReviewCount})
+              </button>
+            </>
+          )}
         </div>
 
-        {/* TAB 1: OVERVIEW & PORTFOLIO */}
+        {/* TAB 1: OVERVIEW */}
         {activeTab === "overview" && (
           <div className="space-y-6">
-            {/* Endorsed Skills */}
-            {displayUser.skills && displayUser.skills.length > 0 && (
+            {/* Admin Overview Details */}
+            {displayUser.role === "admin" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FiShield className="text-primary-400" /> Platform Governance &amp; Oversight
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-xs text-muted leading-relaxed">
+                  <p>
+                    This account is an authorized platform administrator on FairWork. Platform administrators supervise escrow disputes, ensure smart contract security compliance, and maintain overall marketplace integrity.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-3 pt-2">
+                    <div className="p-3 rounded-xl border border-border/70 bg-secondary/30">
+                      <p className="font-semibold text-foreground text-xs">Dispute Adjudication</p>
+                      <p className="text-[11px] text-subtle mt-0.5">Authoritative settlement of contested milestone releases.</p>
+                    </div>
+                    <div className="p-3 rounded-xl border border-border/70 bg-secondary/30">
+                      <p className="font-semibold text-foreground text-xs">Smart Contract Auditing</p>
+                      <p className="text-[11px] text-subtle mt-0.5">Real-time ledger reconciliation on Sepolia network.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Endorsed Skills (Freelancer only) */}
+            {displayUser.role === "freelancer" && displayUser.skills && displayUser.skills.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center justify-between">
@@ -523,85 +586,115 @@ export function ProfilePage() {
               </Card>
             )}
 
-            {/* GitHub Open-Source Contribution Activity Heatmap */}
-            <GithubContributionHeatmap targetUserId={targetUserId || ""} isOwner={!isPublicView} />
+            {/* GitHub Open-Source Contribution Activity Heatmap (Freelancer only) */}
+            {displayUser.role === "freelancer" && (
+              <GithubContributionHeatmap targetUserId={targetUserId || ""} isOwner={!isPublicView} />
+            )}
 
-            {/* Interactive Portfolio Showcase Grid */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FiLayers className="text-primary-400" /> Featured Portfolio Projects
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                {displayUser.portfolioItems && displayUser.portfolioItems.length > 0 ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {displayUser.portfolioItems.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex flex-col justify-between rounded-xl border border-border/80 bg-secondary/20 p-4 transition-all hover:bg-elevated hover:border-primary/40 shadow-xs"
-                      >
-                        <div>
-                          {item.imageUrl && (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.title}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none"
-                              }}
-                              className="h-32 w-full object-cover rounded-lg mb-3 border border-border/40"
-                            />
-                          )}
-                          <h4 className="font-bold text-foreground text-sm">{item.title}</h4>
-                          {item.description && (
-                            <p className="text-xs text-muted mt-1 leading-relaxed line-clamp-3">
-                              {item.description}
-                            </p>
-                          )}
-                          {item.tags && item.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                              {item.tags.map((t, tIdx) => (
-                                <span
-                                  key={tIdx}
-                                  className="text-[10px] bg-secondary/80 text-muted px-2 py-0.5 rounded-md border border-border/40 font-mono"
-                                >
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+            {/* Interactive Portfolio Showcase Grid (Freelancer only) */}
+            {displayUser.role === "freelancer" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FiLayers className="text-primary-400" /> Featured Portfolio Projects
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 pt-0">
+                  {displayUser.portfolioItems && displayUser.portfolioItems.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {displayUser.portfolioItems.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex flex-col justify-between rounded-xl border border-border/80 bg-secondary/20 p-4 transition-all hover:bg-elevated hover:border-primary/40 shadow-xs"
+                        >
+                          <div>
+                            {item.imageUrl && (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.title}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none"
+                                }}
+                                className="h-32 w-full object-cover rounded-lg mb-3 border border-border/40"
+                              />
+                            )}
+                            <h4 className="font-bold text-foreground text-sm">{item.title}</h4>
+                            {item.description && (
+                              <p className="text-xs text-muted mt-1 leading-relaxed line-clamp-3">
+                                {item.description}
+                              </p>
+                            )}
+                            {item.tags && item.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-3">
+                                {item.tags.map((t, tIdx) => (
+                                  <span
+                                    key={tIdx}
+                                    className="text-[10px] bg-secondary/80 text-muted px-2 py-0.5 rounded-md border border-border/40 font-mono"
+                                  >
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
 
-                        <div className="flex items-center gap-3 pt-3 mt-3 border-t border-border/40">
-                          {item.projectUrl && (
-                            <a
-                              href={sanitizeUrl(item.projectUrl)}
-                              target="_blank"
-                              rel="noopener noreferrer nofollow"
-                              className="flex items-center gap-1 text-xs text-primary-400 hover:underline"
-                            >
-                              <FiGlobe className="h-3 w-3" /> Live Demo <FiExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          )}
-                          {item.githubUrl && (
-                            <a
-                              href={sanitizeUrl(item.githubUrl)}
-                              target="_blank"
-                              rel="noopener noreferrer nofollow"
-                              className="flex items-center gap-1 text-xs text-muted hover:text-foreground"
-                            >
-                              <FiGithub className="h-3 w-3" /> Code Base
-                            </a>
-                          )}
+                          <div className="flex items-center gap-3 pt-3 mt-3 border-t border-border/40">
+                            {item.projectUrl && (
+                              <a
+                                href={sanitizeUrl(item.projectUrl)}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                className="flex items-center gap-1 text-xs text-primary-400 hover:underline"
+                              >
+                                <FiGlobe className="h-3 w-3" /> Live Demo <FiExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            )}
+                            {item.githubUrl && (
+                              <a
+                                href={sanitizeUrl(item.githubUrl)}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                className="flex items-center gap-1 text-xs text-muted hover:text-foreground"
+                              >
+                                <FiGithub className="h-3 w-3" /> Code Base
+                              </a>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted py-4">No portfolio items showcase added yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Client-specific overview card */}
+            {displayUser.role === "client" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FiBriefcase className="text-primary-400" /> Client &amp; Organization Profile
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted leading-relaxed">
+                    {displayUser.bio || "Verified client on FairWork. Creates and funds smart contract escrow projects with guaranteed milestone security."}
+                  </p>
+                  <div className="flex flex-wrap gap-4 pt-2 text-xs">
+                    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3 flex-1 min-w-[200px]">
+                      <span className="text-[10px] font-mono uppercase text-muted block">Payment Reliability</span>
+                      <span className="font-bold text-emerald-400 text-sm mt-0.5 block">100% Escrow Backed</span>
+                    </div>
+                    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3 flex-1 min-w-[200px]">
+                      <span className="text-[10px] font-mono uppercase text-muted block">Settlement Currency</span>
+                      <span className="font-bold text-foreground text-sm mt-0.5 block">USD / USDC (Sepolia)</span>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-xs text-muted py-4">No portfolio items showcase added yet.</p>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 

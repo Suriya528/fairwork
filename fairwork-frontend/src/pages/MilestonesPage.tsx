@@ -27,8 +27,14 @@ export function MilestonesPage() {
   const paymentFilter = payment === "unreleased" || payment === "released" ? payment : null
 
   useEffect(() => {
-    if (token) getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
-  }, [token])
+    if (user?.role === "admin") {
+      nav("/admin/projects", { replace: true })
+    }
+  }, [user?.role, nav])
+
+  useEffect(() => {
+    if (token && user?.role !== "admin") getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
+  }, [token, user?.role])
 
   const all = useMemo<Item[]>(
     () => projects.flatMap((p) => p.milestones.map((m) => ({ ...m, projectTitle: p.title }))),

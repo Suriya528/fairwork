@@ -38,6 +38,10 @@ import { apiFetch } from "@/services/apiClient"
 export function SettingsPage() {
   const { user, token } = useAuth()
 
+  const isAdmin = user?.role === "admin"
+  const isClient = user?.role === "client"
+  const isFreelancer = user?.role === "freelancer"
+
   // Profile Form State
   const [firstName, setFirstName] = useState(user?.name ? user.name.split(" ")[0] || "" : "")
   const [lastName, setLastName] = useState(user?.name ? user.name.split(" ").slice(1).join(" ") || "" : "")
@@ -238,10 +242,12 @@ export function SettingsPage() {
     setProfileSuccess("")
 
     try {
-      const skillsArray = skillsInput
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter(Boolean)
+      const skillsArray = isFreelancer
+        ? skillsInput
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+        : []
 
       await updateProfile(
         {
@@ -249,15 +255,15 @@ export function SettingsPage() {
           lastName: lastName.trim(),
           bio: bio.trim(),
           tagline: tagline.trim(),
-          hourlyRate: Number(hourlyRate) || 0,
-          availability,
+          hourlyRate: isFreelancer ? Number(hourlyRate) || 0 : 0,
+          availability: isFreelancer ? availability : "available",
           skills: skillsArray,
           avatarUrl: avatarUrl.trim(),
-          bannerUrl: bannerUrl.trim(),
-          githubUrl: githubUrl.trim(),
-          linkedinUrl: linkedinUrl.trim(),
-          portfolio: portfolio.trim(),
-          portfolioItems,
+          bannerUrl: isAdmin ? "" : bannerUrl.trim(),
+          githubUrl: isFreelancer ? githubUrl.trim() : "",
+          linkedinUrl: isAdmin ? "" : linkedinUrl.trim(),
+          portfolio: isAdmin ? "" : portfolio.trim(),
+          portfolioItems: isFreelancer ? portfolioItems : [],
         },
         token,
       )
@@ -314,7 +320,16 @@ export function SettingsPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <PageHeader title="Settings" description="Manage your profile information, media assets, display options, and security." />
+        <PageHeader
+          title={isAdmin ? "Administrator Settings" : isClient ? "Client & Company Settings" : "Freelancer Profile & Settings"}
+          description={
+            isAdmin
+              ? "Manage your platform administrator profile, contact email, and system alert preferences."
+              : isClient
+              ? "Manage your hiring identity, organization profile, contact email, and Web3 funding wallet."
+              : "Manage your professional tagline, rate, availability, portfolio, connected GitHub, and Web3 payout wallet."
+          }
+        />
 
         {error && <div className="p-3 text-xs bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl">{error}</div>}
 
@@ -322,10 +337,12 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <FiMail className="text-primary" /> Account Contact Email
+              <FiMail className="text-primary" /> {isAdmin ? "Administrator Alert & Notification Email" : "Account Contact Email"}
             </CardTitle>
             <CardDescription>
-              Manage your primary contact email address for milestone notifications, project updates, and account recovery.
+              {isAdmin
+                ? "Primary contact email address for administrative alerts, system audit warnings, and account access."
+                : "Manage your primary contact email address for milestone notifications, project updates, and account recovery."}
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleUpdateEmail}>
@@ -346,7 +363,9 @@ export function SettingsPage() {
                   className="mt-1"
                 />
                 <p className="mt-1 text-[11px] text-muted">
-                  Your primary email address for milestone release alerts, dispute notifications, and account recovery.
+                  {isAdmin
+                    ? "Your administrative email address for dispute escalations, security audits, and system health alerts."
+                    : "Your primary email address for milestone release alerts, dispute notifications, and account recovery."}
                 </p>
               </div>
             </CardContent>
@@ -362,53 +381,57 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <FiImage className="text-primary-400" /> Profile Photo &amp; Cover Banner Media
+              <FiImage className="text-primary-400" /> {isAdmin ? "Administrator Avatar Photo" : "Profile Photo & Cover Banner Media"}
             </CardTitle>
             <CardDescription>
-              Upload custom WebP-optimized avatar photos and hero cover banners.
+              {isAdmin
+                ? "Upload a custom WebP-optimized avatar photo for your platform administrative identity."
+                : "Upload custom WebP-optimized avatar photos and hero cover banners."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Cover Banner Media Zone */}
-            <div>
-              <Label className="text-xs font-semibold mb-2 block">Hero Cover Banner Image</Label>
-              <div className="h-28 w-full rounded-xl border border-border/80 relative overflow-hidden bg-gradient-to-r from-primary-900/90 via-indigo-900/60 to-purple-900/80 flex items-center justify-center">
-                {bannerUrl ? (
-                  <img
-                    src={bannerUrl}
-                    alt="Cover Preview"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none"
-                    }}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs text-muted">Default Web3 Gradient Cover</span>
-                )}
-
-                <label className="absolute bottom-2 right-2 cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-card/90 hover:bg-card text-foreground border border-border text-xs shadow-md">
-                  {uploadingBanner ? (
-                    <FiRefreshCw className="h-3.5 w-3.5 animate-spin" />
+            {/* Cover Banner Media Zone (Clients and Freelancers only) */}
+            {!isAdmin && (
+              <div>
+                <Label className="text-xs font-semibold mb-2 block">Hero Cover Banner Image</Label>
+                <div className="h-28 w-full rounded-xl border border-border/80 relative overflow-hidden bg-gradient-to-r from-primary-900/90 via-indigo-900/60 to-purple-900/80 flex items-center justify-center">
+                  {bannerUrl ? (
+                    <img
+                      src={bannerUrl}
+                      alt="Cover Preview"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none"
+                      }}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <FiCamera className="h-3.5 w-3.5 text-primary-400" />
+                    <span className="text-xs text-muted">Default Web3 Gradient Cover</span>
                   )}
-                  <span>{uploadingBanner ? "Uploading..." : "Upload Cover"}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={handleBannerUpload}
-                    disabled={uploadingBanner}
-                    className="hidden"
-                  />
-                </label>
+
+                  <label className="absolute bottom-2 right-2 cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-card/90 hover:bg-card text-foreground border border-border text-xs shadow-md">
+                    {uploadingBanner ? (
+                      <FiRefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FiCamera className="h-3.5 w-3.5 text-primary-400" />
+                    )}
+                    <span>{uploadingBanner ? "Uploading..." : "Upload Cover"}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleBannerUpload}
+                      disabled={uploadingBanner}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Avatar Photo Media Zone */}
             <div className="flex items-center gap-4 pt-2">
               <Avatar name={user?.name || "User"} src={avatarUrl} size="lg" className="h-16 w-16" />
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Avatar Photo</Label>
+                <Label className="text-xs font-semibold">{isAdmin ? "Administrator Avatar Photo" : "Avatar Photo"}</Label>
                 <div className="flex items-center gap-2">
                   <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary/60 hover:bg-secondary text-foreground border border-border/80 text-xs font-medium shadow-xs">
                     {uploadingAvatar ? (
@@ -446,10 +469,19 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <FiUser className="text-primary-400" /> Profile &amp; Professional Reputation Information
+              <FiUser className="text-primary-400" />{" "}
+              {isAdmin
+                ? "Administrator Identity & Platform Responsibilities"
+                : isClient
+                ? "Company & Hirer Profile Information"
+                : "Profile & Professional Reputation Information"}
             </CardTitle>
             <CardDescription>
-              Update your public tagline, availability, bio, skills, and portfolio items.
+              {isAdmin
+                ? "Manage your administrator name, operational title, and platform responsibilities."
+                : isClient
+                ? "Update your company name, hirer tagline, organization bio, and company links."
+                : "Update your public tagline, availability, bio, skills, and portfolio items."}
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSaveProfile}>
@@ -486,177 +518,214 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <Label htmlFor="tagline">Professional Tagline</Label>
+                <Label htmlFor="tagline">
+                  {isAdmin
+                    ? "Operational Title"
+                    : isClient
+                    ? "Company / Hirer Title"
+                    : "Professional Tagline"}
+                </Label>
                 <Input
                   id="tagline"
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
-                  placeholder="e.g. Senior Smart Contract &amp; Full-Stack Architect"
+                  placeholder={
+                    isAdmin
+                      ? "e.g. Platform Administrator & Dispute Arbiter"
+                      : isClient
+                      ? "e.g. Founder & Lead Project Hirer"
+                      : "e.g. Senior Smart Contract & Full-Stack Architect"
+                  }
                   className="mt-1"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="hourlyRate">Target Rate ($ USDC / hr)</Label>
-                  <Input
-                    id="hourlyRate"
-                    type="number"
-                    value={hourlyRate}
-                    onChange={(e) => setHourlyRate(e.target.value)}
-                    placeholder="85"
-                    className="mt-1"
-                  />
+              {/* Freelancer specific: Hourly Rate & Workplace Availability */}
+              {isFreelancer && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="hourlyRate">Target Rate ($ USDC / hr)</Label>
+                    <Input
+                      id="hourlyRate"
+                      type="number"
+                      value={hourlyRate}
+                      onChange={(e) => setHourlyRate(e.target.value)}
+                      placeholder="85"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="availability">Workplace Availability</Label>
+                    <select
+                      id="availability"
+                      value={availability}
+                      onChange={(e) => setAvailability(e.target.value as "available" | "busy" | "not_available")}
+                      className="mt-1 w-full rounded-xl border border-border/80 bg-surface px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+                    >
+                      <option value="available">Available for Hire</option>
+                      <option value="busy">Busy (Limited Availability)</option>
+                      <option value="not_available">Not Available</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="availability">Workplace Availability</Label>
-                  <select
-                    id="availability"
-                    value={availability}
-                    onChange={(e) => setAvailability(e.target.value as "available" | "busy" | "not_available")}
-                    className="mt-1 w-full rounded-xl border border-border/80 bg-surface px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-                  >
-                    <option value="available">Available for Hire</option>
-                    <option value="busy">Busy (Limited Availability)</option>
-                    <option value="not_available">Not Available</option>
-                  </select>
-                </div>
-              </div>
+              )}
 
               <div>
-                <Label htmlFor="bio">Professional Bio</Label>
+                <Label htmlFor="bio">
+                  {isAdmin
+                    ? "Operational Responsibilities / Bio"
+                    : isClient
+                    ? "Company & Hirer Overview"
+                    : "Professional Bio"}
+                </Label>
                 <Textarea
                   id="bio"
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell clients or freelancers about your background, experience, and specialization..."
+                  placeholder={
+                    isAdmin
+                      ? "Overview of your platform oversight duties, dispute adjudication policies, and system administration focus..."
+                      : isClient
+                      ? "Tell freelancers about your company, upcoming projects, and collaborative workflow..."
+                      : "Tell clients or freelancers about your background, experience, and specialization..."
+                  }
                   className="mt-1 bg-secondary/40 border-border/80 text-xs"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="skills">Skills &amp; Expertise (Comma Separated)</Label>
-                <Input
-                  id="skills"
-                  value={skillsInput}
-                  onChange={(e) => setSkillsInput(e.target.value)}
-                  placeholder="e.g. Solidity, React, Node.js, Viem, TypeScript"
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              {/* Freelancer specific: Skills */}
+              {isFreelancer && (
                 <div>
-                  <Label htmlFor="portfolio" className="flex items-center gap-1">
-                    <FiGlobe className="h-3.5 w-3.5 text-muted" /> Portfolio Website (https://)
-                  </Label>
+                  <Label htmlFor="skills">Skills &amp; Expertise (Comma Separated)</Label>
                   <Input
-                    id="portfolio"
-                    type="url"
-                    value={portfolio}
-                    onChange={(e) => setPortfolio(e.target.value)}
-                    placeholder="https://myportfolio.com"
+                    id="skills"
+                    value={skillsInput}
+                    onChange={(e) => setSkillsInput(e.target.value)}
+                    placeholder="e.g. Solidity, React, Node.js, Viem, TypeScript"
                     className="mt-1"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="githubUrl" className="flex items-center gap-1">
-                    <FiGithub className="h-3.5 w-3.5 text-muted" /> GitHub Profile (https://)
-                  </Label>
-                  <Input
-                    id="githubUrl"
-                    type="url"
-                    value={githubUrl}
-                    onChange={(e) => setGithubUrl(e.target.value)}
-                    placeholder="https://github.com/username"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
+              )}
 
-              <div>
-                <Label htmlFor="linkedinUrl" className="flex items-center gap-1">
-                  <FiLinkedin className="h-3.5 w-3.5 text-muted" /> LinkedIn Profile (https://)
-                </Label>
-                <Input
-                  id="linkedinUrl"
-                  type="url"
-                  value={linkedinUrl}
-                  onChange={(e) => setLinkedinUrl(e.target.value)}
-                  placeholder="https://linkedin.com/in/username"
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Portfolio Showcase Management */}
-              <div className="pt-4 border-t border-border/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-semibold text-sm">Portfolio Featured Items</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<FiPlus />}
-                    onClick={handleAddPortfolioItem}
-                    className="text-xs"
-                  >
-                    Add Portfolio Card
-                  </Button>
-                </div>
-
-                {portfolioItems.map((item, idx) => (
-                  <div key={idx} className="p-3 border border-border/80 rounded-xl bg-secondary/20 space-y-2 relative">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-muted">Item #{idx + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePortfolioItem(idx)}
-                        className="text-danger hover:text-red-400 p-1 text-xs"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-
+              {/* Web & Social Links (Tailored for Client and Freelancer) */}
+              {!isAdmin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="portfolio" className="flex items-center gap-1">
+                      <FiGlobe className="h-3.5 w-3.5 text-muted" />{" "}
+                      {isClient ? "Company Website (https://)" : "Portfolio Website (https://)"}
+                    </Label>
                     <Input
-                      placeholder="Project Title"
-                      value={item.title}
-                      onChange={(e) => handlePortfolioChange(idx, "title", e.target.value)}
-                      className="text-xs"
-                    />
-
-                    <Textarea
-                      placeholder="Short Description"
-                      rows={2}
-                      value={item.description}
-                      onChange={(e) => handlePortfolioChange(idx, "description", e.target.value)}
-                      className="text-xs bg-secondary/40"
-                    />
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Live Demo URL (https://)"
-                        value={item.projectUrl || ""}
-                        onChange={(e) => handlePortfolioChange(idx, "projectUrl", e.target.value)}
-                        className="text-xs"
-                      />
-                      <Input
-                        placeholder="GitHub Repository URL (https://)"
-                        value={item.githubUrl || ""}
-                        onChange={(e) => handlePortfolioChange(idx, "githubUrl", e.target.value)}
-                        className="text-xs"
-                      />
-                    </div>
-
-                    <Input
-                      placeholder="Tech Stack Tags (Comma Separated, e.g. Solidity, React, Viem)"
-                      value={item.tags ? item.tags.join(", ") : ""}
-                      onChange={(e) => handlePortfolioChange(idx, "tags", e.target.value)}
-                      className="text-xs"
+                      id="portfolio"
+                      type="url"
+                      value={portfolio}
+                      onChange={(e) => setPortfolio(e.target.value)}
+                      placeholder={isClient ? "https://mycompany.com" : "https://myportfolio.com"}
+                      className="mt-1"
                     />
                   </div>
-                ))}
-              </div>
+                  {isFreelancer && (
+                    <div>
+                      <Label htmlFor="githubUrl" className="flex items-center gap-1">
+                        <FiGithub className="h-3.5 w-3.5 text-muted" /> GitHub Profile (https://)
+                      </Label>
+                      <Input
+                        id="githubUrl"
+                        type="url"
+                        value={githubUrl}
+                        onChange={(e) => setGithubUrl(e.target.value)}
+                        placeholder="https://github.com/username"
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <Label htmlFor="linkedinUrl" className="flex items-center gap-1">
+                      <FiLinkedin className="h-3.5 w-3.5 text-muted" /> LinkedIn Profile (https://)
+                    </Label>
+                    <Input
+                      id="linkedinUrl"
+                      type="url"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      placeholder="https://linkedin.com/in/username"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Portfolio Showcase Management (Freelancer Only) */}
+              {isFreelancer && (
+                <div className="pt-4 border-t border-border/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-sm">Portfolio Featured Items</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<FiPlus />}
+                      onClick={handleAddPortfolioItem}
+                      className="text-xs"
+                    >
+                      Add Portfolio Card
+                    </Button>
+                  </div>
+
+                  {portfolioItems.map((item, idx) => (
+                    <div key={idx} className="p-3 border border-border/80 rounded-xl bg-secondary/20 space-y-2 relative">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-muted">Item #{idx + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePortfolioItem(idx)}
+                          className="text-danger hover:text-red-400 p-1 text-xs"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+
+                      <Input
+                        placeholder="Project Title"
+                        value={item.title}
+                        onChange={(e) => handlePortfolioChange(idx, "title", e.target.value)}
+                        className="text-xs"
+                      />
+
+                      <Textarea
+                        placeholder="Short Description"
+                        rows={2}
+                        value={item.description}
+                        onChange={(e) => handlePortfolioChange(idx, "description", e.target.value)}
+                        className="text-xs bg-secondary/40"
+                      />
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Live Demo URL (https://)"
+                          value={item.projectUrl || ""}
+                          onChange={(e) => handlePortfolioChange(idx, "projectUrl", e.target.value)}
+                          className="text-xs"
+                        />
+                        <Input
+                          placeholder="GitHub Repository URL (https://)"
+                          value={item.githubUrl || ""}
+                          onChange={(e) => handlePortfolioChange(idx, "githubUrl", e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+
+                      <Input
+                        placeholder="Tech Stack Tags (Comma Separated, e.g. Solidity, React, Viem)"
+                        value={item.tags ? item.tags.join(", ") : ""}
+                        onChange={(e) => handlePortfolioChange(idx, "tags", e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex justify-end border-t border-border/60 pt-4">
               <Button type="submit" disabled={savingProfile} className="bg-primary-600 hover:bg-primary-500 text-white">
@@ -707,7 +776,11 @@ export function SettingsPage() {
               <FiBell className="text-primary-400" /> Notification Preferences
             </CardTitle>
             <CardDescription>
-              Configure automated alerts for escrow deposits, milestone payments, and messages.
+              {isAdmin
+                ? "Configure platform administration alerts for dispute cases, system warnings, and direct communications."
+                : isClient
+                ? "Configure automated alerts for escrow deposits, milestone releases, and project chat messages."
+                : "Configure automated alerts for incoming escrow funding, payout releases, and workroom chat messages."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -717,28 +790,32 @@ export function SettingsPage() {
               </div>
             )}
 
-            <label className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/60 text-xs cursor-pointer">
-              <span>Escrow Deposit Notifications</span>
-              <input
-                type="checkbox"
-                checked={notifs.escrowDeposits}
-                onChange={(e) => setNotifs({ ...notifs, escrowDeposits: e.target.checked })}
-                className="h-4 w-4 accent-primary"
-              />
-            </label>
+            {!isAdmin && (
+              <>
+                <label className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/60 text-xs cursor-pointer">
+                  <span>{isClient ? "Escrow Deposit Confirmations" : "Escrow Funding Notifications"}</span>
+                  <input
+                    type="checkbox"
+                    checked={notifs.escrowDeposits}
+                    onChange={(e) => setNotifs({ ...notifs, escrowDeposits: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/60 text-xs cursor-pointer">
+                  <span>{isClient ? "Milestone Approval & Release Alerts" : "Milestone Payout Release Alerts"}</span>
+                  <input
+                    type="checkbox"
+                    checked={notifs.milestoneReleases}
+                    onChange={(e) => setNotifs({ ...notifs, milestoneReleases: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
+                  />
+                </label>
+              </>
+            )}
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/60 text-xs cursor-pointer">
-              <span>Milestone Release Alerts</span>
-              <input
-                type="checkbox"
-                checked={notifs.milestoneReleases}
-                onChange={(e) => setNotifs({ ...notifs, milestoneReleases: e.target.checked })}
-                className="h-4 w-4 accent-primary"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/60 text-xs cursor-pointer">
-              <span>Workroom Direct Chat Messages</span>
+              <span>{isAdmin ? "Direct System & User Inquiries" : "Workroom Direct Chat Messages"}</span>
               <input
                 type="checkbox"
                 checked={notifs.chatMessages}
@@ -748,7 +825,7 @@ export function SettingsPage() {
             </label>
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/60 text-xs cursor-pointer">
-              <span>Dispute &amp; Resolution Warnings</span>
+              <span>{isAdmin ? "Platform Dispute Filings & Escalation Warnings" : "Dispute & Resolution Warnings"}</span>
               <input
                 type="checkbox"
                 checked={notifs.disputeAlerts}
@@ -764,120 +841,132 @@ export function SettingsPage() {
           </CardFooter>
         </Card>
 
-        {/* Connected Accounts & GitHub Developer Integration Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FiGithub className="text-purple-400" /> Connected Accounts &amp; Developer Verification
-              </CardTitle>
+        {/* Connected Accounts & GitHub Developer Integration Card (Freelancers Only) */}
+        {isFreelancer && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FiGithub className="text-purple-400" /> Connected Accounts &amp; Developer Verification
+                </CardTitle>
+                {user?.githubIdentity ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                    <FiCheck className="h-3.5 w-3.5" /> Connected
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/15 border border-slate-500/30 px-2.5 py-0.5 text-xs font-semibold text-slate-400">
+                    Not Linked
+                  </span>
+                )}
+              </div>
+              <CardDescription>
+                Link your GitHub account to showcase open-source contribution heatmaps, commit activity streaks, and language stats on your freelancer profile.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {user?.githubIdentity ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                  <FiCheck className="h-3.5 w-3.5" /> Connected
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/15 border border-slate-500/30 px-2.5 py-0.5 text-xs font-semibold text-slate-400">
-                  Not Linked
-                </span>
-              )}
-            </div>
-            <CardDescription>
-              Link your GitHub account to showcase open-source contribution heatmaps, commit activity streaks, and language stats on your freelancer profile.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {user?.githubIdentity ? (
-              <div className="p-4 rounded-xl bg-secondary/30 border border-border/80 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={user.githubIdentity.avatarUrl || "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"}
-                      alt={user.githubIdentity.username}
-                      className="w-10 h-10 rounded-xl border border-border object-cover"
-                    />
-                    <div>
-                      <div className="font-semibold text-sm text-foreground">@{user.githubIdentity.username}</div>
-                      <div className="text-xs text-muted">
-                        Linked on {user.githubIdentity.connectedAt ? new Date(user.githubIdentity.connectedAt).toLocaleDateString() : "Active Session"}
+                <div className="p-4 rounded-xl bg-secondary/30 border border-border/80 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={user.githubIdentity.avatarUrl || "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"}
+                        alt={user.githubIdentity.username}
+                        className="w-10 h-10 rounded-xl border border-border object-cover"
+                      />
+                      <div>
+                        <div className="font-semibold text-sm text-foreground">@{user.githubIdentity.username}</div>
+                        <div className="text-xs text-muted">
+                          Linked on {user.githubIdentity.connectedAt ? new Date(user.githubIdentity.connectedAt).toLocaleDateString() : "Active Session"}
+                        </div>
                       </div>
                     </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs text-danger hover:bg-danger/10 border-danger/30"
+                      onClick={async () => {
+                        if (!token) return
+                        if (confirm("Disconnect your GitHub account? Activity metrics will no longer be visible on your profile.")) {
+                          try {
+                            await (await import("@/services/userApi")).disconnectGithub(token)
+                            window.location.reload()
+                          } catch (err: any) {
+                            alert(err.message || "Failed to disconnect")
+                          }
+                        }
+                      }}
+                    >
+                      Disconnect
+                    </Button>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs text-danger hover:bg-danger/10 border-danger/30"
-                    onClick={async () => {
-                      if (!token) return
-                      if (confirm("Disconnect your GitHub account? Activity metrics will no longer be visible on your profile.")) {
+                  <div className="pt-3 border-t border-border/60 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-medium text-foreground">Contribution Heatmap Visibility</div>
+                      <div className="text-[11px] text-muted">
+                        {user.githubIdentity.visibility === "PUBLIC"
+                          ? "Visible to all clients and visitors on your public profile"
+                          : "Private mode — only visible to you when logged in"}
+                      </div>
+                    </div>
+
+                    <select
+                      value={user.githubIdentity.visibility}
+                      onChange={async (e) => {
+                        if (!token) return
+                        const newVis = e.target.value as "PUBLIC" | "PRIVATE"
                         try {
-                          await (await import("@/services/userApi")).disconnectGithub(token)
+                          await (await import("@/services/userApi")).updateGithubVisibility(newVis, token)
                           window.location.reload()
                         } catch (err: any) {
-                          alert(err.message || "Failed to disconnect")
+                          alert(err.message || "Failed to update visibility")
                         }
-                      }
-                    }}
-                  >
-                    Disconnect
-                  </Button>
+                      }}
+                      className="rounded-xl border border-border/80 bg-surface px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                    >
+                      <option value="PUBLIC">Public (Recommended)</option>
+                      <option value="PRIVATE">Private (Owner Only)</option>
+                    </select>
+                  </div>
                 </div>
-
-                <div className="pt-3 border-t border-border/60 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-medium text-foreground">Contribution Heatmap Visibility</div>
-                    <div className="text-[11px] text-muted">
-                      {user.githubIdentity.visibility === "PUBLIC"
-                        ? "Visible to all clients and visitors on your public profile"
-                        : "Private mode — only visible to you when logged in"}
+              ) : (
+                <div className="p-4 rounded-xl bg-secondary/20 border border-dashed border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="space-y-1 text-center sm:text-left">
+                    <div className="text-xs font-semibold text-foreground">GitHub Developer Profile Unlinked</div>
+                    <div className="text-xs text-muted">
+                      Connecting your GitHub account grants read-only access to your public contribution activity graph.
                     </div>
                   </div>
 
-                  <select
-                    value={user.githubIdentity.visibility}
-                    onChange={async (e) => {
-                      if (!token) return
-                      const newVis = e.target.value as "PUBLIC" | "PRIVATE"
-                      try {
-                        await (await import("@/services/userApi")).updateGithubVisibility(newVis, token)
-                        window.location.reload()
-                      } catch (err: any) {
-                        alert(err.message || "Failed to update visibility")
-                      }
-                    }}
-                    className="rounded-xl border border-border/80 bg-surface px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                  <a
+                    href={`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/github/connect`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-purple-600/20 shrink-0"
                   >
-                    <option value="PUBLIC">Public (Recommended)</option>
-                    <option value="PRIVATE">Private (Owner Only)</option>
-                  </select>
+                    <FiGithub className="h-4 w-4" />
+                    Connect GitHub Account
+                  </a>
                 </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl bg-secondary/20 border border-dashed border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="space-y-1 text-center sm:text-left">
-                  <div className="text-xs font-semibold text-foreground">GitHub Developer Profile Unlinked</div>
-                  <div className="text-xs text-muted">
-                    Connecting your GitHub account grants read-only access to your public contribution activity graph.
-                  </div>
-                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-                <a
-                  href={`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/github/connect`}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-purple-600/20 shrink-0"
-                >
-                  <FiGithub className="h-4 w-4" />
-                  Connect GitHub Account
-                </a>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Web3 Wallet Security Card */}
-        <Web3WalletCard
-          title="Connected Web3 Wallet &amp; EIP-712 Ownership Verification"
-          description="Connect your browser wallet and sign a cryptographically secure backend challenge to verify wallet ownership."
-        />
+        {/* Web3 Wallet Security Card (Clients & Freelancers only - Admins do not hold user escrow funds) */}
+        {!isAdmin && (
+          <Web3WalletCard
+            title={
+              isClient
+                ? "Connected Web3 Funding Wallet & Escrow Verification"
+                : "Connected Web3 Payout Wallet & EIP-712 Ownership Verification"
+            }
+            description={
+              isClient
+                ? "Connect your browser wallet (MetaMask / Coinbase / WalletConnect) and sign an EIP-712 verification challenge to fund milestone escrows on-chain."
+                : "Connect your browser wallet and verify cryptographic ownership to receive smart contract milestone payouts."
+            }
+          />
+        )}
 
         {/* Data Privacy & Export */}
         <Card>

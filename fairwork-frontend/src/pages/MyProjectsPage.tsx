@@ -30,8 +30,14 @@ export function MyProjectsPage() {
   const isFreelancer = user?.role === "freelancer"
 
   useEffect(() => {
-    if (token) getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
-  }, [token])
+    if (user?.role === "admin") {
+      navigate("/admin/projects", { replace: true })
+    }
+  }, [user?.role, navigate])
+
+  useEffect(() => {
+    if (token && user?.role !== "admin") getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
+  }, [token, user?.role])
 
   const roleProjects = useMemo(() => {
     if (!user) return []
