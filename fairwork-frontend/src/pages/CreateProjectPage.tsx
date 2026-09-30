@@ -82,6 +82,7 @@ export function CreateProjectPage() {
     isCorrectNetwork,
     errorMessage: walletErrorMessage,
     clearError: clearWalletError,
+    cancelPendingAction,
     isConnecting,
     isVerifying,
   } = useWallet()
@@ -312,27 +313,51 @@ export function CreateProjectPage() {
                   Switch to Sepolia
                 </Button>
               ) : connectedAccount ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => verify()}
-                  loading={isVerifying}
-                  leftIcon={<FiShield className="h-4 w-4 text-emerald-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
-                  className="shrink-0 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-600/25 hover:shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-emerald-400/30 hover:border-emerald-300/50 transition-all duration-200 ease-out"
-                >
-                  Sign EIP-712 Verification
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => verify()}
+                    loading={isVerifying}
+                    leftIcon={<FiShield className="h-4 w-4 text-emerald-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                    className="shrink-0 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-600/25 hover:shadow-lg hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-emerald-400/30 hover:border-emerald-300/50 transition-all duration-200 ease-out"
+                  >
+                    Sign EIP-712 Verification
+                  </Button>
+                  {isVerifying && (
+                    <button
+                      type="button"
+                      onClick={cancelPendingAction}
+                      className="px-2 py-1 text-xs text-amber-900/80 dark:text-amber-200/80 hover:text-amber-950 dark:hover:text-amber-100 hover:underline font-medium cursor-pointer"
+                      title="Cancel pending verification prompt"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={connectAndVerify}
-                  loading={isConnecting || isVerifying}
-                  leftIcon={<FiShield className="h-4 w-4 text-sky-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
-                  className="shrink-0 cursor-pointer bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold shadow-md shadow-sky-600/25 hover:shadow-lg hover:shadow-sky-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-sky-400/30 hover:border-sky-300/50 transition-all duration-200 ease-out"
-                >
-                  Connect &amp; Verify Wallet
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={connectAndVerify}
+                    loading={isConnecting || isVerifying}
+                    leftIcon={<FiShield className="h-4 w-4 text-sky-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                    className="shrink-0 cursor-pointer bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold shadow-md shadow-sky-600/25 hover:shadow-lg hover:shadow-sky-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-sky-400/30 hover:border-sky-300/50 transition-all duration-200 ease-out"
+                  >
+                    Connect &amp; Verify Wallet
+                  </Button>
+                  {(isConnecting || isVerifying) && (
+                    <button
+                      type="button"
+                      onClick={cancelPendingAction}
+                      className="px-2 py-1 text-xs text-amber-900/80 dark:text-amber-200/80 hover:text-amber-950 dark:hover:text-amber-100 hover:underline font-medium cursor-pointer"
+                      title="Cancel pending connection prompt"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -694,25 +719,47 @@ export function CreateProjectPage() {
                   Switch to Sepolia Network
                 </Button>
               ) : connectedAccount ? (
-                <Button
-                  type="button"
-                  onClick={() => verify()}
-                  loading={isVerifying}
-                  leftIcon={<FiShield className="h-4 w-4 text-emerald-200" />}
-                  className="cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-600/25 border border-emerald-400/30"
-                >
-                  Sign EIP-712 Verification to Post
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => verify()}
+                    loading={isVerifying}
+                    leftIcon={<FiShield className="h-4 w-4 text-emerald-200" />}
+                    className="cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-600/25 border border-emerald-400/30"
+                  >
+                    Sign EIP-712 Verification to Post
+                  </Button>
+                  {isVerifying && (
+                    <button
+                      type="button"
+                      onClick={cancelPendingAction}
+                      className="px-2 py-1 text-xs text-muted hover:text-foreground underline font-medium cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               ) : (
-                <Button
-                  type="button"
-                  onClick={connectAndVerify}
-                  loading={isConnecting || isVerifying}
-                  leftIcon={<FiShield className="h-4 w-4 text-amber-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
-                  className="cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold shadow-md shadow-amber-600/25 hover:shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-amber-400/30 hover:border-amber-300/50 transition-all duration-200 ease-out"
-                >
-                  Connect &amp; Verify Wallet to Post
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={connectAndVerify}
+                    loading={isConnecting || isVerifying}
+                    leftIcon={<FiShield className="h-4 w-4 text-amber-200 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                    className="cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold shadow-md shadow-amber-600/25 hover:shadow-lg hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border border-amber-400/30 hover:border-amber-300/50 transition-all duration-200 ease-out"
+                  >
+                    Connect &amp; Verify Wallet to Post
+                  </Button>
+                  {(isConnecting || isVerifying) && (
+                    <button
+                      type="button"
+                      onClick={cancelPendingAction}
+                      className="px-2 py-1 text-xs text-muted hover:text-foreground underline font-medium cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               )
             ) : isBalanceInsufficient ? (
               <div className="flex flex-wrap items-center gap-3">

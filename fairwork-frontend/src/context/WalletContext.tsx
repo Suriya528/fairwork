@@ -50,12 +50,33 @@ interface WalletContextValue {
   switchNetwork: () => Promise<boolean>
   disconnect: () => void
   clearError: () => void
+  cancelPendingAction: () => void
 }
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined)
 
 const TARGET_CHAIN_ID = targetChain.id
 const TARGET_CHAIN_HEX = `0x${TARGET_CHAIN_ID.toString(16)}`
+
+/**
+ * Wraps a promise in a bounded timeout to prevent hanging UI states
+ * if a user closes or dismisses an extension popup without an explicit RPC reject.
+ */
+export function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = 35000,
+  timeoutMessage = "Wallet request timed out or was closed in MetaMask."
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(timeoutMessage))
+    }, timeoutMs)
+  })
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timer)
+  })
+}
 
 // Global EIP-6963 announced provider registry
 const announcedProviders: any[] = []
@@ -284,6 +305,56 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [connectedAccount, verifiedWalletAddress])
 
+  // Auto-detect when MetaMask extension popup is closed or dismissed without approving
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    let focusTimer: ReturnType<typeof setTimeout>
+
+    const handleWindowFocus = () => {
+      // If we are currently CONNECTING or VERIFYING when the window regains focus:
+      if (walletState === "CONNECTING" || walletState === "VERIFYING") {
+        clearTimeout(focusTimer)
+        focusTimer = setTimeout(async () => {
+          try {
+            const provider = getInjectedProvider()
+            if (!provider) return
+
+            const currentAccounts = await provider.request({ method: "eth_accounts" })
+            if (Array.isArray(currentAccounts) && currentAccounts.length > 0) {
+              const acc = currentAccounts[0].toLowerCase()
+              setConnectedAccount(acc)
+              const vAddr = verifiedWalletAddressRef.current
+              setWalletState(vAddr && acc === vAddr ? "VERIFIED" : "CONNECTED")
+              clearError()
+            } else if (walletState === "CONNECTING") {
+              // The user focused back on the tab, but no accounts were authorized.
+              // MetaMask popup was closed or dismissed without approving.
+              setWalletState("DISCONNECTED")
+              setErrorState("USER_REJECTED")
+              setErrorMessage("Wallet prompt was closed or cancelled in MetaMask. Click 'Connect Wallet' to try again.")
+            } else if (walletState === "VERIFYING") {
+              // The user focused back on the tab, but verification was not completed.
+              setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
+              setErrorState("USER_REJECTED")
+              setErrorMessage("Signature request was closed or cancelled in MetaMask. Click 'Sign EIP-712 Verification' to try again.")
+            }
+          } catch {
+            if (walletState === "CONNECTING") {
+              setWalletState("DISCONNECTED")
+            }
+          }
+        }, 1200)
+      }
+    }
+
+    window.addEventListener("focus", handleWindowFocus)
+    return () => {
+      clearTimeout(focusTimer)
+      window.removeEventListener("focus", handleWindowFocus)
+    }
+  }, [walletState, connectedAccount, clearError])
+
   // Step 1: Switch Network to Sepolia
   const switchNetwork = useCallback(async (): Promise<boolean> => {
     const provider = getInjectedProvider()
@@ -291,10 +362,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     clearError()
 
     try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: TARGET_CHAIN_HEX }],
-      })
+      await withTimeout(
+        provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: TARGET_CHAIN_HEX }],
+        }),
+        25000,
+        "Network switch request timed out or was closed in MetaMask."
+      )
       setChainId(TARGET_CHAIN_ID)
       setErrorState(null)
       setErrorMessage("")
@@ -364,7 +439,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       if (accounts.length === 0) {
         try {
-          accounts = await wallet.requestAddresses()
+          accounts = await withTimeout(
+            wallet.requestAddresses(),
+            35000,
+            "Wallet connection request timed out or was closed in MetaMask."
+          )
         } catch (reqErr: any) {
           if (reqErr?.code === -32002 || (typeof reqErr?.message === "string" && reqErr.message.includes("already pending"))) {
             try {
@@ -525,17 +604,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       const challenge = await getWalletNonce(token)
 
-      const signature = await wallet.signTypedData({
-        account: activeAccount as `0x${string}`,
-        domain: challenge.domain,
-        types: challenge.types,
-        primaryType: challenge.primaryType,
-        message: {
-          walletAddress: activeAccount,
-          nonce: challenge.nonce,
-          purpose: challenge.purpose,
-        },
-      })
+      const signature = await withTimeout(
+        wallet.signTypedData({
+          account: activeAccount as `0x${string}`,
+          domain: challenge.domain,
+          types: challenge.types,
+          primaryType: challenge.primaryType,
+          message: {
+            walletAddress: activeAccount,
+            nonce: challenge.nonce,
+            purpose: challenge.purpose,
+          },
+        }),
+        45000,
+        "EIP-712 signature request timed out or was closed in MetaMask."
+      )
 
       const verifiedUser = await apiVerifyWallet(activeAccount, challenge.nonce, signature, token)
 
@@ -606,6 +689,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     clearError()
   }, [clearError])
 
+  // Explicitly cancel any pending connect / verify UI loading state
+  const cancelPendingAction = useCallback(() => {
+    setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
+    setErrorState(null)
+    setErrorMessage("")
+  }, [connectedAccount])
+
   return (
     <WalletContext.Provider
       value={{
@@ -631,6 +721,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         switchNetwork,
         disconnect,
         clearError,
+        cancelPendingAction,
       }}
     >
       {children}
@@ -669,6 +760,7 @@ export function useWallet(): WalletContextValue {
       switchNetwork: async () => false,
       disconnect: () => {},
       clearError: () => {},
+      cancelPendingAction: () => {},
     }
   }
   return ctx

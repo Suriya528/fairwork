@@ -36,6 +36,7 @@ export function Web3WalletCard({
     switchNetwork,
     disconnect,
     clearError,
+    cancelPendingAction,
   } = useWallet()
 
   const activeAddress = connectedAccount || verifiedWalletAddress
@@ -180,16 +181,28 @@ export function Web3WalletCard({
                 </Button>
               </>
             ) : !connectedAccount ? (
-              <Button
-                size="sm"
-                variant="primary"
-                loading={isConnecting || isVerifying}
-                onClick={connectAndVerify}
-                leftIcon={<FiShield className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
-                className="cursor-pointer shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 ease-out"
-              >
-                Connect &amp; Verify Wallet
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  loading={isConnecting || isVerifying}
+                  onClick={connectAndVerify}
+                  leftIcon={<FiShield className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />}
+                  className="cursor-pointer shadow-md shadow-primary/25 hover:shadow-lg hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 ease-out"
+                >
+                  Connect &amp; Verify Wallet
+                </Button>
+                {(isConnecting || isVerifying) && (
+                  <button
+                    type="button"
+                    onClick={cancelPendingAction}
+                    className="text-xs text-muted hover:text-foreground underline px-1 py-1 cursor-pointer"
+                    title="Cancel pending wallet request"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             ) : !isCorrectNetwork ? (
               <Button
                 size="sm"
@@ -200,15 +213,27 @@ export function Web3WalletCard({
                 Switch to Sepolia
               </Button>
             ) : !isVerified ? (
-              <Button
-                size="sm"
-                variant="primary"
-                loading={isVerifying}
-                onClick={() => verify()}
-                leftIcon={<FiLock className="h-4 w-4" />}
-              >
-                Sign EIP-712 Verification
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  loading={isVerifying}
+                  onClick={() => verify()}
+                  leftIcon={<FiLock className="h-4 w-4" />}
+                >
+                  Sign EIP-712 Verification
+                </Button>
+                {isVerifying && (
+                  <button
+                    type="button"
+                    onClick={cancelPendingAction}
+                    className="text-xs text-muted hover:text-foreground underline px-1 py-1 cursor-pointer"
+                    title="Cancel pending verification"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             ) : (
               <Button
                 size="sm"
