@@ -229,30 +229,43 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
   });
 
   await t.test("Scenario 31: OAuth provider state isolation (separate cookies)", async () => {
-    let googleCookieName = null;
-    let githubCookieName = null;
+    const origGoogleId = process.env.GOOGLE_CLIENT_ID;
+    const origGithubId = process.env.GITHUB_CLIENT_ID;
+    const origJwtSecret = process.env.JWT_SECRET;
+    process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "mock-google-client-id";
+    process.env.GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || "mock-github-client-id";
+    process.env.JWT_SECRET = process.env.JWT_SECRET || "mock-jwt-secret-key-32-chars-long";
 
-    const resGoogle = {
-      cookie: (name) => {
-        googleCookieName = name;
-      },
-      redirect: () => {},
-    };
-    const resGithub = {
-      cookie: (name) => {
-        githubCookieName = name;
-      },
-      redirect: () => {},
-    };
+    try {
+      let googleCookieName = null;
+      let githubCookieName = null;
 
-    const req = { query: { role: "freelancer", action: "login" } };
+      const resGoogle = {
+        cookie: (name) => {
+          googleCookieName = name;
+        },
+        redirect: () => {},
+      };
+      const resGithub = {
+        cookie: (name) => {
+          githubCookieName = name;
+        },
+        redirect: () => {},
+      };
 
-    initiateGoogleAuth(req, resGoogle);
-    initiateGithubAuth(req, resGithub);
+      const req = { query: { role: "freelancer", action: "login" } };
 
-    assert.equal(googleCookieName, "oauth_state_google", "Google must set isolated oauth_state_google cookie");
-    assert.equal(githubCookieName, "oauth_state_github", "GitHub must set isolated oauth_state_github cookie");
-    assert.notEqual(googleCookieName, githubCookieName, "OAuth providers must maintain isolated state cookies");
+      await initiateGoogleAuth(req, resGoogle);
+      await initiateGithubAuth(req, resGithub);
+
+      assert.equal(googleCookieName, "oauth_state_google", "Google must set isolated oauth_state_google cookie");
+      assert.equal(githubCookieName, "oauth_state_github", "GitHub must set isolated oauth_state_github cookie");
+      assert.notEqual(googleCookieName, githubCookieName, "OAuth providers must maintain isolated state cookies");
+    } finally {
+      process.env.GOOGLE_CLIENT_ID = origGoogleId;
+      process.env.GITHUB_CLIENT_ID = origGithubId;
+      process.env.JWT_SECRET = origJwtSecret;
+    }
   });
 
   await t.test("Scenario 32: GitHub login PKCE verifier mismatch rejection", async () => {
