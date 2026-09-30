@@ -197,91 +197,17 @@
   }
 }
 
-/* Premium AI-inspired Login CTA hover glow effect (Yellow -> Red/Coral -> Violet) */
-@keyframes ai-glow-shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
+/* Clean, simple button hover */
 .ai-glow-cta {
-  position: relative !important;
-  isolation: isolate;
-  overflow: visible !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
-}
-
-/* Ambient glowing aura behind the button */
-.ai-glow-cta::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    #facc15, /* Yellow */
-    #f43f5e, /* Red / Coral */
-    #c084fc, /* Violet / Purple */
-    #facc15  /* Yellow loop */
-  );
-  background-size: 200% 200%;
-  opacity: 0;
-  z-index: -1;
-  filter: blur(8px);
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-
-/* Crisp edge border glow ring around button */
-.ai-glow-cta::after {
-  content: "";
-  position: absolute;
-  inset: -1.5px;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    #eab308, /* Yellow */
-    #f43f5e, /* Red / Coral */
-    #a855f7, /* Violet / Purple */
-    #eab308  /* Yellow loop */
-  );
-  background-size: 200% 200%;
-  opacity: 0;
-  z-index: -1;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.ai-glow-cta:hover:not(:disabled)::before {
-  opacity: 0.75;
-  animation: ai-glow-shimmer 2.5s ease infinite;
-}
-
-.ai-glow-cta:hover:not(:disabled)::after {
-  opacity: 1;
-  animation: ai-glow-shimmer 2.5s ease infinite;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
 }
 
 .ai-glow-cta:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px -3px rgba(244, 63, 94, 0.35);
+  opacity: 0.92;
 }
 
 .ai-glow-cta:active:not(:disabled) {
-  transform: translateY(0) scale(0.985);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ai-glow-cta:hover:not(:disabled)::before,
-  .ai-glow-cta:hover:not(:disabled)::after {
-    animation: none;
-  }
+  transform: scale(0.99);
 }
 
 @layer utilities {

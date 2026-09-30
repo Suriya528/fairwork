@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom"
 import { Logo } from "@/components/common/Logo"
-import { ThemeToggle } from "@/components/common/ThemeToggle"
 
 const footerSections = [
   {
@@ -90,10 +89,6 @@ export function LandingFooter() {
           <p className="text-xs font-mono text-subtle">
             &copy; {currentYear} FairWork. Secured by decentralized milestone escrow.
           </p>
-
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-          </div>
         </div>
       </div>
     </footer>

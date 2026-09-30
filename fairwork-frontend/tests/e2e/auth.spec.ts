@@ -52,11 +52,10 @@ test("validates strict email format on login and register", async ({ page }) => 
   }
 })
 
-test("login button renders premium AI hover glow effect class", async ({ page }) => {
+test("login button renders cleanly with standard styling", async ({ page }) => {
   await page.goto("/login")
   const loginBtn = page.getByRole("button", { name: "Sign in" })
   await expect(loginBtn).toBeVisible()
-  await expect(loginBtn).toHaveClass(/ai-glow-cta/)
 })
 
 test("protected project routes redirect unauthenticated visitors", async ({ page }) => {
