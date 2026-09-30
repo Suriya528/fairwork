@@ -41,9 +41,11 @@ function createServerApp(config = {}) {
   const app = express();
   const httpServer = http.createServer(app);
 
+  const clientOrigins = (process.env.CLIENT_URL || "").split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
+  const adminOrigins = (process.env.ADMIN_URL || "").split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
   const rawOrigins = config.allowedOrigins || (isProd
-    ? [process.env.CLIENT_URL, process.env.ADMIN_URL].filter(Boolean)
-    : [process.env.CLIENT_URL, "http://localhost:5173", "http://localhost:3000"].filter(Boolean));
+    ? [...clientOrigins, ...adminOrigins]
+    : [...clientOrigins, "http://localhost:5173", "http://localhost:3000"]);
 
   const allowedOrigins = Array.from(new Set(rawOrigins.map((o) => String(o).trim().replace(/\/$/, ""))));
 
