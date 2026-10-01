@@ -3,6 +3,7 @@ import {
   FiActivity,
   FiAlertTriangle,
   FiCheckSquare,
+  FiCreditCard,
   FiFileText,
   FiFlag,
   FiLock,
@@ -52,8 +53,9 @@ export const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Contracts",
+    title: "Contracts & Finance",
     items: [
+      { label: "Wallet", path: "/wallet", icon: FiCreditCard },
       { label: "Contracts", path: "/contracts", icon: FiFileText },
       { label: "Escrow", path: "/escrow", icon: FiShield },
       { label: "Milestones", path: "/milestones", icon: FiCheckSquare },
@@ -144,12 +146,14 @@ export function getNavSectionsForRole(role?: string): NavSection[] {
       title: "Contracts & Escrow",
       items: isFreelancer
         ? [
+            { label: "Wallet & Payouts", path: "/wallet", icon: FiCreditCard },
             { label: "Contracts", path: "/contracts", icon: FiFileText },
             { label: "Milestones & Payouts", path: "/milestones", icon: FiCheckSquare },
             { label: "Escrow Protection", path: "/escrow", icon: FiShield },
             { label: "Disputes", path: "/disputes", icon: FiAlertTriangle },
           ]
         : [
+            { label: "Wallet & Escrow", path: "/wallet", icon: FiCreditCard },
             { label: "Contracts", path: "/contracts", icon: FiFileText },
             { label: "Escrow & Funding", path: "/escrow", icon: FiShield },
             { label: "Milestones", path: "/milestones", icon: FiCheckSquare },
@@ -166,6 +170,7 @@ export function getNavSectionsForRole(role?: string): NavSection[] {
       title: "Account",
       items: [
         { label: "Profile", path: "/profile", icon: FiUser },
+        { label: "Wallet", path: "/wallet", icon: FiCreditCard },
         { label: "Settings", path: "/settings", icon: FiSettings },
         { label: "Help Center", path: "/help", icon: FiHelpCircle },
       ],

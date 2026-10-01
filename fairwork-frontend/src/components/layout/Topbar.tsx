@@ -295,20 +295,29 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
             <FiShield className="h-3 w-3" />
             Admin Console
           </Badge>
-        ) : isUserVerified ? (
-          <Badge tone="success" className="hidden md:inline-flex items-center gap-1 font-medium">
-            <FiCheckCircle className="h-3 w-3" />
-            Wallet Verified ✓
-          </Badge>
-        ) : connectedAccount ? (
-          <Badge tone="warning" className="hidden md:inline-flex items-center gap-1 font-medium">
-            <FiShieldOff className="h-3 w-3" />
-            Wallet Connected
-          </Badge>
         ) : (
-          <Badge tone="neutral" className="hidden md:inline-flex">
-            Not Connected
-          </Badge>
+          <button
+            type="button"
+            onClick={() => navigate("/wallet")}
+            className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
+            title="Open Web3 Wallet & Escrow Page"
+          >
+            {isUserVerified ? (
+              <Badge tone="success" className="hidden md:inline-flex items-center gap-1 font-medium cursor-pointer">
+                <FiCheckCircle className="h-3 w-3" />
+                Wallet Verified ✓
+              </Badge>
+            ) : connectedAccount ? (
+              <Badge tone="warning" className="hidden md:inline-flex items-center gap-1 font-medium cursor-pointer">
+                <FiShieldOff className="h-3 w-3" />
+                Wallet Connected
+              </Badge>
+            ) : (
+              <Badge tone="neutral" className="hidden md:inline-flex cursor-pointer">
+                Not Connected
+              </Badge>
+            )}
+          </button>
         )}
 
         {/* Clean Topbar actions */}

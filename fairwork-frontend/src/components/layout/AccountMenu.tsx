@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { FiHelpCircle, FiLogOut, FiSettings, FiUser } from "react-icons/fi"
+import { FiCreditCard, FiHelpCircle, FiLogOut, FiSettings, FiUser } from "react-icons/fi"
 import { Avatar } from "@/components/ui/Avatar"
 import { Dropdown, DropdownItem, DropdownSeparator } from "@/components/ui/Dropdown"
 import { useAuth } from "@/context/AuthContext"
@@ -45,6 +45,11 @@ export function AccountMenu() {
       <DropdownItem icon={<FiUser className="h-4 w-4" />} onSelect={() => navigate("/profile")}>
         Profile
       </DropdownItem>
+      {user.role !== "admin" && (
+        <DropdownItem icon={<FiCreditCard className="h-4 w-4" />} onSelect={() => navigate("/wallet")}>
+          Wallet &amp; Escrow
+        </DropdownItem>
+      )}
       <DropdownItem icon={<FiSettings className="h-4 w-4" />} onSelect={() => navigate("/settings")}>
         Settings
       </DropdownItem>
