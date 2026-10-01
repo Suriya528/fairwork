@@ -69,6 +69,7 @@ export interface DropdownItemProps {
   icon?: ReactNode
   tone?: "default" | "danger"
   disabled?: boolean
+  className?: string
 }
 
 export function DropdownItem({
@@ -77,6 +78,7 @@ export function DropdownItem({
   icon,
   tone = "default",
   disabled,
+  className,
 }: DropdownItemProps) {
   return (
     <button
@@ -90,8 +92,10 @@ export function DropdownItem({
         tone === "danger"
           ? "text-danger hover:bg-danger/10"
           : "text-muted hover:bg-surface-hover hover:text-foreground",
+        className,
       )}
     >
+
       {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center">{icon}</span>}
       <span className="flex-1">{children}</span>
     </button>

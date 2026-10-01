@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge"
 import { ThemeToggle } from "@/components/common/ThemeToggle"
 import { AccountMenu } from "./AccountMenu"
 import { NotificationBell } from "./NotificationBell"
+import { ChatNotificationBell } from "./ChatNotificationBell"
 import { useAuth } from "@/context/AuthContext"
 import { useWallet } from "@/context/WalletContext"
 import { useCurrency } from "@/context/CurrencyContext"
@@ -311,6 +312,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
         )}
 
         {/* Clean Topbar actions */}
+        <ChatNotificationBell />
         <NotificationBell />
         <ThemeToggle />
         <AccountMenu />

@@ -60,21 +60,59 @@ export interface EscrowSnapshot {
   milestonesCount: number
 }
 
-export function toApiMessage(m: BackendMessage): ApiMessage {
+export interface ChatThreadSummary {
+  projectId: string
+  projectTitle: string
+  status: string
+  counterparty: {
+    id: string
+    name: string
+    avatarUrl: string
+    role: "client" | "freelancer"
+  }
+  lastMessage: {
+    content: string
+    createdAt: string
+    senderId: string
+  } | null
+  unreadCount: number
+}
+
+export interface ChatSummaryResponse {
+  totalUnread: number
+  threads: ChatThreadSummary[]
+}
+
+export function toApiMessage(m: BackendMessage | any): ApiMessage {
+  const rawSender = m.senderId
+  let senderId = ""
+  let senderName: string | null = null
+  let senderAvatarUrl: string | null = null
+
+  if (typeof rawSender === "string") {
+    senderId = rawSender
+  } else if (rawSender && typeof rawSender === "object") {
+    senderId = String(rawSender._id || rawSender.id || "")
+    if (rawSender.firstName || rawSender.lastName) {
+      senderName = `${rawSender.firstName || ""} ${rawSender.lastName || ""}`.trim() || null
+    }
+    senderAvatarUrl = rawSender.avatarUrl ?? null
+  }
+
   return {
-    id: m._id,
-    projectId: m.projectId,
-    senderId: typeof m.senderId === "string" ? m.senderId : m.senderId._id,
-    senderName: typeof m.senderId === "string" ? null : `${m.senderId.firstName} ${m.senderId.lastName}`.trim(),
-    senderAvatarUrl: typeof m.senderId === "string" ? null : m.senderId.avatarUrl ?? null,
-    content: m.content,
-    fileUrl: m.fileUrl,
+    id: String(m._id || m.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+    projectId: typeof m.projectId === "string" ? m.projectId : String(m.projectId?._id || m.projectId || ""),
+    senderId,
+    senderName,
+    senderAvatarUrl,
+    content: m.content || "",
+    fileUrl: m.fileUrl || "",
     fileMeta: m.fileMeta,
     type: m.type || (m.fileUrl ? "FILE" : "TEXT"),
     systemEventKey: m.systemEventKey,
-    read: m.read,
+    read: Boolean(m.read),
     readAt: m.readAt,
-    createdAt: m.createdAt,
+    createdAt: m.createdAt || new Date().toISOString(),
   }
 }
 
@@ -84,6 +122,10 @@ export async function getMessages(projectId: string, token: string): Promise<Api
 
 export async function getEscrowSnapshot(projectId: string, token: string): Promise<EscrowSnapshot> {
   return apiFetch<EscrowSnapshot>(`/messages/${projectId}/snapshot`, { token })
+}
+
+export async function getChatSummary(token: string): Promise<ChatSummaryResponse> {
+  return apiFetch<ChatSummaryResponse>("/messages/summary", { token })
 }
 
 export async function sendMessage(
@@ -110,6 +152,7 @@ export async function markRead(projectId: string, token: string, readAt?: string
     body: { readAt: readAt || new Date().toISOString() },
   })
 }
+
 
 // H-4: Singleton Socket.IO connection — prevents connection leaks
 let _socket: Socket | null = null

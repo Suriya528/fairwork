@@ -11,7 +11,7 @@ const { authRateLimiter, registerRateLimiter } = require("../src/middleware/auth
 const { canAccessProject } = require("../src/services/projectAccess");
 const { isUserActiveAndAuthorized } = require("../src/index");
 const { initiateGoogleAuth, initiateGithubAuth, exchangeOAuthCode } = require("../src/controllers/oauthController");
-const { getCatchUpMessages } = require("../src/controllers/messageController");
+const { getCatchUpMessages, getChatSummary, sendMessage } = require("../src/controllers/messageController");
 const { FINANCIAL_INVARIANTS } = require("../src/services/reconciliationService");
 
 const User = require("../src/models/User");
@@ -398,4 +398,140 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
     const syncIndexes = BlockchainSyncState.schema.indexes().map(([spec]) => Object.keys(spec).join(","));
     assert.ok(syncIndexes.includes("key"), "BlockchainSyncState must index key for distributed fencing");
   });
+
+  await t.test("Scenario 39: Chat summary and unread aggregation endpoint", async () => {
+    const origProjectFind = Project.find;
+    const origMessageAggregate = Message.aggregate;
+
+    try {
+      const dummyUserId = new mongoose.Types.ObjectId();
+      const dummyProjectId = new mongoose.Types.ObjectId();
+      const dummyCounterpartyId = new mongoose.Types.ObjectId();
+
+      Project.find = () => ({
+        select: () => ({
+          populate: () => ({
+            populate: () => ({
+              lean: async () => [
+                {
+                  _id: dummyProjectId,
+                  title: "Test Project",
+                  status: "in_progress",
+                  clientId: dummyUserId,
+                  freelancerId: {
+                    _id: dummyCounterpartyId,
+                    firstName: "Jane",
+                    lastName: "Doe",
+                    avatarUrl: "https://example.com/avatar.png",
+                  },
+                },
+              ],
+            }),
+          }),
+        }),
+      });
+
+      Message.aggregate = async (pipeline) => {
+        if (pipeline[1]?.$group?._id === "$projectId" && pipeline[1]?.$group?.count) {
+          return [{ _id: dummyProjectId, count: 2 }];
+        }
+        return [
+          {
+            _id: dummyProjectId,
+            latestId: new mongoose.Types.ObjectId(),
+            content: "Hello from workroom",
+            type: "TEXT",
+            senderId: dummyCounterpartyId,
+            createdAt: new Date(),
+          },
+        ];
+      };
+
+      const req = { user: { id: dummyUserId.toString() } };
+      let responsePayload = null;
+      const res = {
+        json: (data) => { responsePayload = data; return res; },
+      };
+
+      await getChatSummary(req, res);
+
+      assert.equal(responsePayload.totalUnread, 2, "totalUnread must equal aggregated unread count");
+      assert.equal(responsePayload.threads.length, 1, "Must contain 1 active workroom thread");
+      assert.equal(responsePayload.threads[0].counterparty.name, "Jane Doe", "Must correctly resolve counterparty name");
+      assert.equal(responsePayload.threads[0].counterparty.role, "freelancer", "Must identify counterparty as freelancer when caller is client");
+    } finally {
+      Project.find = origProjectFind;
+      Message.aggregate = origMessageAggregate;
+    }
+  });
+
+  await t.test("Scenario 40: Real-time chat notification dispatch on message send", async () => {
+    const origProjectFindById = Project.findById;
+    const origMessageCreate = Message.create;
+
+    try {
+      const dummyProjectId = new mongoose.Types.ObjectId();
+      const dummyClientId = new mongoose.Types.ObjectId();
+      const dummyFreelancerId = new mongoose.Types.ObjectId();
+
+      Project.findById = () => ({
+        select: async () => ({
+          _id: dummyProjectId,
+          title: "Notification Project",
+          clientId: dummyClientId,
+          freelancerId: dummyFreelancerId,
+          status: "in_progress",
+        }),
+      });
+
+      const emittedEvents = [];
+      const dummyIo = {
+        to: (room) => ({
+          emit: (event, payload) => {
+            emittedEvents.push({ room, event, payload });
+          },
+        }),
+      };
+
+      const mockMessageDoc = {
+        _id: new mongoose.Types.ObjectId(),
+        projectId: dummyProjectId,
+        senderId: dummyClientId,
+        content: "New test message",
+        type: "TEXT",
+        populate: async () => ({
+          _id: mockMessageDoc._id,
+          content: "New test message",
+          senderId: { _id: dummyClientId, firstName: "Client", lastName: "User" },
+        }),
+      };
+
+      Message.create = async () => mockMessageDoc;
+
+      const req = {
+        body: { projectId: dummyProjectId.toString(), content: "New test message" },
+        user: { id: dummyClientId.toString(), role: "client" },
+        app: { get: (key) => (key === "io" ? dummyIo : null) },
+      };
+
+      let statusCode = null;
+      let jsonPayload = null;
+      const res = {
+        status: (c) => { statusCode = c; return res; },
+        json: (data) => { jsonPayload = data; return res; },
+      };
+
+      await sendMessage(req, res);
+
+      assert.equal(statusCode, 201, "Message send must return 201 Created");
+      const chatNotification = emittedEvents.find((e) => e.event === "chat_notification");
+      assert.ok(chatNotification, "Must dispatch chat_notification to recipient");
+      assert.equal(chatNotification.room, `user:${dummyFreelancerId.toString()}`, "Must emit to freelancer's personal user room");
+      assert.equal(chatNotification.payload.projectTitle, "Notification Project", "Payload must contain project title");
+    } finally {
+      Project.findById = origProjectFindById;
+      Message.create = origMessageCreate;
+    }
+  });
 });
+

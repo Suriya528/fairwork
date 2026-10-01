@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
+import { useSearchParams } from "react-router-dom"
 import type { Socket } from "socket.io-client"
 import {
   FiMessageSquare,
@@ -27,6 +28,7 @@ import {
   getMessages,
   getEscrowSnapshot,
   markRead,
+  sendMessage,
   toApiMessage,
   type ApiMessage,
   type EscrowSnapshot,
@@ -36,6 +38,7 @@ import { formatDate } from "@/lib/format"
 export function ChatPage() {
   const { user, token } = useAuth()
   const { formatAmount } = useCurrency()
+  const [searchParams, setSearchParams] = useSearchParams()
   const socketRef = useRef<Socket | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -50,21 +53,44 @@ export function ChatPage() {
   const [error, setError] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  }, [])
 
+  // Load user's workroom threads
   useEffect(() => {
     if (!token) return
     getMyProjects(token)
       .then((p) => {
         const threads = p.filter((x) => x.freelancerId)
         setProjects(threads)
-        setSelected(threads[0]?.id ?? null)
+
+        // Select project specified in URL search query or default to first thread
+        const requestedId = searchParams.get("project")
+        const matchingProject = requestedId ? threads.find((t) => t.id === requestedId) : null
+        const initialSelected = matchingProject ? matchingProject.id : threads[0]?.id ?? null
+        setSelected(initialSelected)
       })
       .catch((e: Error) => setError(e.message))
-  }, [token])
+  }, [token, searchParams])
 
+  // Listen to cross-component workroom selection event (e.g. from Topbar ChatNotificationBell)
+  useEffect(() => {
+    const handleWorkroomSelected = (e: Event) => {
+      const customEvent = e as CustomEvent<{ projectId: string }>
+      if (customEvent.detail?.projectId) {
+        setSelected(customEvent.detail.projectId)
+        setSearchParams({ project: customEvent.detail.projectId }, { replace: true })
+      }
+    }
+
+    window.addEventListener("workroom_selected", handleWorkroomSelected)
+    return () => {
+      window.removeEventListener("workroom_selected", handleWorkroomSelected)
+    }
+  }, [setSearchParams])
+
+  // Fetch messages and establish socket connection when selected project changes
   useEffect(() => {
     if (!token || !selected) return
     setError("")
@@ -80,7 +106,14 @@ export function ChatPage() {
       .then(setSnapshot)
       .catch(() => setSnapshot(null))
 
-    void markRead(selected, token, new Date().toISOString()).catch(() => {})
+    // Mark as read and notify Topbar
+    void markRead(selected, token, new Date().toISOString())
+      .then(() => {
+        window.dispatchEvent(
+          new CustomEvent("chat_messages_read", { detail: { projectId: selected } }),
+        )
+      })
+      .catch(() => {})
 
     const socket = connectChat(token)
     socketRef.current = socket
@@ -102,22 +135,49 @@ export function ChatPage() {
     const onReceiveMessage = (raw: any) => {
       const message = toApiMessage(raw)
       if (message.projectId === selected) {
-        setMessages((old) => (old.some((m) => m.id === message.id) ? old : [...old, message]))
+        setMessages((old) => {
+          // If already exists by real id, ignore
+          if (old.some((m) => m.id === message.id)) return old
+
+          // If this is our own message and we have an optimistic pending message, replace it
+          const optIdx = old.findIndex(
+            (m) =>
+              m.id.startsWith("temp-") &&
+              m.content === message.content &&
+              (m.senderId === message.senderId || m.senderId === user?.id),
+          )
+          if (optIdx !== -1) {
+            const next = [...old]
+            next[optIdx] = message
+            return next
+          }
+          return [...old, message]
+        })
         scrollToBottom()
-        if (message.senderId !== user?.id) {
-          void markRead(selected, token, new Date().toISOString()).catch(() => {})
+
+        const currentUserId = user?.id || (user as any)?._id
+        if (message.senderId && String(message.senderId).toLowerCase() !== String(currentUserId).toLowerCase()) {
+          void markRead(selected, token, new Date().toISOString())
+            .then(() => {
+              window.dispatchEvent(
+                new CustomEvent("chat_messages_read", { detail: { projectId: selected } }),
+              )
+            })
+            .catch(() => {})
         }
       }
     }
 
     const onUserTyping = (data: { userId: string; projectId: string }) => {
-      if (data.projectId === selected && data.userId !== user?.id) {
+      const currentUserId = user?.id || (user as any)?._id
+      if (data.projectId === selected && String(data.userId).toLowerCase() !== String(currentUserId).toLowerCase()) {
         setTypingUser("Counterparty is typing...")
       }
     }
 
     const onUserStopTyping = (data: { userId: string; projectId: string }) => {
-      if (data.projectId === selected && data.userId !== user?.id) {
+      const currentUserId = user?.id || (user as any)?._id
+      if (data.projectId === selected && String(data.userId).toLowerCase() !== String(currentUserId).toLowerCase()) {
         setTypingUser(null)
       }
     }
@@ -136,7 +196,7 @@ export function ChatPage() {
       socket.off("user_typing", onUserTyping)
       socket.off("user_stop_typing", onUserStopTyping)
     }
-  }, [selected, token, user?.id])
+  }, [selected, token, user?.id, scrollToBottom])
 
   // Disconnect socket only when leaving ChatPage completely
   useEffect(() => {
@@ -145,6 +205,11 @@ export function ChatPage() {
       socketRef.current = null
     }
   }, [])
+
+  const handleSelectProject = (projectId: string) => {
+    setSelected(projectId)
+    setSearchParams({ project: projectId }, { replace: true })
+  }
 
   const handleDraftChange = (val: string) => {
     setDraft(val)
@@ -165,11 +230,40 @@ export function ChatPage() {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     socketRef.current?.emit("stop_typing", selected)
 
-    socketRef.current?.emit("send_message", {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const optimisticMsg: ApiMessage = {
+      id: tempId,
       projectId: selected,
+      senderId: user?.id || "",
+      senderName: user?.name || "You",
+      senderAvatarUrl: user?.avatarUrl || null,
       content,
+      fileUrl: "",
       type: "TEXT",
-    })
+      read: false,
+      createdAt: new Date().toISOString(),
+    }
+
+    // Instantly append to state so sender immediately sees their message on the right
+    setMessages((prev) => [...prev, optimisticMsg])
+    scrollToBottom()
+
+    // 1. Emit via socket
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("send_message", {
+        projectId: selected,
+        content,
+        type: "TEXT",
+      })
+    } else {
+      // 2. Fallback to HTTP REST endpoint if socket is offline or reconnecting
+      try {
+        const confirmed = await sendMessage(selected, content, token)
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? confirmed : m)))
+      } catch (err: any) {
+        setError(err?.message || "Failed to deliver message.")
+      }
+    }
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,8 +292,13 @@ export function ChatPage() {
       if (!res.ok) throw new Error("File upload failed")
       const fileData = await res.json()
 
-      socketRef.current?.emit("send_message", {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const optimisticMsg: ApiMessage = {
+        id: tempId,
         projectId: selected,
+        senderId: user?.id || "",
+        senderName: user?.name || "You",
+        senderAvatarUrl: user?.avatarUrl || null,
         content: file.name,
         fileUrl: fileData.url,
         fileMeta: {
@@ -208,7 +307,40 @@ export function ChatPage() {
           size: file.size,
         },
         type: "FILE",
-      })
+        read: false,
+        createdAt: new Date().toISOString(),
+      }
+
+      setMessages((prev) => [...prev, optimisticMsg])
+      scrollToBottom()
+
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("send_message", {
+          projectId: selected,
+          content: file.name,
+          fileUrl: fileData.url,
+          fileMeta: {
+            filename: file.name,
+            mimeType: file.type,
+            size: file.size,
+          },
+          type: "FILE",
+        })
+      } else {
+        const confirmed = await sendMessage(
+          selected,
+          file.name,
+          token,
+          fileData.url,
+          {
+            filename: file.name,
+            mimeType: file.type,
+            size: file.size,
+          },
+          "FILE",
+        )
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? confirmed : m)))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to attach file.")
     } finally {
@@ -218,6 +350,14 @@ export function ChatPage() {
   }
 
   const activeProject = projects.find((p) => p.id === selected)
+
+  // Resolve counterparty accurately for both freelancers and clients
+  const activeIsClient =
+    activeProject &&
+    (activeProject.clientId === user?.id || (activeProject as any).clientId?._id === user?.id)
+  const activeCounterpartyName = activeIsClient
+    ? (activeProject?.freelancerName || "Assigned Freelancer")
+    : (activeProject?.clientName || "Project Client")
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -237,21 +377,29 @@ export function ChatPage() {
                 <p className="text-xs font-bold uppercase tracking-wider text-muted">Workrooms ({projects.length})</p>
               </div>
               <div className="overflow-y-auto flex-1 divide-y divide-border/60">
-                {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelected(p.id)}
-                    className={`w-full p-4 text-left text-sm transition-colors hover:bg-elevated ${
-                      p.id === selected ? "bg-primary/10 border-l-4 border-primary font-semibold" : ""
-                    }`}
-                  >
-                    <p className="font-medium text-foreground truncate">{p.title}</p>
-                    <p className="text-xs text-muted mt-0.5 truncate">
-                      {p.freelancerName ? `With ${p.freelancerName}` : "Assigned freelancer"}
-                    </p>
-                  </button>
-                ))}
+                {projects.map((p) => {
+                  const isClientUser =
+                    p.clientId === user?.id || (p as any).clientId?._id === user?.id
+                  const threadPartner = isClientUser
+                    ? (p.freelancerName || "Assigned Freelancer")
+                    : (p.clientName || "Project Client")
+
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectProject(p.id)}
+                      className={`w-full p-4 text-left text-sm transition-colors hover:bg-elevated ${
+                        p.id === selected ? "bg-primary/10 border-l-4 border-primary font-semibold" : ""
+                      }`}
+                    >
+                      <p className="font-medium text-foreground truncate">{p.title}</p>
+                      <p className="text-xs text-muted mt-0.5 truncate">
+                        With {threadPartner}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
             </aside>
 
@@ -267,9 +415,7 @@ export function ChatPage() {
                     </Badge>
                   </h3>
                   <p className="text-xs text-muted">
-                    {activeProject?.freelancerName
-                      ? `Workroom with ${activeProject.freelancerName}`
-                      : "Assigned freelancer workroom"}
+                    Workroom with {activeCounterpartyName}
                   </p>
                 </div>
                 <Button
@@ -285,7 +431,15 @@ export function ChatPage() {
               {/* Message Stream */}
               <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 max-h-[420px]">
                 {messages.map((m) => {
-                  const isMe = m.senderId === user?.id
+                  const currentUserId = user?.id || (user as any)?._id
+                  const isMe = Boolean(
+                    currentUserId &&
+                    m.senderId &&
+                    (
+                      String(m.senderId).toLowerCase() === String(currentUserId).toLowerCase() ||
+                      (m.senderName && user?.name && m.senderName.trim().toLowerCase() === user.name.trim().toLowerCase())
+                    ),
+                  )
                   const isSystem = m.type === "SYSTEM_EVENT" || m.content.startsWith("[SYSTEM_EVENT]")
 
                   if (isSystem) {
@@ -309,6 +463,11 @@ export function ChatPage() {
                       key={m.id}
                       className={`flex flex-col max-w-[80%] ${isMe ? "self-end items-end" : "self-start items-start"}`}
                     >
+                      {!isMe && (
+                        <span className="text-[11px] font-semibold text-primary mb-1 px-1">
+                          {m.senderName || activeCounterpartyName}
+                        </span>
+                      )}
                       <div
                         className={`rounded-2xl p-3.5 text-sm shadow-xs ${
                           isMe
@@ -336,7 +495,7 @@ export function ChatPage() {
                         )}
                       </div>
                       <span className="mt-1 text-[10px] text-muted px-1">
-                        {formatDate(m.createdAt)} {isMe && (m.read ? "• Read" : "• Sent")}
+                        {formatDate(m.createdAt)} {isMe && (m.id.startsWith("temp-") ? "• Sending..." : m.read ? "• Read" : "• Sent")}
                       </span>
                     </div>
                   )
@@ -351,7 +510,7 @@ export function ChatPage() {
 
               {/* Chat Input Bar */}
               <div className="flex gap-2 border-t border-border p-3 bg-surface items-center">
-                <label className="cursor-pointer p-2 text-muted hover:text-foreground transition-colors">
+                <label className="cursor-pointer p-2 text-muted hover:text-foreground transition-colors" title="Attach file">
                   <FiPaperclip className="h-5 w-5" />
                   <input
                     type="file"
@@ -378,7 +537,7 @@ export function ChatPage() {
                 <Button
                   aria-label="Send message"
                   onClick={send}
-                  disabled={!draft.trim()}
+                  disabled={!draft.trim() || uploading}
                   className="bg-primary-600 hover:bg-primary-500 text-white"
                 >
                   <FiSend />

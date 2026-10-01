@@ -182,6 +182,7 @@ function createServerApp(config = {}) {
 
   // Socket Gateway Configuration
   const io = new Server(httpServer, { cors: corsOptions });
+  app.set("io", io);
 
   // C-4: Redis adapter for horizontal scaling (chat across multiple pods)
   const redisUrl = process.env.REDIS_URL;
@@ -304,12 +305,30 @@ function createServerApp(config = {}) {
           content: data.content,
           type: messageType,
           fileUrl: data.fileUrl || "",
+          fileMeta: data.fileMeta || {},
         });
 
-        io.to(`project:${data.projectId}`).emit("receive_message", message);
+        const populated = await message.populate("senderId", "firstName lastName avatarUrl");
+
+        io.to(`project:${data.projectId}`).emit("receive_message", populated);
+        // Guarantee sender receives confirmation even if room join was desynced
+        socket.emit("receive_message", populated);
+
+        // Notify counterparty in their personal user room for topbar chat notification badge
+        const recipientId = String(project.clientId) === userId
+          ? (project.freelancerId ? String(project.freelancerId) : null)
+          : String(project.clientId);
+        if (recipientId) {
+          io.to(`user:${recipientId}`).emit("chat_notification", {
+            projectId: data.projectId,
+            projectTitle: project.title,
+            message: populated,
+          });
+        }
       } catch {
         socket.emit("app_error", { code: "MESSAGE_SEND_FAILED" });
       }
+
     });
 
     socket.on("typing", async (projectId) => {

@@ -263,6 +263,23 @@ exports.sendMessage = async (req, res) => {
       eventStatus: undefined,
     });
     const populated = await message.populate("senderId", "firstName lastName avatarUrl");
+
+    // Real-time broadcast if socket gateway is available on express app
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`project:${projectId}`).emit("receive_message", populated);
+      const recipientId = String(project.clientId) === String(req.user.id)
+        ? (project.freelancerId ? String(project.freelancerId) : null)
+        : String(project.clientId);
+      if (recipientId) {
+        io.to(`user:${recipientId}`).emit("chat_notification", {
+          projectId,
+          projectTitle: project.title,
+          message: populated,
+        });
+      }
+    }
+
     res.status(201).json(populated);
   } catch (err) {
     sendErrorResponse(res, err, "MessageController");
@@ -271,7 +288,7 @@ exports.sendMessage = async (req, res) => {
 
 exports.markRead = async (req, res) => {
   try {
-    await assertProjectMembership(req.params.projectId, req.user.id, req.user.role);
+    const project = await assertProjectMembership(req.params.projectId, req.user.id, req.user.role);
     const incomingReadAt = req.body.readAt ? new Date(req.body.readAt) : new Date();
 
     await Message.updateMany(
@@ -285,7 +302,142 @@ exports.markRead = async (req, res) => {
         readAt: incomingReadAt,
       }
     );
+
+    const io = req.app.get("io");
+    if (io) {
+      const recipientId = String(project.clientId) === String(req.user.id)
+        ? (project.freelancerId ? String(project.freelancerId) : null)
+        : String(project.clientId);
+      if (recipientId) {
+        io.to(`user:${recipientId}`).emit("messages_read", {
+          projectId: req.params.projectId,
+          readAt: incomingReadAt.toISOString(),
+        });
+      }
+    }
+
     res.json({ message: "Marked as read", readAt: incomingReadAt.toISOString() });
+  } catch (err) {
+    sendErrorResponse(res, err, "MessageController");
+  }
+};
+
+/**
+ * Returns total unread messages count and summary of active workroom threads for the authenticated user.
+ */
+exports.getChatSummary = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const projects = await Project.find({
+      $or: [{ clientId: userId }, { freelancerId: userId }],
+    })
+      .select("title clientId freelancerId status")
+      .populate("clientId", "firstName lastName avatarUrl")
+      .populate("freelancerId", "firstName lastName avatarUrl")
+      .lean();
+
+    if (!projects.length) {
+      return res.json({ totalUnread: 0, threads: [] });
+    }
+
+    const projectIds = projects.map((p) => p._id);
+
+    const userObjId = mongoose.isValidObjectId(userId) ? new mongoose.Types.ObjectId(userId) : null;
+    const matchSender = userObjId ? { $ne: userObjId } : { $ne: userId };
+
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
+          projectId: { $in: projectIds },
+          senderId: matchSender,
+          read: false,
+          eventStatus: { $ne: "ORPHANED_REORGED" },
+        },
+      },
+      {
+        $group: {
+          _id: "$projectId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const unreadMap = {};
+    let totalUnread = 0;
+    unreadCounts.forEach((u) => {
+      const pid = u._id.toString();
+      unreadMap[pid] = u.count;
+      totalUnread += u.count;
+    });
+
+    const latestMessages = await Message.aggregate([
+      {
+        $match: {
+          projectId: { $in: projectIds },
+          eventStatus: { $ne: "ORPHANED_REORGED" },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$projectId",
+          latestId: { $first: "$_id" },
+          content: { $first: "$content" },
+          type: { $first: "$type" },
+          fileUrl: { $first: "$fileUrl" },
+          senderId: { $first: "$senderId" },
+          createdAt: { $first: "$createdAt" },
+        },
+      },
+    ]);
+
+    const latestMap = {};
+    latestMessages.forEach((m) => {
+      latestMap[m._id.toString()] = m;
+    });
+
+    const threads = projects
+      .filter((p) => p.freelancerId)
+      .map((p) => {
+        const isClient = String(p.clientId?._id || p.clientId) === userId;
+        const counterpartyObj = isClient ? p.freelancerId : p.clientId;
+        const counterpartyName = counterpartyObj
+          ? `${counterpartyObj.firstName || ""} ${counterpartyObj.lastName || ""}`.trim() || (isClient ? "Freelancer" : "Client")
+          : isClient ? "Freelancer" : "Client";
+        const counterpartyAvatar = counterpartyObj?.avatarUrl || "";
+
+        const pid = p._id.toString();
+        const latest = latestMap[pid];
+
+        return {
+          projectId: pid,
+          projectTitle: p.title,
+          status: p.status,
+          counterparty: {
+            id: counterpartyObj?._id ? counterpartyObj._id.toString() : "",
+            name: counterpartyName,
+            avatarUrl: counterpartyAvatar,
+            role: isClient ? "freelancer" : "client",
+          },
+          lastMessage: latest
+            ? {
+                content: latest.type === "FILE" ? "Sent a file attachment" : latest.content,
+                createdAt: latest.createdAt,
+                senderId: latest.senderId ? latest.senderId.toString() : "",
+              }
+            : null,
+          unreadCount: unreadMap[pid] || 0,
+        };
+      })
+      .sort((a, b) => {
+        if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+        if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+        const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+        const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
+
+    res.json({ totalUnread, threads });
   } catch (err) {
     sendErrorResponse(res, err, "MessageController");
   }
@@ -297,4 +449,5 @@ module.exports = {
   createSystemEventMessage,
   assertProjectMembership,
 };
+
 
