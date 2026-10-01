@@ -86,6 +86,7 @@ export function CreateProjectPage() {
     openPendingApprovalModal,
     isConnecting,
     isVerifying,
+    addUsdcToWallet,
   } = useWallet()
 
   const hasVerifiedWallet = Boolean(isVerified || user?.walletAddress)
@@ -96,7 +97,17 @@ export function CreateProjectPage() {
   } | null>(null)
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [mintingToken, setMintingToken] = useState(false)
+  const [addingToken, setAddingToken] = useState(false)
   const [mintSuccess, setMintSuccess] = useState("")
+
+  const handleAddUsdcToMetaMask = async () => {
+    setAddingToken(true)
+    try {
+      await addUsdcToWallet()
+    } finally {
+      setAddingToken(false)
+    }
+  }
 
   const activeAccount = connectedAccount || user?.walletAddress
 
@@ -562,9 +573,22 @@ export function CreateProjectPage() {
               )}
 
               {mintSuccess && (
-                <div className="mt-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400 flex items-center gap-2">
-                  <FiCheckCircle className="h-4 w-4 shrink-0" />
-                  <span>{mintSuccess}</span>
+                <div className="mt-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FiCheckCircle className="h-4 w-4 shrink-0" />
+                    <span>{mintSuccess}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    loading={addingToken}
+                    onClick={handleAddUsdcToMetaMask}
+                    className="shrink-0 text-xs h-7 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                    title="Automatically add FairWork USDC to your MetaMask token list"
+                  >
+                    Add USDC to MetaMask
+                  </Button>
                 </div>
               )}
             </div>
@@ -802,6 +826,14 @@ export function CreateProjectPage() {
                   onClick={handleMintUsdc}
                 >
                   Mint 1,000 Testnet USDC
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  loading={addingToken}
+                  onClick={handleAddUsdcToMetaMask}
+                >
+                  Add USDC to MetaMask
                 </Button>
                 <Button disabled title="Insufficient wallet balance to cover project budget">
                   Insufficient Balance to Post

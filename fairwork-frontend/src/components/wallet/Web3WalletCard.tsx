@@ -1,9 +1,13 @@
+import { useState } from "react"
 import {
   FiAlertTriangle,
+  FiCheck,
   FiCheckCircle,
+  FiCopy,
   FiDownload,
   FiExternalLink,
   FiLock,
+  FiPlus,
   FiRefreshCw,
   FiShield,
   FiShieldOff,
@@ -37,7 +41,36 @@ export function Web3WalletCard({
     disconnect,
     clearError,
     cancelPendingAction,
+    addUsdcToWallet,
   } = useWallet()
+
+  const [copied, setCopied] = useState(false)
+  const [addingToken, setAddingToken] = useState(false)
+
+  const usdcAddress = (
+    import.meta.env.VITE_USDC_ADDRESS ||
+    import.meta.env.VITE_TOKEN_ADDRESS ||
+    "0xf21bdf6737a3009359f9ec1fa515e6d74702f575"
+  ).trim()
+
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(usdcAddress)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // ignore clipboard error
+    }
+  }
+
+  const handleAddToken = async () => {
+    setAddingToken(true)
+    try {
+      await addUsdcToWallet()
+    } finally {
+      setAddingToken(false)
+    }
+  }
 
   const activeAddress = connectedAccount || verifiedWalletAddress
 
@@ -267,6 +300,77 @@ export function Web3WalletCard({
                 Disconnect
               </Button>
             )}
+          </div>
+        </div>
+
+        {/* FairWork Escrow Token (USDC) Helper Card */}
+        <div className="rounded-xl border border-border/80 bg-base/60 p-4 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-sm border border-blue-500/20">
+                $
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">FairWork Escrow Token (USDC)</span>
+                  <Badge tone="info" className="text-[10px] py-0 px-1.5 font-mono">Sepolia Testnet</Badge>
+                  <Badge tone="neutral" className="text-[10px] py-0 px-1.5">6 Decimals</Badge>
+                </div>
+                <p className="text-[11px] text-muted">
+                  Required for project escrow funding, milestone deposits, and payout balances.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              loading={addingToken}
+              onClick={handleAddToken}
+              leftIcon={<FiPlus className="h-3.5 w-3.5 text-blue-500" />}
+              className="text-xs shrink-0 border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer shadow-xs"
+              title="Trigger MetaMask to automatically import this token"
+            >
+              Add USDC to MetaMask
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border/60 text-xs">
+            <div className="flex items-center gap-2 font-mono text-[11px] text-subtle">
+              <span className="text-muted">Contract:</span>
+              <span className="font-semibold text-foreground select-all">{usdcAddress}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyAddress}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-hover hover:bg-elevated text-[11px] font-medium text-foreground border border-border/60 transition-colors cursor-pointer"
+                title="Copy token contract address"
+              >
+                {copied ? (
+                  <>
+                    <FiCheck className="h-3 w-3 text-emerald-500" />
+                    <span className="text-emerald-500 font-semibold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <FiCopy className="h-3 w-3 text-muted" />
+                    <span>Copy Address</span>
+                  </>
+                )}
+              </button>
+              <a
+                href={`https://sepolia.etherscan.io/token/${usdcAddress}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-primary hover:underline hover:bg-primary/10 transition-colors"
+                title="View on Etherscan"
+              >
+                <span>Etherscan</span>
+                <FiExternalLink className="h-3 w-3" />
+              </a>
+            </div>
           </div>
         </div>
 

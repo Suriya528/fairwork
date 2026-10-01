@@ -56,6 +56,7 @@ interface WalletContextValue {
   disconnect: () => void
   clearError: () => void
   cancelPendingAction: () => void
+  addUsdcToWallet: () => Promise<boolean>
 }
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined)
@@ -802,6 +803,64 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setErrorMessage("")
   }, [connectedAccount])
 
+  // 1-Click Import of FairWork Mock USDC into MetaMask (EIP-747)
+  const addUsdcToWallet = useCallback(async (): Promise<boolean> => {
+    try {
+      const provider = getInjectedProvider()
+      if (!provider) {
+        toast({
+          title: "Wallet Not Found",
+          description: "No Web3 browser wallet detected.",
+          tone: "error",
+        })
+        return false
+      }
+      const tokenAddress = (
+        import.meta.env.VITE_USDC_ADDRESS ||
+        import.meta.env.VITE_TOKEN_ADDRESS ||
+        "0xf21bdf6737a3009359f9ec1fa515e6d74702f575"
+      ).trim()
+
+      const wasAdded = await provider.request({
+        method: "wallet_watchAsset",
+        params: {
+          type: "ERC20",
+          options: {
+            address: tokenAddress,
+            symbol: "USDC",
+            decimals: 6,
+            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
+          },
+        },
+      })
+      if (wasAdded) {
+        toast({
+          title: "Token Imported",
+          description: "USDC token successfully imported into your MetaMask wallet!",
+          tone: "success",
+        })
+        return true
+      }
+      return false
+    } catch (err: any) {
+      console.error("Failed to add USDC token to wallet:", err)
+      if (err?.code === 4001) {
+        toast({
+          title: "Import Cancelled",
+          description: "Token import was cancelled in MetaMask.",
+          tone: "info",
+        })
+      } else {
+        toast({
+          title: "Token Import Failed",
+          description: err?.message || "Failed to add USDC token to MetaMask.",
+          tone: "error",
+        })
+      }
+      return false
+    }
+  }, [toast])
+
   return (
     <WalletContext.Provider
       value={{
@@ -832,6 +891,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         disconnect,
         clearError,
         cancelPendingAction,
+        addUsdcToWallet,
       }}
     >
       {children}
@@ -880,6 +940,7 @@ export function useWallet(): WalletContextValue {
       disconnect: () => {},
       clearError: () => {},
       cancelPendingAction: () => {},
+      addUsdcToWallet: async () => false,
     }
   }
   return ctx
