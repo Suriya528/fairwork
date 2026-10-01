@@ -1,0 +1,7 @@
+{
+  "name": "fairwork-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "cd fairwork-frontend && npm install && npx vite build"
+  }
+}

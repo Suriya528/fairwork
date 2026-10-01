@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd fairwork-frontend && npm install && npx vite build",
+  "outputDirectory": "fairwork-frontend/dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
