@@ -370,13 +370,13 @@ export function ChatPage() {
         {error && <p className="text-sm text-danger">{error}</p>}
 
         {projects.length ? (
-          <div className="grid min-h-[580px] grid-cols-1 overflow-hidden rounded-2xl border border-border shadow-xl md:grid-cols-[260px_1fr_auto]">
+          <div className="grid min-h-[580px] grid-cols-1 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-[#0c1219] md:grid-cols-[260px_1fr_auto]">
             {/* Thread List Sidebar */}
-            <aside className="border-b border-border bg-surface md:border-b-0 md:border-r flex flex-col">
-              <div className="p-4 border-b border-border/80 bg-secondary/20">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted">Workrooms ({projects.length})</p>
+            <aside className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 md:border-b-0 md:border-r flex flex-col">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/80">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Workrooms ({projects.length})</p>
               </div>
-              <div className="overflow-y-auto flex-1 divide-y divide-border/60">
+              <div className="overflow-y-auto flex-1 divide-y divide-slate-200/60 dark:divide-slate-800/60">
                 {projects.map((p) => {
                   const isClientUser =
                     p.clientId === user?.id || (p as any).clientId?._id === user?.id
@@ -389,12 +389,16 @@ export function ChatPage() {
                       key={p.id}
                       type="button"
                       onClick={() => handleSelectProject(p.id)}
-                      className={`w-full p-4 text-left text-sm transition-colors hover:bg-elevated ${
-                        p.id === selected ? "bg-primary/10 border-l-4 border-primary font-semibold" : ""
+                      className={`w-full p-4 text-left text-sm transition-colors ${
+                        p.id === selected
+                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-4 border-blue-600 font-semibold"
+                          : "hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
                       }`}
                     >
-                      <p className="font-medium text-foreground truncate">{p.title}</p>
-                      <p className="text-xs text-muted mt-0.5 truncate">
+                      <p className={`font-medium truncate ${p.id === selected ? "text-blue-700 dark:text-blue-300" : "text-slate-900 dark:text-slate-100"}`}>
+                        {p.title}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                         With {threadPartner}
                       </p>
                     </button>
@@ -404,17 +408,17 @@ export function ChatPage() {
             </aside>
 
             {/* Center Chat Stream */}
-            <section className="flex min-h-[460px] flex-col bg-card">
+            <section className="flex min-h-[460px] flex-col bg-white dark:bg-[#0c1219]">
               {/* Chat Header */}
-              <header className="border-b border-border/80 p-4 flex items-center justify-between bg-secondary/10">
+              <header className="border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/50">
                 <div>
-                  <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
                     {activeProject?.title}
                     <Badge tone="primary" className="text-[10px]">
                       {activeProject?.status}
                     </Badge>
                   </h3>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Workroom with {activeCounterpartyName}
                   </p>
                 </div>
@@ -422,14 +426,14 @@ export function ChatPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowSidePanel(!showSidePanel)}
-                  className="text-xs"
+                  className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   {showSidePanel ? <FiChevronRight /> : <FiChevronLeft />} Escrow Info
                 </Button>
               </header>
 
               {/* Message Stream */}
-              <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 max-h-[420px]">
+              <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 max-h-[420px] bg-white dark:bg-[#0c1219]">
                 {messages.map((m) => {
                   const currentUserId = user?.id || (user as any)?._id
                   const isMe = Boolean(
@@ -446,14 +450,14 @@ export function ChatPage() {
                     return (
                       <div
                         key={m.id}
-                        className="mx-auto my-2 max-w-md w-full rounded-xl bg-primary-500/10 border border-primary-500/30 p-3 text-center text-xs text-primary-300 shadow-xs"
+                        className="mx-auto my-2 max-w-md w-full rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 p-3 text-center text-xs text-blue-950 dark:text-blue-200 shadow-xs"
                       >
-                        <div className="flex items-center justify-center gap-1.5 font-semibold text-primary-400 mb-0.5">
+                        <div className="flex items-center justify-center gap-1.5 font-semibold text-blue-600 dark:text-blue-400 mb-0.5">
                           <FiShield className="h-3.5 w-3.5" />
                           <span>On-Chain Milestone Event</span>
                         </div>
-                        <p>{m.content.replace("[SYSTEM_EVENT]", "").trim()}</p>
-                        <span className="text-[10px] text-muted block mt-1">{formatDate(m.createdAt)}</span>
+                        <p className="leading-relaxed">{m.content.replace("[SYSTEM_EVENT]", "").trim()}</p>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-1">{formatDate(m.createdAt)}</span>
                       </div>
                     )
                   }
@@ -464,44 +468,50 @@ export function ChatPage() {
                       className={`flex flex-col max-w-[80%] ${isMe ? "self-end items-end" : "self-start items-start"}`}
                     >
                       {!isMe && (
-                        <span className="text-[11px] font-semibold text-primary mb-1 px-1">
+                        <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mb-1 px-1">
                           {m.senderName || activeCounterpartyName}
                         </span>
                       )}
                       <div
-                        className={`rounded-2xl p-3.5 text-sm shadow-xs ${
+                        className={`rounded-2xl p-3.5 text-sm shadow-sm transition-colors ${
                           isMe
-                            ? "bg-primary-600 text-white rounded-br-none"
-                            : "bg-secondary/60 border border-border/60 text-foreground rounded-bl-none"
+                            ? "bg-blue-600 dark:bg-blue-600 text-white rounded-br-none shadow-blue-500/10"
+                            : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-bl-none shadow-slate-200/50 dark:shadow-none"
                         }`}
                       >
                         {m.type === "FILE" || m.fileUrl ? (
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-2 font-medium">
-                              <FiFileText className="h-4 w-4" />
-                              <span className="truncate">{m.content || m.fileMeta?.filename || "Attachment"}</span>
+                              <FiFileText className={`h-4 w-4 ${isMe ? "text-blue-100" : "text-blue-600 dark:text-blue-400"}`} />
+                              <span className={`truncate ${isMe ? "text-white" : "text-slate-900 dark:text-slate-100"}`}>
+                                {m.content || m.fileMeta?.filename || "Attachment"}
+                              </span>
                             </div>
                             <a
                               href={sanitizeUrl(m.fileUrl)}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-accent-300 hover:underline pt-1"
+                              className={`inline-flex items-center gap-1 text-xs hover:underline pt-1 ${
+                                isMe ? "text-blue-100 hover:text-white" : "text-blue-600 dark:text-blue-400 font-medium"
+                              }`}
                             >
                               View / Download File <FiExternalLink className="h-3 w-3" />
                             </a>
                           </div>
                         ) : (
-                          <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                          <p className={`whitespace-pre-wrap leading-relaxed ${isMe ? "text-white" : "text-slate-900 dark:text-slate-100"}`}>
+                            {m.content}
+                          </p>
                         )}
                       </div>
-                      <span className="mt-1 text-[10px] text-muted px-1">
+                      <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 px-1 font-medium">
                         {formatDate(m.createdAt)} {isMe && (m.id.startsWith("temp-") ? "• Sending..." : m.read ? "• Read" : "• Sent")}
                       </span>
                     </div>
                   )
                 })}
                 {typingUser && (
-                  <div className="text-xs text-primary-400 font-mono animate-pulse flex items-center gap-1">
+                  <div className="text-xs text-blue-600 dark:text-blue-400 font-mono animate-pulse flex items-center gap-1">
                     <FiClock className="h-3 w-3 animate-spin" /> {typingUser}
                   </div>
                 )}
@@ -509,8 +519,8 @@ export function ChatPage() {
               </div>
 
               {/* Chat Input Bar */}
-              <div className="flex gap-2 border-t border-border p-3 bg-surface items-center">
-                <label className="cursor-pointer p-2 text-muted hover:text-foreground transition-colors" title="Attach file">
+              <div className="flex gap-2 border-t border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-[#0c1219] items-center">
+                <label className="cursor-pointer p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors" title="Attach file">
                   <FiPaperclip className="h-5 w-5" />
                   <input
                     type="file"
@@ -531,14 +541,14 @@ export function ChatPage() {
                   }}
                   rows={1}
                   placeholder="Type a message or press Enter to send..."
-                  className="flex-1 bg-secondary/30 border-border/80 text-sm"
+                  className="flex-1 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus-visible:ring-blue-600"
                 />
 
                 <Button
                   aria-label="Send message"
                   onClick={send}
                   disabled={!draft.trim() || uploading}
-                  className="bg-primary-600 hover:bg-primary-500 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-colors"
                 >
                   <FiSend />
                 </Button>
@@ -547,56 +557,57 @@ export function ChatPage() {
 
             {/* Collapsible Workroom Side Panel */}
             {showSidePanel && (
-              <aside className="w-64 border-l border-border bg-surface/60 p-4 space-y-5">
+              <aside className="w-64 border-l border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-5">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                     Escrow Snapshot
                   </h4>
                   {snapshot ? (
-                    <div className="space-y-3 bg-secondary/30 p-3 rounded-xl border border-border/60 text-xs">
+                    <div className="space-y-3 bg-white dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shadow-xs">
                       <div>
-                        <span className="text-muted block text-[10px]">TOTAL BUDGET</span>
-                        <span className="font-mono font-bold text-sm text-foreground">
+                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">TOTAL BUDGET</span>
+                        <span className="font-mono font-bold text-sm text-slate-900 dark:text-slate-100">
                           {formatAmount(snapshot.totalBudget)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted block text-[10px]">PAID / RELEASED</span>
-                        <span className="font-mono font-bold text-emerald-400">
+                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">PAID / RELEASED</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                           {formatAmount(snapshot.releasedAmount)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted block text-[10px]">UNRELEASED MILESTONES</span>
-                        <span className="font-mono font-bold text-primary-400">
+                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">UNRELEASED MILESTONES</span>
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
                           {formatAmount(snapshot.unreleasedAmount)}
                         </span>
                       </div>
-                      <div className="pt-2 border-t border-border/40">
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                         <Badge tone={snapshot.escrowFunded ? "success" : "warning"} className="w-full justify-center">
                           {snapshot.escrowFunded ? "Escrow Funded" : "Unfunded Draft"}
                         </Badge>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted">Loading snapshot...</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Loading snapshot...</p>
                   )}
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
                     Workroom Security
                   </h4>
-                  <div className="text-[11px] text-muted space-y-1.5">
-                    <p className="flex items-center gap-1 text-emerald-400">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
+                    <p className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                       <FiShield className="h-3.5 w-3.5" /> EIP-712 Encrypted Auth
                     </p>
-                    <p className="flex items-center gap-1 text-primary-400">
+                    <p className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
                       <FiCheckCircle className="h-3.5 w-3.5" /> Reconciled Milestones
                     </p>
                   </div>
                 </div>
               </aside>
+
             )}
           </div>
         ) : (

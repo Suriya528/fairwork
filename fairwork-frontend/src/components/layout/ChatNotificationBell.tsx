@@ -96,7 +96,7 @@ export function ChatNotificationBell() {
       trigger={
         <button
           type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors"
           aria-label={
             unreadCount > 0
               ? `Workroom Chat, ${unreadCount} unread messages`
@@ -106,34 +106,34 @@ export function ChatNotificationBell() {
         >
           <FiMessageSquare className="h-5 w-5" aria-hidden />
           {unreadCount > 0 && (
-            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-surface shadow-xs animate-in zoom-in-50">
+            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900 shadow-xs animate-in zoom-in-50">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </button>
       }
-      menuClassName="w-88 p-0 sm:w-96"
+      menuClassName="w-88 p-0 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl"
     >
-      <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5 bg-secondary/15">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-3.5 py-2.5 bg-slate-50/90 dark:bg-slate-900/80">
         <div className="flex items-center gap-2">
-          <FiMessageSquare className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">Workroom Messages</span>
+          <FiMessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Workroom Messages</span>
         </div>
         {unreadCount > 0 ? (
-          <span className="rounded-full bg-primary-500/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+          <span className="rounded-full bg-blue-100 dark:bg-blue-950/80 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
             {unreadCount} unread
           </span>
         ) : (
-          <span className="text-[11px] text-subtle">All caught up</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">All caught up</span>
         )}
       </div>
 
-      <div className="max-h-84 overflow-y-auto divide-y divide-border/40 p-1">
+      <div className="max-h-84 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-1">
         {threads.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <FiMessageSquare className="mx-auto h-8 w-8 text-subtle/50 mb-2" />
-            <p className="text-xs font-medium text-foreground">No messages yet</p>
-            <p className="text-[11px] text-subtle mt-0.5">
+            <FiMessageSquare className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+            <p className="text-xs font-medium text-slate-900 dark:text-slate-100">No messages yet</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               Assigned project workroom chats will appear here.
             </p>
           </div>
@@ -148,7 +148,9 @@ export function ChatNotificationBell() {
                 onSelect={() => handleOpenThread(thread)}
                 className={cn(
                   "p-2.5 rounded-xl transition-all cursor-pointer",
-                  hasUnread ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-elevated",
+                  hasUnread
+                    ? "bg-blue-50/80 hover:bg-blue-100/90 dark:bg-blue-950/40 dark:hover:bg-blue-950/70"
+                    : "hover:bg-slate-50 dark:hover:bg-slate-800/60",
                 )}
                 icon={
                   <div className="relative shrink-0">
@@ -156,15 +158,15 @@ export function ChatNotificationBell() {
                       <img
                         src={counterparty.avatarUrl}
                         alt={counterparty.name}
-                        className="h-9 w-9 rounded-full object-cover border border-border"
+                        className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-700"
                       />
                     ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold text-xs">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs">
                         {counterparty?.name ? counterparty.name.charAt(0).toUpperCase() : <FiUser className="h-4 w-4" />}
                       </div>
                     )}
                     {hasUnread && (
-                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary-600 ring-2 ring-surface" />
+                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white dark:ring-slate-900" />
                     )}
                   </div>
                 }
@@ -174,19 +176,21 @@ export function ChatNotificationBell() {
                     <span
                       className={cn(
                         "text-xs truncate",
-                        hasUnread ? "font-bold text-foreground" : "font-medium text-foreground/90",
+                        hasUnread
+                          ? "font-bold text-slate-900 dark:text-slate-100"
+                          : "font-medium text-slate-800 dark:text-slate-200",
                       )}
                     >
                       {counterparty?.name || "Participant"}
                     </span>
                     {thread.lastMessage && (
-                      <span className="text-[10px] text-subtle shrink-0">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
                         {formatRelativeTime(thread.lastMessage.createdAt)}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-[11px] text-subtle font-medium truncate">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
                     {thread.projectTitle}
                   </p>
 
@@ -194,13 +198,15 @@ export function ChatNotificationBell() {
                     <p
                       className={cn(
                         "text-[11px] truncate leading-tight",
-                        hasUnread ? "font-medium text-foreground/80" : "text-muted",
+                        hasUnread
+                          ? "font-medium text-slate-900 dark:text-slate-100"
+                          : "text-slate-500 dark:text-slate-400",
                       )}
                     >
                       {thread.lastMessage?.content || "No messages yet"}
                     </p>
                     {hasUnread && (
-                      <span className="shrink-0 rounded-full bg-primary-600 px-1.5 py-0.2 text-[10px] font-bold text-white leading-none">
+                      <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.2 text-[10px] font-bold text-white leading-none">
                         {thread.unreadCount}
                       </span>
                     )}
@@ -215,7 +221,7 @@ export function ChatNotificationBell() {
       <DropdownSeparator />
       <div
         onClick={() => navigate("/chat")}
-        className="flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-primary hover:bg-elevated cursor-pointer transition-colors"
+        className="flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
       >
         <span>Open Workroom Chat</span>
         <FiArrowRight className="h-3.5 w-3.5" />
@@ -223,3 +229,4 @@ export function ChatNotificationBell() {
     </Dropdown>
   )
 }
+
