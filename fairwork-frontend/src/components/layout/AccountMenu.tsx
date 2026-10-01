@@ -47,7 +47,7 @@ export function AccountMenu() {
       </DropdownItem>
       {user.role !== "admin" && (
         <DropdownItem icon={<FiCreditCard className="h-4 w-4" />} onSelect={() => navigate("/wallet")}>
-          Wallet &amp; Escrow
+          Wallet
         </DropdownItem>
       )}
       <DropdownItem icon={<FiSettings className="h-4 w-4" />} onSelect={() => navigate("/settings")}>
