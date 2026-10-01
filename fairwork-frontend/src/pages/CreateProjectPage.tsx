@@ -83,6 +83,7 @@ export function CreateProjectPage() {
     errorMessage: walletErrorMessage,
     clearError: clearWalletError,
     cancelPendingAction,
+    openPendingApprovalModal,
     isConnecting,
     isVerifying,
   } = useWallet()
@@ -392,14 +393,23 @@ export function CreateProjectPage() {
                 {walletErrorMessage.includes("already pending") ? "Check If Approved" : "Retry"}
               </Button>
               {walletErrorMessage.includes("already pending") && (
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-100 font-semibold text-xs transition-colors cursor-pointer border border-rose-500/30"
-                  title="Reload this page to clear stuck MetaMask connection request"
-                >
-                  Reload Tab to Reset
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={openPendingApprovalModal}
+                    className="px-2.5 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 font-semibold text-xs transition-colors cursor-pointer border border-sky-500/30"
+                  >
+                    How to Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-100 font-semibold text-xs transition-colors cursor-pointer border border-rose-500/30"
+                    title="Reload this page to clear stuck MetaMask connection request"
+                  >
+                    Reload Tab to Reset
+                  </button>
+                </>
               )}
               {(isConnecting || isVerifying) && (
                 <button

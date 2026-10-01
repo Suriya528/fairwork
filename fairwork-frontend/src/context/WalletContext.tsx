@@ -12,6 +12,7 @@ import { useAuth } from "./AuthContext"
 import { useToast } from "@/components/ui/Toast"
 import { getWalletNonce, verifyWallet as apiVerifyWallet } from "@/services/authApi"
 import { NoWalletModal } from "@/components/wallet/NoWalletModal"
+import { PendingApprovalModal } from "@/components/wallet/PendingApprovalModal"
 import { targetChain } from "@/services/web3"
 
 export const OFFICIAL_METAMASK_INSTALL_URL = "https://metamask.io/download/"
@@ -43,6 +44,10 @@ interface WalletContextValue {
   noWalletModalOpen: boolean
   openNoWalletModal: () => void
   closeNoWalletModal: () => void
+  pendingApprovalModalOpen: boolean
+  openPendingApprovalModal: () => void
+  closePendingApprovalModal: () => void
+  checkPendingApproval: () => Promise<boolean>
   redetectProvider: () => Promise<boolean>
   connect: () => Promise<string | null>
   verify: (providedAccount?: string) => Promise<boolean>
@@ -129,6 +134,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [chainId, setChainId] = useState<number | null>(null)
 
   const [noWalletModalOpen, setNoWalletModalOpen] = useState(false)
+  const [pendingApprovalModalOpen, setPendingApprovalModalOpen] = useState(false)
   const [isProviderAvailable, setIsProviderAvailable] = useState<boolean>(() => Boolean(getInjectedProvider()))
   const [hasMetaMask, setHasMetaMask] = useState<boolean>(() => Boolean(getInjectedProvider()?.isMetaMask))
 
@@ -154,10 +160,38 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setNoWalletModalOpen(false)
   }, [])
 
+  const openPendingApprovalModal = useCallback(() => {
+    setPendingApprovalModalOpen(true)
+  }, [])
+
+  const closePendingApprovalModal = useCallback(() => {
+    setPendingApprovalModalOpen(false)
+  }, [])
+
   const clearError = useCallback(() => {
     setErrorState(null)
     setErrorMessage("")
   }, [])
+
+  const checkPendingApproval = useCallback(async (): Promise<boolean> => {
+    try {
+      const provider = getInjectedProvider()
+      if (!provider) return false
+      const currentAccounts = await provider.request({ method: "eth_accounts" })
+      if (Array.isArray(currentAccounts) && currentAccounts.length > 0) {
+        const acc = currentAccounts[0].toLowerCase()
+        setConnectedAccount(acc)
+        const vAddr = verifiedWalletAddressRef.current
+        setWalletState(vAddr && acc === vAddr ? "VERIFIED" : "CONNECTED")
+        clearError()
+        setPendingApprovalModalOpen(false)
+        return true
+      }
+    } catch {
+      // ignore
+    }
+    return false
+  }, [clearError])
 
   // Check provider availability
   const checkProviderState = useCallback(() => {
@@ -552,6 +586,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } else if (msg.includes("already pending") || (err as any)?.code === -32002) {
         setErrorState("PROVIDER_UNAVAILABLE")
         setErrorMessage("A connection prompt is already pending in MetaMask. Look for the 🦊 MetaMask icon in your browser toolbar (top-right next to the address bar) and click it to approve, or click 'Reload Tab to Reset'.")
+        setPendingApprovalModalOpen(true)
         toast({
           title: "MetaMask Prompt Pending in Toolbar",
           description: "Click the 🦊 MetaMask extension icon in your browser toolbar to approve, or click 'Reload Tab to Reset'.",
@@ -578,6 +613,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 setErrorMessage("")
                 const vAddr = verifiedWalletAddressRef.current
                 setWalletState(vAddr && newAcc === vAddr ? "VERIFIED" : "CONNECTED")
+                setPendingApprovalModalOpen(false)
                 toast({
                   title: "Wallet Connected",
                   description: `Connected to ${newAcc.slice(0, 6)}...${newAcc.slice(-4)}. You can now verify wallet ownership.`,
@@ -784,6 +820,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         noWalletModalOpen,
         openNoWalletModal,
         closeNoWalletModal,
+        pendingApprovalModalOpen,
+        openPendingApprovalModal,
+        closePendingApprovalModal,
+        checkPendingApproval,
         redetectProvider,
         connect,
         verify,
@@ -799,6 +839,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         open={noWalletModalOpen}
         onClose={closeNoWalletModal}
         onRedetect={redetectProvider}
+      />
+      <PendingApprovalModal
+        open={pendingApprovalModalOpen}
+        onClose={closePendingApprovalModal}
+        onCheckApproval={checkPendingApproval}
       />
     </WalletContext.Provider>
   )
@@ -823,6 +868,10 @@ export function useWallet(): WalletContextValue {
       noWalletModalOpen: false,
       openNoWalletModal: () => {},
       closeNoWalletModal: () => {},
+      pendingApprovalModalOpen: false,
+      openPendingApprovalModal: () => {},
+      closePendingApprovalModal: () => {},
+      checkPendingApproval: async () => false,
       redetectProvider: async () => false,
       connect: async () => null,
       verify: async (_providedAccount?: string) => false,
