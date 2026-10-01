@@ -551,14 +551,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         })
       } else if (msg.includes("already pending") || (err as any)?.code === -32002) {
         setErrorState("PROVIDER_UNAVAILABLE")
-        setErrorMessage("A connection prompt is already pending in MetaMask. Please click the MetaMask extension icon in your browser toolbar to approve it.")
+        setErrorMessage("A connection prompt is already pending in MetaMask. Look for the 🦊 MetaMask icon in your browser toolbar (top-right next to the address bar) and click it to approve, or click 'Reload Tab to Reset'.")
         toast({
-          title: "MetaMask Prompt Pending",
-          description: "Please click on the MetaMask extension icon in your browser toolbar to approve the connection.",
+          title: "MetaMask Prompt Pending in Toolbar",
+          description: "Click the 🦊 MetaMask extension icon in your browser toolbar to approve, or click 'Reload Tab to Reset'.",
           tone: "warning",
         })
 
-        // Poll eth_accounts in background for up to 15s to auto-detect approval
+        // Poll eth_accounts in background for up to 30s to auto-detect approval
         let pollCount = 0
         const pollInterval = setInterval(async () => {
           pollCount++
@@ -588,7 +588,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           } catch {
             // ignore
           }
-          if (pollCount >= 15) {
+          if (pollCount >= 30) {
             clearInterval(pollInterval)
           }
         }, 1000)

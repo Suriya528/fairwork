@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([class~="dark"], [class~="dark"] *));
+
 /*
   FairWork production theme system — supports both Dark Mode and Light Mode.
   Semantic tokens map onto CSS variables updated dynamically via data-theme attribute / theme class.

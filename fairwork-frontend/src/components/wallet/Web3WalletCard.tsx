@@ -113,13 +113,25 @@ export function Web3WalletCard({
                 <p>{errorMessage}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={clearError}
-              className="text-danger hover:underline text-[11px] font-medium shrink-0 ml-2"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              {errorMessage.includes("already pending") && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-lg bg-danger/20 hover:bg-danger/30 text-rose-200 px-2 py-1 text-[11px] font-semibold border border-danger/30 cursor-pointer"
+                  title="Reload tab to clear pending MetaMask connection request"
+                >
+                  Reload Tab to Reset
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={clearError}
+                className="text-danger hover:underline text-[11px] font-medium"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
