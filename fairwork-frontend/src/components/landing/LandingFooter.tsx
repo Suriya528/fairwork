@@ -6,9 +6,9 @@ const footerSections = [
     title: "Product",
     links: [
       { label: "Escrow Pipeline", href: "/#workflow-pipeline" },
-      { label: "Specialists", href: "/#verified-specialists" },
+      { label: "Core Features", href: "/#platform-features" },
       { label: "Milestone Studio", href: "/#milestone-composer" },
-      { label: "Buyer Protection", href: "/#security-guardrails" },
+      { label: "Sepolia Contracts", href: "/#protocol-contracts" },
     ],
   },
   {

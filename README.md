@@ -302,7 +302,7 @@ FAIRWORK/
 │   │   ├── components/
 │   │   │   ├── auth/               # LoginForm, RegisterForm, SocialAuth
 │   │   │   ├── common/             # Logo, PageHeader, FlagIcons
-│   │   │   ├── landing/            # HeroSection, EscrowFlowBlueprint, CuratedSpecialists, Footer
+│   │   │   ├── landing/            # HeroSection, EscrowFlowBlueprint, PlatformFeatures, VerifiedProtocolShowcase, Footer
 │   │   │   ├── layout/             # Topbar, AccountMenu, Sidebar
 │   │   │   ├── profile/            # GithubContributionHeatmap, Portfolio
 │   │   │   ├── ui/                 # Accessible Card, Button, Input, Modal, Badge primitives

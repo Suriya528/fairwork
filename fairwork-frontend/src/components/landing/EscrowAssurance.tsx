@@ -31,17 +31,17 @@ const securityGuardrails = [
   },
   {
     icon: FiAlertTriangle,
-    title: "Decentralized On-Chain Arbitration",
+    title: "AI Dispute Mediation & Arbitrator Relay",
     description:
-      "If deliverables diverge from agreed milestone acceptance criteria, either participant can escalate to neutral arbitration with on-chain evidence.",
-    tag: "Impartial Resolution",
+      "Objective Gemini AI evaluates milestone criteria and evidence. When both parties accept the binary recommendation within 48h, the arbitrator key signs on-chain settlement on DisputeContract.",
+    tag: "AI + Sepolia Relay",
   },
   {
     icon: FiCpu,
-    title: "Cryptographic Wallet Verification",
+    title: "On-Chain Sepolia Reputation Rating",
     description:
-      "Every milestone approval and contract state transition is secured via EIP-712 wallet signatures, ensuring tamper-proof non-repudiation.",
-    tag: "EIP-712 Verified",
+      "Every completed project allows participants to record an immutable 1-5 star rating to the Sepolia ReputationContract accumulator, establishing permanent on-chain credentials.",
+    tag: "O(1) Accumulator",
   },
 ] as const
 

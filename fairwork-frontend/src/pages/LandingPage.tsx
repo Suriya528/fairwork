@@ -1,21 +1,20 @@
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { HeroSection } from "@/components/landing/HeroSection"
 import { EscrowFlowBlueprint } from "@/components/landing/EscrowFlowBlueprint"
-import { CuratedSpecialists } from "@/components/landing/CuratedSpecialists"
+import { PlatformFeatures } from "@/components/landing/PlatformFeatures"
 import { ProjectCalculator } from "@/components/landing/ProjectCalculator"
-import { VerifiedProjectShowcase } from "@/components/landing/VerifiedProjectShowcase"
+import { VerifiedProtocolShowcase } from "@/components/landing/VerifiedProtocolShowcase"
 import { EscrowAssurance } from "@/components/landing/EscrowAssurance"
 import { MarketplaceCTA } from "@/components/landing/MarketplaceCTA"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 
 /**
- * Public landing page combining Amazon discovery, Stripe escrow transparency,
- * and Linear precision typography:
+ * Public landing page for FairWork:
  * - Centered hero banner with universal search and interactive escrow studio
  * - 4-stage automated milestone settlement pipeline
- * - Curated deliverable package cards with verified specialists
+ * - Core platform capabilities (Escrow, AI Dispute Mediation, On-Chain Reputation, GitHub CI)
  * - Real-time milestone & budget configurator
- * - Shipped deliverable showcases with verified settlement proofs
+ * - Verifiable Sepolia Smart Contract Registry & project lifecycle
  * - Non-custodial security guardrails & closing call-to-action
  */
 export function LandingPage() {
@@ -30,14 +29,14 @@ export function LandingPage() {
         {/* 4-Stage Automated Milestone Settlement Pipeline */}
         <EscrowFlowBlueprint />
 
-        {/* Curated Deliverable Package Cards */}
-        <CuratedSpecialists />
+        {/* Core Platform Capabilities: Escrow, AI Mediation, On-Chain Reputation, GitHub CI */}
+        <PlatformFeatures />
 
         {/* Real-time Milestone & Budget Configurator */}
         <ProjectCalculator />
 
-        {/* Shipped Deliverable Showcases & Settlement Proofs */}
-        <VerifiedProjectShowcase />
+        {/* Verifiable Sepolia Smart Contract Registry & Project Lifecycle */}
+        <VerifiedProtocolShowcase />
 
         {/* Non-Custodial Escrow Security Guardrails */}
         <EscrowAssurance />

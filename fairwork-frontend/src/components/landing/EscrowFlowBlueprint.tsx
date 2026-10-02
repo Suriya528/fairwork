@@ -71,9 +71,9 @@ function fund(string calldata projectId) external nonReentrant whenNotPaused {
     status: "in_progress",
     summary: "Specialist submits completed deliverables. Client inspects work in staging with clear criteria signoff.",
     telemetry: [
-      "✓ Milestone deliverable submitted by creator",
-      "✓ Automated test suites & staging preview verified",
-      "⏳ Client inspection window open",
+      "✓ Deliverable uploaded & GitHub PR linked",
+      "✓ GitHub Actions CI test checks green (author verified)",
+      "⏳ Client review window open for signoff",
     ],
     contractAction: "Milestone Deliverable Submitted",
     codeSnippet: `// Deliverable submitted for client staging inspection
@@ -90,9 +90,9 @@ emit DeliverableSubmitted(projectId, milestoneIndex, proofHash);`,
     status: "pending",
     summary: "Client signs approval. The smart contract immediately sends 100% of milestone funds straight to creator wallet.",
     telemetry: [
-      "⏳ Awaiting client signature",
-      "✓ 0% platform fee deduction",
-      "✓ Direct wallet-to-wallet transfer ready",
+      "✓ Client signed on-chain release transaction",
+      "✓ 100% payout sent directly to creator wallet (0% fee)",
+      "✓ On-chain reputation rating written to Sepolia",
     ],
     contractAction: "Atomic Settlement Transfer",
     codeSnippet: `// Instant atomic milestone settlement directly to creator wallet

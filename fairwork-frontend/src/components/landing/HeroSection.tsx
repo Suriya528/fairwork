@@ -10,6 +10,8 @@ import {
   FiLayers,
   FiCheck,
   FiDollarSign,
+  FiExternalLink,
+  FiGithub,
 } from "react-icons/fi"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
@@ -168,7 +170,7 @@ export function HeroSection() {
               <div>
                 <span className="text-xs font-medium text-foreground">Interactive Escrow Studio</span>
                 <span className="text-[11px] text-subtle font-mono block sm:inline sm:ml-2">
-                  Vault ID: #FW-8842-SEPOLIA
+                  Network: Ethereum Sepolia (11155111)
                 </span>
               </div>
             </div>
@@ -315,12 +317,28 @@ export function HeroSection() {
                   <span className="text-emerald-400">Verified</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-subtle">Contract Address:</span>
-                  <span className="text-foreground">0x71C...a89B</span>
+                  <span className="text-subtle">Escrow Contract:</span>
+                  <a
+                    href="https://sepolia.etherscan.io/address/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline flex items-center gap-1"
+                  >
+                    <span>0xc0d1...376c</span>
+                    <FiExternalLink className="h-2.5 w-2.5" />
+                  </a>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-subtle">Dispute Arbiter:</span>
-                  <span className="text-foreground">Decentralized</span>
+                  <a
+                    href="https://sepolia.etherscan.io/address/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-foreground hover:underline flex items-center gap-1"
+                  >
+                    <span>AI Relay (0x0423...7193)</span>
+                    <FiExternalLink className="h-2.5 w-2.5 text-subtle" />
+                  </a>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-subtle">Release Trigger:</span>
@@ -331,7 +349,7 @@ export function HeroSection() {
                     to={destination}
                     className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-sans text-xs font-medium text-white transition-colors"
                   >
-                    <span>Commission Similar Milestone</span>
+                    <span>Create Milestone Brief</span>
                     <FiArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
@@ -347,36 +365,39 @@ export function HeroSection() {
                   Deliverable Inspection Criteria
                 </h3>
                 <p className="text-xs text-muted mt-0.5 font-light">
-                  Clear specifications verified prior to milestone escrow release.
+                  Clear specifications and automated CI status verified prior to milestone escrow release.
                 </p>
               </div>
 
               <div className="divide-y divide-border/60 rounded-xl border border-border bg-elevated/40 text-xs">
                 {[
                   {
-                    name: "Automated Test Suite & Typecheck",
-                    detail: "100% unit tests pass with zero runtime regressions",
+                    name: "GitHub PR CI/CD Verification",
+                    detail: "Automated check runs & test suites verified via GitHub API (author matched)",
+                    status: "passed",
+                    isGithub: true,
+                  },
+                  {
+                    name: "AI Legal Contract Agreement",
+                    detail: "Binding mutual agreement digitally signed by client and freelancer",
                     status: "passed",
                   },
                   {
-                    name: "Staging Preview Deployment",
-                    detail: "Responsive UI preview live on custom verification URL",
+                    name: "Milestone Deliverable Files",
+                    detail: "Source code assets and milestone artifacts submitted",
                     status: "passed",
                   },
                   {
-                    name: "Security Analysis & Invariant Testing",
-                    detail: "Automated security report generated with 0 high/critical issues",
-                    status: "passed",
-                  },
-                  {
-                    name: "Client Deliverable Review",
-                    detail: "Client inspection window open for signoff and release",
+                    name: "Client Inspection & Signoff",
+                    detail: "Client-gated on-chain release trigger open for approval",
                     status: "pending",
                   },
                 ].map((item) => (
                   <div key={item.name} className="flex items-center justify-between p-3.5">
                     <div className="flex items-center gap-2.5">
-                      {item.status === "passed" ? (
+                      {item.isGithub ? (
+                        <FiGithub className="h-4 w-4 text-emerald-400 shrink-0" />
+                      ) : item.status === "passed" ? (
                         <FiCheck className="h-4 w-4 text-emerald-400 shrink-0" />
                       ) : (
                         <FiLayers className="h-4 w-4 text-sky-400 shrink-0" />
