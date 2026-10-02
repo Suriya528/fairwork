@@ -55,8 +55,23 @@ async function generateProposal(projectTitle, projectDescription) {
   throw new Error("All AI providers failed to generate proposal.")
 }
 
+async function evaluateDisputeEvidence(evidence) {
+  const providers = getProviders()
+  for (const provider of providers) {
+    if (typeof provider.evaluateDispute === "function") {
+      try {
+        return await provider.evaluateDispute(evidence)
+      } catch (err) {
+        console.warn(`[AI CircuitBreaker] ${provider.name} evaluateDispute failed: ${err.message}. Failing over...`)
+      }
+    }
+  }
+  throw new Error("All AI providers failed to evaluate dispute evidence.")
+}
+
 module.exports = {
   streamChat,
   generateProjectScope,
   generateProposal,
+  evaluateDisputeEvidence,
 }

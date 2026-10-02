@@ -73,6 +73,14 @@ interface BackendDeliverable {
   size: number
   milestoneId: string | null
   submissionNotes?: string
+  githubPrUrl?: string
+  githubCiStatus?: "none" | "passed" | "failed" | "pending" | "unavailable"
+  githubCiDetails?: {
+    totalChecks?: number
+    passedChecks?: number
+    verifiedAuthor?: string
+    checkedAt?: string
+  }
   uploadedBy: BackendPopulatedUser | string
   uploadedAt: string
 }
@@ -137,6 +145,14 @@ export interface ApiDeliverable {
   size: number
   milestoneId: string | null
   submissionNotes?: string
+  githubPrUrl?: string
+  githubCiStatus?: "none" | "passed" | "failed" | "pending" | "unavailable"
+  githubCiDetails?: {
+    totalChecks?: number
+    passedChecks?: number
+    verifiedAuthor?: string
+    checkedAt?: string
+  }
   uploadedByName: string | null
   uploadedAt: string
 }
@@ -243,6 +259,9 @@ function toDeliverable(file: BackendDeliverable): ApiDeliverable {
     size: file.size,
     milestoneId: file.milestoneId,
     submissionNotes: file.submissionNotes,
+    githubPrUrl: file.githubPrUrl,
+    githubCiStatus: file.githubCiStatus || "none",
+    githubCiDetails: file.githubCiDetails,
     uploadedByName: personName(file.uploadedBy),
     uploadedAt: file.uploadedAt,
   }
@@ -350,11 +369,13 @@ export async function uploadProjectDeliverable(
   milestoneId: string,
   token: string,
   submissionNotes?: string,
+  githubPrUrl?: string,
 ): Promise<ApiDeliverable> {
   const formData = new FormData()
   formData.append("file", file)
   if (milestoneId) formData.append("milestoneId", milestoneId)
   if (submissionNotes) formData.append("submissionNotes", submissionNotes)
+  if (githubPrUrl) formData.append("githubPrUrl", githubPrUrl)
 
   let response: Response
   try {
@@ -375,6 +396,21 @@ export async function uploadProjectDeliverable(
     throw new ApiError(message, response.status)
   }
   return toDeliverable(data as BackendDeliverable)
+}
+
+export async function refreshDeliverableCI(
+  projectId: string,
+  deliverableId: string,
+  token: string
+): Promise<ApiDeliverable> {
+  const data = await apiFetch<BackendDeliverable>(
+    `/projects/${projectId}/deliverables/${deliverableId}/verify-ci`,
+    {
+      method: "POST",
+      token,
+    }
+  )
+  return toDeliverable(data)
 }
 
 export async function submitMilestone(

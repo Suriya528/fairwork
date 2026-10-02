@@ -80,6 +80,19 @@ I am ready to begin immediately and look forward to collaborating with you.
 Best regards,
 Verified Freelancer`;
   }
+
+  async evaluateDispute(evidence) {
+    const { disputeReason } = evidence || {};
+    const reasonLower = String(disputeReason || "").toLowerCase();
+    // Deterministic heuristic if external AI APIs are unreachable
+    const favorsClient = reasonLower.includes("unresponsive") || reasonLower.includes("abandoned") || reasonLower.includes("missing");
+    return {
+      winner: favorsClient ? "client" : "freelancer",
+      rationale: favorsClient
+        ? "Evidence indicates work was not delivered in accordance with agreed milestone schedule."
+        : "Evidence indicates milestone deliverables were provided and awaiting client inspection.",
+    };
+  }
 }
 
 module.exports = FallbackProvider;

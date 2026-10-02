@@ -11,6 +11,7 @@ const {
   getMyProjects,
   getProjectDeliverables,
   uploadProjectDeliverable,
+  refreshDeliverableCI,
   getProjectReferenceFiles,
   uploadProjectReferenceFile,
   submitMilestone,
@@ -25,6 +26,7 @@ router.get("/:id/files", auth, getProjectDeliverables);
 router.post("/:id/files", auth, requireVerifiedEmail, upload.single("file"), uploadProjectDeliverable);
 router.get("/:id/deliverables", auth, getProjectDeliverables);
 router.post("/:id/deliverables", auth, requireVerifiedEmail, upload.single("file"), uploadProjectDeliverable);
+router.post("/:id/deliverables/:deliverableId/verify-ci", auth, requireVerifiedEmail, refreshDeliverableCI);
 router.get("/:id/reference-files", auth, getProjectReferenceFiles);
 router.post("/:id/reference-files", auth, requireVerifiedEmail, upload.single("file"), uploadProjectReferenceFile);
 router.post("/:id/milestones/:milestoneId/submit", auth, requireVerifiedEmail, submitMilestone);

@@ -37,6 +37,7 @@ import { formatDate } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { getReleasedAmount } from "@/lib/financial"
 import { sanitizeUrl } from "@/lib/sanitizeUrl"
+import { getOnChainReputation, reputationAddress } from "@/services/web3"
 
 type ProfileTab = "overview" | "history" | "reviews"
 
@@ -85,6 +86,20 @@ export function ProfilePage() {
   const displayUser = isPublicView && publicData ? publicData.user : currentUser
   const userRating = displayUser ? ("rating" in displayUser ? displayUser.rating : displayUser.reputationScore) || 0 : 0
   const userReviewCount = displayUser ? ("reviewCount" in displayUser ? displayUser.reviewCount : displayUser.totalReviews) || 0 : 0
+
+  const [onChainRep, setOnChainRep] = useState<{ average: number; totalReviews: number; isAvailable: boolean }>({
+    average: 0,
+    totalReviews: 0,
+    isAvailable: false,
+  })
+
+  useEffect(() => {
+    if (displayUser?.walletAddress) {
+      getOnChainReputation(displayUser.walletAddress).then((rep) => {
+        setOnChainRep(rep)
+      })
+    }
+  }, [displayUser?.walletAddress])
 
   const stats = publicData?.stats || {
     totalEarnedUSDC: totalVolume,
@@ -371,6 +386,20 @@ export function ProfilePage() {
                       <FiShield className="h-3 w-3" />
                       Cryptographically Verified
                     </Badge>
+                  )}
+                  {onChainRep.isAvailable && onChainRep.totalReviews > 0 && reputationAddress && (
+                    <a
+                      href={`https://sepolia.etherscan.io/address/${reputationAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex"
+                    >
+                      <Badge tone="primary" className="text-[10px] gap-1 font-mono hover:underline cursor-pointer">
+                        <FiStar className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        On-Chain: {onChainRep.average.toFixed(2)} ★ ({onChainRep.totalReviews})
+                        <FiExternalLink className="h-2.5 w-2.5 ml-0.5 opacity-70" />
+                      </Badge>
+                    </a>
                   )}
                 </div>
                 {displayUser.tagline && (
@@ -768,7 +797,21 @@ export function ProfilePage() {
                       />
                     ))}
                   </div>
-                  <p className="text-xs text-muted">{userReviewCount} Verified Ratings</p>
+                  <p className="text-xs text-muted">{userReviewCount} Platform Ratings</p>
+                  {onChainRep.isAvailable && (
+                    <div className="mt-2 pt-2 border-t border-border/40">
+                      <a
+                        href={reputationAddress ? `https://sepolia.etherscan.io/address/${reputationAddress}` : "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 hover:underline"
+                      >
+                        <FiShield className="h-3 w-3" />
+                        Sepolia On-Chain: {onChainRep.totalReviews > 0 ? `${onChainRep.average.toFixed(2)} ★ (${onChainRep.totalReviews})` : "Active (0 logs)"}
+                        <FiExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Rating Distribution Breakdown */}

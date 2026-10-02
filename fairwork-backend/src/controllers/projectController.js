@@ -285,6 +285,27 @@ exports.uploadProjectDeliverable = async (req, res) => {
 
     const milestoneId = req.body.milestoneId || null;
     const submissionNotes = req.body.submissionNotes || "";
+    const githubPrUrl = req.body.githubPrUrl ? String(req.body.githubPrUrl).trim() : "";
+
+    let githubCiStatus = "none";
+    let githubCiDetails = { totalChecks: 0, passedChecks: 0, verifiedAuthor: "", checkedAt: null };
+
+    if (githubPrUrl) {
+      try {
+        const { verifyPullRequestCI } = require("../services/githubService");
+        const user = await User.findById(req.user.id);
+        const ci = await verifyPullRequestCI(githubPrUrl, user?.githubUsername || "");
+        githubCiStatus = ci.status;
+        githubCiDetails = {
+          totalChecks: ci.totalChecks || 0,
+          passedChecks: ci.passedChecks || 0,
+          verifiedAuthor: ci.verifiedAuthor || "",
+          checkedAt: ci.checkedAt || new Date(),
+        };
+      } catch (ciErr) {
+        console.warn("[ProjectController] CI check warning:", ciErr.message);
+      }
+    }
 
     if (milestoneId) {
       const targetMilestone = project.milestones.id(milestoneId);
@@ -307,6 +328,9 @@ exports.uploadProjectDeliverable = async (req, res) => {
       size: result.bytes || req.file.size,
       milestoneId,
       submissionNotes,
+      githubPrUrl,
+      githubCiStatus,
+      githubCiDetails,
       uploadedBy: req.user.id,
     });
 
@@ -327,6 +351,40 @@ exports.uploadProjectDeliverable = async (req, res) => {
   } catch (err) {
     console.error("[ProjectController] error:", err);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.refreshDeliverableCI = async (req, res) => {
+  try {
+    const { project, error } = await projectForParty(req.params.id, req.user.id);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    const deliverable = project.deliverables.id(req.params.deliverableId);
+    if (!deliverable) {
+      return res.status(404).json({ message: "Deliverable not found" });
+    }
+
+    if (!deliverable.githubPrUrl) {
+      return res.status(400).json({ message: "Deliverable has no GitHub PR attached" });
+    }
+
+    const { verifyPullRequestCI } = require("../services/githubService");
+    const freelancer = await User.findById(project.freelancerId);
+    const ci = await verifyPullRequestCI(deliverable.githubPrUrl, freelancer?.githubUsername || "");
+
+    deliverable.githubCiStatus = ci.status;
+    deliverable.githubCiDetails = {
+      totalChecks: ci.totalChecks || 0,
+      passedChecks: ci.passedChecks || 0,
+      verifiedAuthor: ci.verifiedAuthor || "",
+      checkedAt: new Date(),
+    };
+
+    await project.save();
+    res.json(deliverable);
+  } catch (err) {
+    console.error("[ProjectController] refreshDeliverableCI error:", err);
+    res.status(500).json({ message: "Failed to refresh CI status" });
   }
 };
 

@@ -158,6 +158,65 @@ Return ONLY valid JSON:
     }
     throw new Error("All Gemini models failed for proposal drafting.");
   }
+
+  async evaluateDispute(evidence) {
+    const { projectTitle, projectDescription, disputeReason, milestones = [], chatExcerpts = [] } = evidence;
+    const sanitizedTitle = String(projectTitle || "").slice(0, 120);
+    const sanitizedDesc = String(projectDescription || "").slice(0, 600);
+    const sanitizedReason = String(disputeReason || "").slice(0, 400);
+    const sanitizedChat = chatExcerpts
+      .map((c) => `[${c.sender || "User"}]: ${String(c.content || "").slice(0, 150)}`)
+      .slice(-12)
+      .join("\n");
+
+    const prompt = `You are an impartial dispute resolution mediator for a freelance platform with smart-contract escrow.
+CONTRACT & DISPUTE EVIDENCE:
+Project Title: ${sanitizedTitle}
+Scope: ${sanitizedDesc}
+Dispute Reason: ${sanitizedReason}
+Agreed Milestones: ${JSON.stringify(milestones)}
+Recent Communication Log:
+${sanitizedChat || "No chat logs available."}
+
+INSTRUCTIONS:
+1. Objectively evaluate whether the evidence predominantly favors the CLIENT (refund) or the FREELANCER (payout).
+2. The winner MUST be strictly either "client" or "freelancer".
+3. Provide a clear, neutral, 2-sentence rationale explaining the decision based strictly on deliverables and agreement terms.
+4. Output ONLY valid JSON:
+{
+  "winner": "client",
+  "rationale": "The deliverables specified in milestone 1 were demonstrably completed before the dispute was raised."
+}`;
+
+    for (const model of GEMINI_MODELS) {
+      try {
+        const res = await this.ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction: FAIRWORK_SYSTEM_INSTRUCTIONS,
+          },
+        });
+
+        const text = res.text || "{}";
+        const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        let parsed = {};
+        try {
+          parsed = JSON.parse(cleanJson);
+        } catch {
+          parsed = {};
+        }
+
+        const winner = parsed.winner === "client" || parsed.winner === "freelancer" ? parsed.winner : "freelancer";
+        const rationale = parsed.rationale || "Based on milestone specifications and submitted deliverables, this outcome is recommended.";
+
+        return { winner, rationale };
+      } catch (err) {
+        console.warn(`[GeminiProvider] model ${model} dispute evaluation error: ${err.message}`);
+      }
+    }
+    throw new Error("All Gemini models failed for dispute evaluation.");
+  }
 }
 
 module.exports = GeminiProvider;

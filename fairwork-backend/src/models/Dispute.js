@@ -11,6 +11,16 @@ const disputeSchema = new mongoose.Schema({
   freelancerVotes: { type: Number, default: 0 },
   voters: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   blockchainTxn: { type: String, default: "" },
+  aiRecommendation: {
+    winner: { type: String, enum: ["client", "freelancer", "none"], default: "none" },
+    rationale: { type: String, default: "" },
+    evaluatedAt: { type: Date },
+    clientAccepted: { type: Boolean, default: false },
+    clientAcceptedAt: { type: Date },
+    freelancerAccepted: { type: Boolean, default: false },
+    freelancerAcceptedAt: { type: Date },
+    expiresAt: { type: Date },
+  },
 }, { timestamps: true });
 
 disputeSchema.index({ projectId: 1, status: 1 });

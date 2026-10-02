@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
   FiAlertTriangle,
   FiArrowLeft,
+  FiAward,
   FiCalendar,
   FiCheck,
   FiCheckCircle,
@@ -11,9 +12,11 @@ import {
   FiDollarSign,
   FiExternalLink,
   FiFileText,
+  FiGithub,
   FiLock,
   FiPaperclip,
   FiPlusCircle,
+  FiRefreshCw,
   FiSend,
   FiShield,
   FiStar,
@@ -38,6 +41,7 @@ import { LoadingState } from "@/components/feedback/LoadingState"
 import { ErrorState } from "@/components/feedback/ErrorState"
 import { ApplyModal } from "@/components/applications/ApplyModal"
 import { FreelancerProfileModal } from "@/components/applications/FreelancerProfileModal"
+import { OnChainRatingModal } from "@/components/feedback/OnChainRatingModal"
 import { formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "@/lib/format"
 import { sanitizeUrl } from "@/lib/sanitizeUrl"
 import { useAuth } from "@/context/AuthContext"
@@ -49,6 +53,7 @@ import {
   getDisplayCategory,
   getProjectDeliverables,
   uploadProjectDeliverable,
+  refreshDeliverableCI,
   getProjectReferenceFiles,
   uploadProjectReferenceFile,
   submitMilestone,
@@ -121,10 +126,11 @@ function SubmitWorkModal({
   onClose: () => void
   milestone: ApiMilestone
   project: ApiProject
-  onSubmitWork: (milestoneId: string, notes: string, files: File[]) => Promise<void>
+  onSubmitWork: (milestoneId: string, notes: string, files: File[], prUrl?: string) => Promise<void>
 }) {
   const { formatAmount } = useCurrency()
   const [notes, setNotes] = useState("")
+  const [githubPrUrl, setGithubPrUrl] = useState("")
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -132,6 +138,7 @@ function SubmitWorkModal({
   useEffect(() => {
     if (open) {
       setNotes("")
+      setGithubPrUrl("")
       setSelectedFiles([])
       setError("")
       setSubmitting(false)
@@ -156,7 +163,7 @@ function SubmitWorkModal({
     setSubmitting(true)
     setError("")
     try {
-      await onSubmitWork(milestone.id, notes, selectedFiles)
+      await onSubmitWork(milestone.id, notes, selectedFiles, githubPrUrl.trim() || undefined)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit milestone work.")
@@ -281,6 +288,25 @@ function SubmitWorkModal({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Optional GitHub Pull Request Link */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="github-pr-url" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <FiGithub className="h-3.5 w-3.5 text-primary" />
+                GitHub Pull Request (Optional CI Check)
+              </label>
+              <span className="text-[10px] text-subtle">Automated CI test checks</span>
+            </div>
+            <input
+              id="github-pr-url"
+              type="url"
+              value={githubPrUrl}
+              onChange={(e) => setGithubPrUrl(e.target.value)}
+              placeholder="https://github.com/owner/repo/pull/12"
+              className="w-full rounded-xl border border-border bg-base px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-subtle font-mono"
+            />
           </div>
 
           {/* Submission Notes */}
@@ -454,16 +480,58 @@ function MilestoneRow({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Attached Milestone Files ({milestoneDeliverables.length}):</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {milestoneDeliverables.map((f) => (
-              <a
-                key={f.id}
-                href={sanitizeUrl(f.url)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-lg border border-border bg-base px-3 py-2 text-xs font-medium text-foreground hover:bg-surface-hover transition-colors"
-              >
-                <span className="truncate max-w-[200px]">{f.filename}</span>
-                <span className="text-[10px] text-subtle shrink-0">View / Download</span>
-              </a>
+              <div key={f.id} className="rounded-lg border border-border bg-base p-2.5 space-y-2">
+                <div className="flex items-center justify-between text-xs font-medium text-foreground">
+                  <a
+                    href={sanitizeUrl(f.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate max-w-[190px] text-primary hover:underline"
+                  >
+                    {f.filename}
+                  </a>
+                  <a
+                    href={sanitizeUrl(f.url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-subtle hover:text-foreground shrink-0"
+                  >
+                    Download
+                  </a>
+                </div>
+                {f.githubPrUrl && (
+                  <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px] font-mono">
+                    <a
+                      href={sanitizeUrl(f.githubPrUrl)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline flex items-center gap-1"
+                    >
+                      <FiGithub className="w-3 h-3" /> PR #{f.githubPrUrl.split("/").pop()}
+                    </a>
+                    {f.githubCiStatus === "passed" && (
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1 text-[10px]">
+                        <FiCheck className="w-3 h-3" /> CI Green ({f.githubCiDetails?.passedChecks || 0}/{f.githubCiDetails?.totalChecks || 0})
+                      </span>
+                    )}
+                    {f.githubCiStatus === "failed" && (
+                      <span className="text-danger font-semibold flex items-center gap-1 text-[10px]">
+                        <FiX className="w-3 h-3" /> CI Failing
+                      </span>
+                    )}
+                    {f.githubCiStatus === "pending" && (
+                      <span className="text-warning font-semibold flex items-center gap-1 text-[10px]">
+                        <FiClock className="w-3 h-3" /> CI In Progress
+                      </span>
+                    )}
+                    {f.githubCiStatus === "unavailable" && (
+                      <span className="text-muted flex items-center gap-1 text-[10px]">
+                        <FiShield className="w-3 h-3" /> CI Private
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -532,6 +600,8 @@ export function ProjectDetailPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [verificationModalOpen, setVerificationModalOpen] = useState(false)
   const [verificationActionName, setVerificationActionName] = useState("fund escrow")
+  const [ratingModalOpen, setRatingModalOpen] = useState(false)
+  const [ciRefreshing, setCiRefreshing] = useState<Record<string, boolean>>({})
 
   const formatDDMMYYYY = (dateInput?: string | Date | null): string => {
     if (!dateInput) return "____________________________________________"
@@ -782,7 +852,20 @@ export function ProjectDetailPage() {
     }
   }
 
-  const handleMilestoneSubmit = async (milestoneId: string, notes: string, files: File[] = []) => {
+  const handleRefreshCI = async (deliverableId: string) => {
+    if (!token || !project) return
+    setCiRefreshing((prev) => ({ ...prev, [deliverableId]: true }))
+    try {
+      const updatedDel = await refreshDeliverableCI(project.id, deliverableId, token)
+      setDeliverables((prev) => prev.map((d) => (d.id === deliverableId ? updatedDel : d)))
+    } catch (err) {
+      console.warn("Refresh CI failed:", err)
+    } finally {
+      setCiRefreshing((prev) => ({ ...prev, [deliverableId]: false }))
+    }
+  }
+
+  const handleMilestoneSubmit = async (milestoneId: string, notes: string, files: File[] = [], prUrl?: string) => {
     if (!token || !project) return
     setActionError("")
     if (!user?.isEmailVerified) {
@@ -795,7 +878,7 @@ export function ProjectDetailPage() {
     try {
       if (files && files.length > 0) {
         for (const file of files) {
-          await uploadProjectDeliverable(project.id, file, milestoneId, token, notes)
+          await uploadProjectDeliverable(project.id, file, milestoneId, token, notes, prUrl)
         }
       }
       const updated = await submitMilestone(project.id, milestoneId, notes, token)
@@ -837,6 +920,9 @@ export function ProjectDetailPage() {
     try {
       const updated = await approveMilestone(project.id, milestoneId, token)
       setProject(updated)
+      if (updated.status === "completed") {
+        setRatingModalOpen(true)
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to approve milestone.")
     }
@@ -1069,6 +1155,16 @@ export function ProjectDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {project.status === "completed" && (isClient || isAssignedFreelancer) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<FiStar className="h-4 w-4 text-warning" />}
+                  onClick={() => setRatingModalOpen(true)}
+                >
+                  Rate {isClient ? "Freelancer" : "Client"}
+                </Button>
+              )}
               {isFreelancer && project.status === "open" && !project.freelancerId && (
                 myApplication ? (
                   <Badge tone={myApplication.status === "accepted" ? "success" : myApplication.status === "rejected" ? "danger" : "warning"}>
@@ -1086,6 +1182,23 @@ export function ProjectDetailPage() {
             </div>
           </div>
         </Card>
+
+        {project.status === "completed" && (isClient || isAssignedFreelancer) && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
+              <FiAward className="h-5 w-5 shrink-0" />
+              <span>Project completed! You can record your feedback and submit an on-chain rating to the Sepolia reputation contract.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="primary"
+              leftIcon={<FiStar className="h-4 w-4" />}
+              onClick={() => setRatingModalOpen(true)}
+            >
+              Rate {isClient ? "Freelancer" : "Client"}
+            </Button>
+          </div>
+        )}
 
         {project.escrowDisputed && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3">
@@ -1591,6 +1704,52 @@ export function ProjectDetailPage() {
                                       <p className="whitespace-pre-wrap">{file.submissionNotes}</p>
                                     </div>
                                   )}
+                                  {file.githubPrUrl && (
+                                    <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-lg border border-border/70 bg-base p-2.5 text-xs">
+                                      <a
+                                        href={sanitizeUrl(file.githubPrUrl)}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="font-mono text-primary hover:underline flex items-center gap-1.5 shrink-0"
+                                      >
+                                        <FiGithub className="h-3.5 w-3.5" />
+                                        <span>PR #{file.githubPrUrl.split("/").pop()}</span>
+                                        <FiExternalLink className="h-3 w-3" />
+                                      </a>
+
+                                      {file.githubCiStatus === "passed" && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                          <FiCheck className="h-3 w-3" /> CI Green ({file.githubCiDetails?.passedChecks || 0}/{file.githubCiDetails?.totalChecks || 0} checks passed)
+                                        </span>
+                                      )}
+                                      {file.githubCiStatus === "failed" && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-danger-soft px-2 py-0.5 rounded-full">
+                                          <FiX className="h-3 w-3" /> CI Failing ({file.githubCiDetails?.passedChecks || 0}/{file.githubCiDetails?.totalChecks || 0} checks passed)
+                                        </span>
+                                      )}
+                                      {file.githubCiStatus === "pending" && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+                                          <FiClock className="h-3 w-3" /> CI In Progress
+                                        </span>
+                                      )}
+                                      {file.githubCiStatus === "unavailable" && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-surface px-2 py-0.5 rounded-full">
+                                          <FiShield className="h-3 w-3" /> CI Private / Unavailable
+                                        </span>
+                                      )}
+
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px] px-2 ml-auto"
+                                        loading={Boolean(ciRefreshing[file.id])}
+                                        onClick={() => handleRefreshCI(file.id)}
+                                        leftIcon={<FiRefreshCw className={`h-2.5 w-2.5 ${ciRefreshing[file.id] ? "animate-spin" : ""}`} />}
+                                      >
+                                        Re-check CI
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               <a
@@ -1773,6 +1932,16 @@ export function ProjectDetailPage() {
                   </div>
                 )}
 
+                {project.status === "completed" && (isClient || isAssignedFreelancer) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setRatingModalOpen(true)}
+                    leftIcon={<FiStar className="h-4 w-4 text-warning" />}
+                  >
+                    Rate {isClient ? "Freelancer" : "Client"}
+                  </Button>
+                )}
+
                 {escrowActive && <Badge tone="success">Payment protected by escrow</Badge>}
                 {actionState && <p className="text-xs text-muted">{actionState}</p>}
                 {actionError && <p className="text-xs text-danger">{actionError}</p>}
@@ -1813,6 +1982,28 @@ export function ProjectDetailPage() {
         hiring={Boolean(hiringId)}
         isHired={Boolean(hasFreelancer && projectFreelancerId === selectedProfileFreelancerId?.toLowerCase())}
         canHire={isClient && !hasFreelancer}
+      />
+
+      <OnChainRatingModal
+        isOpen={ratingModalOpen}
+        onClose={() => setRatingModalOpen(false)}
+        projectId={project.id}
+        projectTitle={project.title}
+        revieweeId={
+          isClient
+            ? (typeof project.freelancerId === 'object' && project.freelancerId ? (project.freelancerId as any).id || (project.freelancerId as any)._id : project.freelancerId) || ""
+            : (typeof project.clientId === 'object' && project.clientId ? (project.clientId as any).id || (project.clientId as any)._id : project.clientId) || ""
+        }
+        revieweeName={isClient ? (project.freelancerName || "Freelancer") : (project.clientName || "Client")}
+        revieweeAddress={
+          isClient
+            ? (project.freelancerWalletAddress || (typeof project.freelancerId === 'object' && project.freelancerId ? (project.freelancerId as any).walletAddress : undefined))
+            : (project.clientWalletAddress || (typeof project.clientId === 'object' && project.clientId ? (project.clientId as any).walletAddress : undefined))
+        }
+        onSuccess={() => {
+          setRatingModalOpen(false)
+          void loadProject()
+        }}
       />
     </div>
   )

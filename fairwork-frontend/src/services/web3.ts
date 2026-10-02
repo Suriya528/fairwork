@@ -43,6 +43,7 @@ function resolveAddressEnv(canonicalKey: string, aliasKey: string): `0x${string}
 export const escrowAddress = resolveAddressEnv("VITE_ESCROW_CONTRACT_ADDRESS", "VITE_ESCROW_ADDRESS")
 export const disputeAddress = resolveAddressEnv("VITE_DISPUTE_CONTRACT_ADDRESS", "VITE_DISPUTE_ADDRESS")
 export const usdcAddress = resolveAddressEnv("VITE_USDC_ADDRESS", "VITE_TOKEN_ADDRESS")
+export const reputationAddress = resolveAddressEnv("VITE_REPUTATION_CONTRACT_ADDRESS", "VITE_REPUTATION_ADDRESS")
 
 const rpcUrl = (import.meta.env.VITE_RPC_URL || import.meta.env.VITE_SEPOLIA_RPC_URL) as string | undefined
 export const publicClient = rpcUrl
@@ -71,6 +72,15 @@ export const ESCROW_ABI = [
 
 export const DISPUTE_ABI = [
   { type: "function", name: "raiseDispute", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }, { type: "string", name: "reason" }], outputs: [] },
+  { type: "function", name: "resolveByArbitrator", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }, { type: "uint8", name: "winner" }], outputs: [] },
+  { type: "function", name: "getDisputeStatus", stateMutability: "view", inputs: [{ type: "string", name: "projectId" }], outputs: [{ type: "uint8", name: "status" }, { type: "uint8", name: "winner" }, { type: "uint256", name: "createdAt" }] },
+] as const
+
+export const REPUTATION_ABI = [
+  { type: "function", name: "submitRating", stateMutability: "nonpayable", inputs: [{ type: "string", name: "projectId" }, { type: "address", name: "reviewee" }, { type: "uint8", name: "score" }, { type: "string", name: "comment" }], outputs: [] },
+  { type: "function", name: "getReputation", stateMutability: "view", inputs: [{ type: "address", name: "user" }], outputs: [{ type: "uint256", name: "average" }, { type: "uint256", name: "totalReviews" }] },
+  { type: "function", name: "getRatingCount", stateMutability: "view", inputs: [{ type: "address", name: "user" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "hasRated", stateMutability: "view", inputs: [{ type: "string", name: "projectId" }, { type: "address", name: "reviewer" }], outputs: [{ type: "bool" }] },
 ] as const
 
 export async function connectWallet() {
@@ -372,6 +382,88 @@ export async function mintTestnetUsdc(account: string, amountFormatted = "1000")
     abi: ERC20_ABI,
     functionName: "mint",
     args: [account as `0x${string}`, amountUnits],
+  })
+  await confirm(txHash)
+  return txHash
+}
+
+/**
+ * Reads the immutable on-chain reputation from ReputationContract.sol.
+ * Returns average score (scaled out of 5.0) and total review count.
+ */
+export async function getOnChainReputation(userAddress: string): Promise<{
+  average: number
+  totalReviews: number
+  isAvailable: boolean
+}> {
+  if (!publicClient || !reputationAddress || !userAddress) {
+    return { average: 0, totalReviews: 0, isAvailable: false }
+  }
+  try {
+    const result = await publicClient.readContract({
+      address: reputationAddress,
+      abi: REPUTATION_ABI,
+      functionName: "getReputation",
+      args: [userAddress as `0x${string}`],
+    })
+    const [rawAvg, totalReviews] = result as [bigint, bigint]
+    // Contract returns average scaled by 100 (e.g. 450 = 4.50)
+    const average = Number(rawAvg) / 100
+    return {
+      average,
+      totalReviews: Number(totalReviews),
+      isAvailable: true,
+    }
+  } catch (err) {
+    console.error("Failed to read on-chain reputation:", err)
+    return { average: 0, totalReviews: 0, isAvailable: false }
+  }
+}
+
+/**
+ * Checks whether the reviewer has already submitted an on-chain rating for a project.
+ */
+export async function hasSubmittedOnChainRating(projectId: string, reviewerAddress: string): Promise<boolean> {
+  if (!publicClient || !reputationAddress || !projectId || !reviewerAddress) {
+    return false
+  }
+  try {
+    const rated = await publicClient.readContract({
+      address: reputationAddress,
+      abi: REPUTATION_ABI,
+      functionName: "hasRated",
+      args: [projectId, reviewerAddress as `0x${string}`],
+    })
+    return Boolean(rated)
+  } catch (err) {
+    console.error("Failed to check on-chain rating status:", err)
+    return false
+  }
+}
+
+/**
+ * Submits an immutable on-chain rating to ReputationContract.sol.
+ * Rating score must be an integer between 1 and 5.
+ */
+export async function submitOnChainRating(
+  projectId: string,
+  revieweeAddress: string,
+  score: number,
+  comment: string
+): Promise<`0x${string}`> {
+  if (!reputationAddress) {
+    throw new Error("Reputation contract address is not configured.")
+  }
+  if (score < 1 || score > 5) {
+    throw new Error("Score must be between 1 and 5.")
+  }
+  const { wallet, account: connected } = await connectWallet()
+  const txHash = await wallet.writeContract({
+    account: connected,
+    address: reputationAddress,
+    abi: REPUTATION_ABI,
+    functionName: "submitRating",
+    args: [projectId, revieweeAddress as `0x${string}`, score, comment || ""],
   })
   await confirm(txHash)
   return txHash

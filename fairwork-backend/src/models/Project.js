@@ -37,6 +37,18 @@ const deliverableSchema = new mongoose.Schema({
   submissionNotes: { type: String, default: "" },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   uploadedAt: { type: Date, default: Date.now },
+  githubPrUrl: { type: String, default: "" },
+  githubCiStatus: {
+    type: String,
+    enum: ["none", "passed", "failed", "pending", "unavailable"],
+    default: "none",
+  },
+  githubCiDetails: {
+    totalChecks: { type: Number, default: 0 },
+    passedChecks: { type: Number, default: 0 },
+    verifiedAuthor: { type: String, default: "" },
+    checkedAt: { type: Date },
+  },
 }, { _id: true });
 
 const settlementSnapshotSchema = new mongoose.Schema({

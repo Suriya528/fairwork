@@ -266,6 +266,145 @@ async function getUserGithubActivity(githubUserId) {
   return await refreshGithubActivity(githubUserId, token);
 }
 
+/**
+ * Verifies the CI/CD test run status of a GitHub Pull Request submitted as a deliverable.
+ * Gracefully handles public vs private repositories, author attribution, and rate limits.
+ */
+async function verifyPullRequestCI(prUrl, freelancerGithubUsername = "") {
+  if (!prUrl || typeof prUrl !== "string") {
+    return { status: "none", totalChecks: 0, passedChecks: 0, verifiedAuthor: "", reason: "No PR URL provided" };
+  }
+
+  const match = prUrl.trim().match(/^https?:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)\/pull\/([0-9]+)/i);
+  if (!match) {
+    return { status: "none", totalChecks: 0, passedChecks: 0, verifiedAuthor: "", reason: "Invalid GitHub PR URL format" };
+  }
+
+  const [, owner, repo, pullNumber] = match;
+
+  try {
+    const headers = {
+      "User-Agent": "FairWork-Deliverable-Verifier",
+      Accept: "application/vnd.github.v3+json",
+    };
+
+    // 1. Fetch Pull Request metadata
+    const prRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+      headers,
+      timeout: 6000,
+      validateStatus: () => true,
+    });
+
+    if (prRes.status === 404) {
+      return {
+        status: "unavailable",
+        totalChecks: 0,
+        passedChecks: 0,
+        verifiedAuthor: "",
+        reason: "Repository is private or URL is inaccessible",
+      };
+    }
+
+    if (prRes.status !== 200) {
+      return {
+        status: "unavailable",
+        totalChecks: 0,
+        passedChecks: 0,
+        verifiedAuthor: "",
+        reason: `GitHub API returned HTTP ${prRes.status}`,
+      };
+    }
+
+    const prData = prRes.data;
+    const authorLogin = prData?.user?.login || "";
+    const headSha = prData?.head?.sha;
+
+    // Check author attribution if freelancer username is known
+    if (freelancerGithubUsername && authorLogin.toLowerCase() !== freelancerGithubUsername.toLowerCase()) {
+      return {
+        status: "unavailable",
+        totalChecks: 0,
+        passedChecks: 0,
+        verifiedAuthor: authorLogin,
+        reason: `PR author (@${authorLogin}) does not match verified freelancer account (@${freelancerGithubUsername})`,
+      };
+    }
+
+    if (!headSha) {
+      return { status: "none", totalChecks: 0, passedChecks: 0, verifiedAuthor: authorLogin };
+    }
+
+    // 2. Fetch Check Runs for head commit
+    const checkRunsRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits/${headSha}/check-runs`, {
+      headers,
+      timeout: 6000,
+      validateStatus: () => true,
+    });
+
+    if (checkRunsRes.status === 200 && Array.isArray(checkRunsRes.data?.check_runs) && checkRunsRes.data.check_runs.length > 0) {
+      const runs = checkRunsRes.data.check_runs;
+      const totalChecks = runs.length;
+      const passedChecks = runs.filter((r) => r.conclusion === "success").length;
+      const failedChecks = runs.filter((r) => r.conclusion === "failure" || r.conclusion === "timed_out").length;
+      const inProgress = runs.some((r) => r.status !== "completed");
+
+      let status = "pending";
+      if (failedChecks > 0) status = "failed";
+      else if (!inProgress && passedChecks === totalChecks) status = "passed";
+      else if (inProgress) status = "pending";
+
+      return {
+        status,
+        totalChecks,
+        passedChecks,
+        verifiedAuthor: authorLogin,
+        checkedAt: new Date(),
+      };
+    }
+
+    // 3. Fallback: Combined Commit Status API
+    const statusRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits/${headSha}/status`, {
+      headers,
+      timeout: 6000,
+      validateStatus: () => true,
+    });
+
+    if (statusRes.status === 200 && statusRes.data) {
+      const state = statusRes.data.state; // 'success' | 'failure' | 'pending'
+      const total = statusRes.data.total_count || 0;
+      let status = "none";
+      if (state === "success") status = "passed";
+      else if (state === "failure") status = "failed";
+      else if (state === "pending") status = "pending";
+
+      return {
+        status,
+        totalChecks: total,
+        passedChecks: state === "success" ? total : 0,
+        verifiedAuthor: authorLogin,
+        checkedAt: new Date(),
+      };
+    }
+
+    return {
+      status: "none",
+      totalChecks: 0,
+      passedChecks: 0,
+      verifiedAuthor: authorLogin,
+      checkedAt: new Date(),
+    };
+  } catch (err) {
+    console.warn("[verifyPullRequestCI] Check error:", err.message);
+    return {
+      status: "unavailable",
+      totalChecks: 0,
+      passedChecks: 0,
+      verifiedAuthor: "",
+      reason: err.message || "Failed to query GitHub CI status",
+    };
+  }
+}
+
 module.exports = {
   encryptToken,
   decryptToken,
@@ -274,4 +413,5 @@ module.exports = {
   fetchGithubViewerData,
   refreshGithubActivity,
   getUserGithubActivity,
+  verifyPullRequestCI,
 };
