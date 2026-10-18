@@ -286,6 +286,30 @@ exports.updateWallet = async (req, res) => {
   res.status(410).json({ message: "Use EIP-712 wallet verification instead." });
 };
 
+exports.unlinkWallet = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $unset: { walletAddress: 1 } },
+      { returnDocument: "after" }
+    ).select("-password");
+    const { invalidateAuthCache } = require("../middleware/auth");
+    if (invalidateAuthCache) await invalidateAuthCache(user._id);
+    recordActivitySafely({
+      userIds: [user._id],
+      eventKey: `wallet-unlinked:${user._id}:${Date.now()}`,
+      actorId: user._id,
+      type: "wallet_unlinked",
+      title: "Wallet unlinked",
+      message: "Your Web3 wallet was unlinked from your account."
+    });
+    res.json(user);
+  } catch (err) {
+    console.error("[Auth] unlinkWallet error:", err);
+    res.status(500).json({ message: "Failed to unlink wallet" });
+  }
+};
+
 exports.walletNonce = async (req, res) => {
   const nonce = crypto.randomBytes(32).toString("hex");
   await WalletNonce.deleteMany({ userId: req.user.id, sessionId: req.user.sessionId });

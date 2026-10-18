@@ -8,6 +8,7 @@ const {
   forgotPassword,
   resetPassword,
   updateWallet,
+  unlinkWallet,
   walletNonce,
   verifyWallet,
 } = require("../controllers/authController");
@@ -30,6 +31,7 @@ router.post("/resend-verification", authRateLimiter, resendVerificationEmail);
 router.post("/forgot-password", authRateLimiter, forgotPassword);
 router.post("/reset-password", authRateLimiter, resetPassword);
 router.put("/wallet", auth, updateWallet);
+router.delete("/wallet", auth, unlinkWallet);
 router.post("/wallet/nonce", auth, walletNonce);
 router.post("/wallet/verify", auth, verifyWallet);
 

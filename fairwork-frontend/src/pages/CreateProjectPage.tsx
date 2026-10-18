@@ -91,7 +91,7 @@ export function CreateProjectPage() {
     addUsdcToWallet,
   } = useWallet()
 
-  const hasVerifiedWallet = Boolean(isVerified || user?.walletAddress)
+  const hasVerifiedWallet = Boolean(isVerified)
   const [tokenBalance, setTokenBalance] = useState<{
     formattedBalance: string
     symbol: string

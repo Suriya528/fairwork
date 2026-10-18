@@ -288,6 +288,7 @@ export async function updateWallet(walletAddress: string, token: string): Promis
 export interface WalletNonceResponse { nonce: string; domain: { name: string; version: string; chainId: number }; types: { WalletVerification: readonly { name: string; type: string }[] }; primaryType: "WalletVerification"; purpose: string }
 export async function getWalletNonce(token: string): Promise<WalletNonceResponse> { return apiFetch<WalletNonceResponse>("/auth/wallet/nonce", { method: "POST", token }); }
 export async function verifyWallet(walletAddress: string, nonce: string, signature: string, token: string): Promise<AuthUser> { const data = await apiFetch<BackendUser>("/auth/wallet/verify", { method: "POST", token, body: { walletAddress, nonce, signature } }); return toAuthUser(data); }
+export async function unlinkWallet(token: string): Promise<AuthUser> { const data = await apiFetch<BackendUser>("/auth/wallet", { method: "DELETE", token }); return toAuthUser(data); }
 
 /** OAuth profile shape returned from the signed roleSelectionToken exchange. */
 export interface OAuthProfile {

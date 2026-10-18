@@ -40,6 +40,7 @@ export function Web3WalletCard({
     connectAndVerify,
     switchNetwork,
     disconnect,
+    unlinkWallet,
     clearError,
     cancelPendingAction,
     addUsdcToWallet,
@@ -47,6 +48,19 @@ export function Web3WalletCard({
 
   const [copied, setCopied] = useState(false)
   const [addingToken, setAddingToken] = useState(false)
+  const [unlinking, setUnlinking] = useState(false)
+
+  const handleUnlink = async () => {
+    if (!confirm("Are you sure you want to unlink this wallet from your FairWork account? You can re-link and verify it again at any time.")) {
+      return
+    }
+    setUnlinking(true)
+    try {
+      await unlinkWallet()
+    } finally {
+      setUnlinking(false)
+    }
+  }
 
   const rawAddress = (
     import.meta.env.VITE_USDC_ADDRESS ||
@@ -300,13 +314,36 @@ export function Web3WalletCard({
                 )}
               </div>
             ) : (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={disconnect}
-              >
-                Disconnect
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={isVerifying}
+                  onClick={() => verify()}
+                  leftIcon={<FiLock className="h-3.5 w-3.5 text-primary" />}
+                  title="Re-verify cryptographic ownership in MetaMask"
+                >
+                  Re-verify
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={unlinking}
+                  onClick={handleUnlink}
+                  className="text-danger hover:text-danger hover:bg-danger/10 text-xs"
+                  title="Unlink this wallet from your FairWork profile"
+                >
+                  Unlink
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={disconnect}
+                  title="Disconnect MetaMask session"
+                >
+                  Disconnect
+                </Button>
+              </div>
             )}
           </div>
         </div>

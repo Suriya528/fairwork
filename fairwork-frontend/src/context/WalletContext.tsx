@@ -54,6 +54,7 @@ interface WalletContextValue {
   connectAndVerify: () => Promise<boolean>
   switchNetwork: () => Promise<boolean>
   disconnect: () => void
+  unlinkWallet: () => Promise<boolean>
   clearError: () => void
   cancelPendingAction: () => void
   addUsdcToWallet: () => Promise<boolean>
@@ -124,7 +125,7 @@ export function getInjectedProvider(): any {
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const { user, token, updateWallet } = useAuth()
+  const { user, token, updateWallet, unlinkWallet: authUnlinkWallet } = useAuth()
   const { toast } = useToast()
 
   const [walletState, setWalletState] = useState<WalletState>("DISCONNECTED")
@@ -795,6 +796,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     clearError()
   }, [clearError])
 
+  // Unlink verified wallet from FairWork profile (backend + state)
+  const unlinkWallet = useCallback(async (): Promise<boolean> => {
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be signed in to unlink your wallet.",
+        tone: "error",
+      })
+      return false
+    }
+
+    try {
+      await authUnlinkWallet()
+      setWalletState(connectedAccount ? "CONNECTED" : "DISCONNECTED")
+      toast({
+        title: "Wallet Unlinked",
+        description: "Your Web3 wallet has been unlinked from your FairWork account.",
+        tone: "info",
+      })
+      return true
+    } catch (err: any) {
+      toast({
+        title: "Unlink Failed",
+        description: err?.message || "Failed to unlink wallet.",
+        tone: "error",
+      })
+      return false
+    }
+  }, [authUnlinkWallet, connectedAccount, toast, token])
+
   // Explicitly cancel any pending connect / verify UI loading state
   const cancelPendingAction = useCallback(() => {
     activeRequestIdRef.current++
@@ -1056,6 +1087,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         connectAndVerify,
         switchNetwork,
         disconnect,
+        unlinkWallet,
         clearError,
         cancelPendingAction,
         addUsdcToWallet,
@@ -1105,6 +1137,7 @@ export function useWallet(): WalletContextValue {
       connectAndVerify: async () => false,
       switchNetwork: async () => false,
       disconnect: () => {},
+      unlinkWallet: async () => false,
       clearError: () => {},
       cancelPendingAction: () => {},
       addUsdcToWallet: async () => false,

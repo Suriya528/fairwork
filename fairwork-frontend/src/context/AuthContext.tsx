@@ -15,6 +15,7 @@ import {
   register as apiRegister,
   storeSession,
   updateStoredSession,
+  unlinkWallet as apiUnlinkWallet,
 } from "@/services/authApi"
 import type {
   AuthSession,
@@ -34,6 +35,7 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<AuthSession>
   logout: () => void
   updateWallet: (walletAddress: string, verifiedUser?: AuthUser) => Promise<void>
+  unlinkWallet: () => Promise<void>
   refreshUser: () => Promise<void>
 }
 
@@ -188,6 +190,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [token, user],
   )
 
+  const unlinkWallet = useCallback(async () => {
+    if (!token) return
+    const updatedUser = await apiUnlinkWallet(token)
+    setUser(updatedUser)
+    const stored = getStoredSession()
+    if (stored) {
+      updateStoredSession({ ...stored, user: updatedUser })
+    }
+  }, [token])
+
   const refreshUser = useCallback(async () => {
     if (!token) return
     try {
@@ -213,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         updateWallet,
+        unlinkWallet,
         refreshUser,
       }}
     >
