@@ -59,6 +59,7 @@ import {
   submitMilestone,
   requestMilestoneRevision,
   approveMilestone,
+  approveAndReleaseMilestone,
   assignFreelancer,
   type ApiDeliverable,
   type ApiMilestone,
@@ -367,7 +368,7 @@ function MilestoneRow({
   deliverables: ApiDeliverable[]
   onSubmit: (milestoneId: string, notes: string, files: File[]) => Promise<void>
   onRequestRevision: (milestoneId: string, notes: string) => Promise<void>
-  onApprove: (milestoneId: string) => Promise<void>
+  onApprove: (milestoneId: string, index: number) => Promise<void>
   onRelease: () => void
 }) {
   const { formatAmount } = useCurrency()
@@ -420,8 +421,8 @@ function MilestoneRow({
           {/* Client Review Controls */}
           {isClient && milestone.status === "submitted" && (
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id)}>
-                Approve Milestone
+              <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id, milestone.order - 1)}>
+                {canRelease ? "Approve & Release Payment" : "Approve Milestone"}
               </Button>
               <Button size="sm" variant="secondary" onClick={handleRevisionClick}>
                 Request Revision
@@ -440,9 +441,13 @@ function MilestoneRow({
             ) : isClient ? (
               <div className="flex items-center gap-2">
                 <Badge tone="warning">Payment: Pending Release</Badge>
-                <Button size="sm" variant="primary" disabled={!canRelease} onClick={onRelease}>
-                  Release Escrow Payout
-                </Button>
+                {canRelease ? (
+                  <Button size="sm" variant="primary" onClick={onRelease}>
+                    Release Escrow Payout
+                  </Button>
+                ) : (
+                  <Badge tone="neutral" className="text-[10px]">Escrow Not Funded On-Chain</Badge>
+                )}
               </div>
             ) : (
               <Badge tone="warning">Payment: Pending Release</Badge>
@@ -908,7 +913,7 @@ export function ProjectDetailPage() {
     }
   }
 
-  const handleMilestoneApprove = async (milestoneId: string) => {
+  const handleMilestoneApprove = async (milestoneId: string, milestoneIndex?: number) => {
     if (!token || !project) return
     setActionError("")
 
@@ -918,6 +923,22 @@ export function ProjectDetailPage() {
     }
 
     try {
+      // If escrow was funded on-chain, automatically execute on-chain release via MetaMask
+      if (escrowActive && typeof milestoneIndex === "number" && milestoneIndex >= 0) {
+        setActionState("Prompting MetaMask to release milestone payment...")
+        const releaseTxHash = await releaseEscrowMilestone(project.id, milestoneIndex, user.walletAddress)
+        setActionState("Verifying transaction and releasing funds...")
+        const updated = await approveAndReleaseMilestone(project.id, milestoneId, token, releaseTxHash)
+        setProject(updated)
+        setActionState("Milestone approved and payment released successfully!")
+        setTimeout(() => setActionState(""), 3000)
+        if (updated.status === "completed") {
+          setRatingModalOpen(true)
+        }
+        return
+      }
+
+      // Fallback off-chain approval if escrow was not funded on-chain
       const updated = await approveMilestone(project.id, milestoneId, token)
       setProject(updated)
       if (updated.status === "completed") {
@@ -925,6 +946,8 @@ export function ProjectDetailPage() {
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to approve milestone.")
+    } finally {
+      setTimeout(() => setActionState(""), 3000)
     }
   }
 
@@ -1644,7 +1667,7 @@ export function ProjectDetailPage() {
                       deliverables={deliverables || []}
                       onSubmit={handleMilestoneSubmit}
                       onRequestRevision={handleMilestoneRevisionRequest}
-                      onApprove={handleMilestoneApprove}
+                      onApprove={(mId, idx) => handleMilestoneApprove(mId, idx ?? index)}
                       onRelease={() => release(index)}
                     />
                   ))

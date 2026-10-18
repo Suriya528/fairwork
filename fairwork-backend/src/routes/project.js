@@ -18,6 +18,7 @@ const {
   requestMilestoneRevision,
   approveMilestone,
 } = require("../controllers/projectController");
+const { approveAndReleaseMilestone } = require("../controllers/milestoneController");
 
 router.post("/", auth, requireVerifiedEmail, createProject);
 router.get("/", auth, getAllProjects);
@@ -32,6 +33,7 @@ router.post("/:id/reference-files", auth, requireVerifiedEmail, upload.single("f
 router.post("/:id/milestones/:milestoneId/submit", auth, requireVerifiedEmail, submitMilestone);
 router.post("/:id/milestones/:milestoneId/request-revision", auth, requireVerifiedEmail, requestMilestoneRevision);
 router.post("/:id/milestones/:milestoneId/approve", auth, requireVerifiedEmail, approveMilestone);
+router.post("/:id/milestones/:milestoneId/approve-and-release", auth, requireVerifiedEmail, approveAndReleaseMilestone);
 router.get("/:id", auth, getProject);
 router.put("/:id/assign", auth, requireVerifiedEmail, assignFreelancer);
 router.put("/:id/complete", auth({ bypassCache: true }), requireVerifiedEmail, completeProject);

@@ -453,6 +453,21 @@ export async function approveMilestone(
   return toProject(data)
 }
 
+export async function approveAndReleaseMilestone(
+  projectId: string,
+  milestoneId: string,
+  token: string,
+  txnHash?: string,
+): Promise<ApiProject> {
+  const data = await apiFetch<BackendProject | { project: BackendProject }>(`/projects/${projectId}/milestones/${milestoneId}/approve-and-release`, {
+    method: "POST",
+    body: txnHash ? { txnHash } : undefined,
+    token,
+  })
+  const projectObj = (data && typeof data === "object" && "project" in data) ? (data as { project: BackendProject }).project : (data as BackendProject)
+  return toProject(projectObj)
+}
+
 export async function getProjectReferenceFiles(projectId: string, token: string): Promise<ApiReferenceFile[]> {
   const data = await apiFetch<BackendReferenceFile[]>(`/projects/${projectId}/reference-files`, { token })
   return data.map(toReferenceFile)
