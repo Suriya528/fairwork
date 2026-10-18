@@ -12,12 +12,14 @@ import {
   FiRefreshCw,
   FiShield,
   FiShieldOff,
+  FiZap,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { useWallet, OFFICIAL_METAMASK_INSTALL_URL } from "@/context/WalletContext"
+import { mintTestnetUsdc } from "@/services/web3"
 
 export function Web3WalletCard({
   title = "Web3 Wallet Ownership & Connection",
@@ -49,6 +51,26 @@ export function Web3WalletCard({
   const [copied, setCopied] = useState(false)
   const [addingToken, setAddingToken] = useState(false)
   const [unlinking, setUnlinking] = useState(false)
+  const [mintingToken, setMintingToken] = useState(false)
+  const [mintSuccess, setMintSuccess] = useState("")
+  const [mintError, setMintError] = useState("")
+
+  const handleMint = async () => {
+    if (!connectedAccount) return
+    setMintingToken(true)
+    setMintSuccess("")
+    setMintError("")
+    try {
+      await mintTestnetUsdc(connectedAccount, "1000")
+      setMintSuccess("Successfully minted 1,000 Testnet USDC into your wallet!")
+      setTimeout(() => setMintSuccess(""), 5000)
+    } catch (err) {
+      setMintError(err instanceof Error ? err.message : "Failed to mint test USDC")
+      setTimeout(() => setMintError(""), 5000)
+    } finally {
+      setMintingToken(false)
+    }
+  }
 
   const handleUnlink = async () => {
     if (!confirm("Are you sure you want to unlink this wallet from your FairWork account? You can re-link and verify it again at any time.")) {
@@ -367,19 +389,41 @@ export function Web3WalletCard({
               </div>
             </div>
 
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              loading={addingToken}
-              onClick={handleAddToken}
-              leftIcon={<FiPlus className="h-3.5 w-3.5 text-blue-500" />}
-              className="text-xs shrink-0 border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer shadow-xs"
-              title="Trigger MetaMask to automatically import this token"
-            >
-              Add USDC to MetaMask
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                loading={mintingToken}
+                onClick={handleMint}
+                disabled={!connectedAccount || mintingToken}
+                leftIcon={<FiZap className="h-3.5 w-3.5" />}
+                className="text-xs shrink-0 cursor-pointer shadow-xs"
+                title="Mint 1,000 free testnet USDC on Sepolia"
+              >
+                Mint 1,000 Free USDC
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                loading={addingToken}
+                onClick={handleAddToken}
+                leftIcon={<FiPlus className="h-3.5 w-3.5 text-blue-500" />}
+                className="text-xs shrink-0 border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer shadow-xs"
+                title="Trigger MetaMask to automatically import this token"
+              >
+                Add USDC to MetaMask
+              </Button>
+            </div>
           </div>
+
+          {mintSuccess && (
+            <p className="text-xs font-medium text-emerald-500 animate-fade-in">{mintSuccess}</p>
+          )}
+          {mintError && (
+            <p className="text-xs font-medium text-danger animate-fade-in">{mintError}</p>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border/60 text-xs">
             <div className="flex items-center gap-2 font-mono text-[11px] text-subtle">
