@@ -260,6 +260,139 @@ export async function releaseEscrowMilestone(
   return releaseTxHash
 }
 
+/**
+ * Unified approve-and-release pipeline.
+ *
+ * This is the single function triggered when the client clicks "Approve & Release Payment".
+ * It handles ALL cases automatically in one MetaMask session:
+ *
+ * Case A — Escrow already funded on-chain:
+ *   → calls releaseMilestone(projectId, index)
+ *   → returns { fundTxHash: null, releaseTxHash }
+ *
+ * Case B — Escrow NOT yet funded:
+ *   → creates escrow on-chain (if needed)
+ *   → approves USDC allowance
+ *   → funds escrow
+ *   → immediately calls releaseMilestone(projectId, index)
+ *   → returns { fundTxHash, releaseTxHash }
+ *
+ * onStage callback shows real-time progress to the user.
+ */
+export async function fundAndReleaseMilestone(
+  projectId: string,
+  milestoneIndex: number,
+  freelancerWallet: `0x${string}`,
+  allMilestoneAmounts: string[],
+  verifiedWallet: string,
+  onStage: (msg: string) => void,
+): Promise<{ fundTxHash: `0x${string}` | null; releaseTxHash: `0x${string}` }> {
+  const c = configured()
+  const { wallet, account } = await connectWallet()
+  requireVerifiedAccount(account, verifiedWallet)
+
+  // Check whether the escrow contract already has this project set up and funded
+  onStage("Checking on-chain escrow state...")
+  const escrow = await c.publicClient.readContract({
+    address: c.escrowAddress,
+    abi: ESCROW_ABI,
+    functionName: "getEscrowParties",
+    args: [projectId],
+  })
+
+  const escrowExists = escrow[0] !== "0x0000000000000000000000000000000000000000"
+  const escrowAlreadyFunded = escrowExists && escrow[2] // isFunded
+
+  let fundTxHash: `0x${string}` | null = null
+
+  if (!escrowAlreadyFunded) {
+    // Need to fund the escrow first
+    const decimals = await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "decimals" })
+    let symbol = "USDC"
+    try {
+      symbol = await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "symbol" })
+    } catch { /* fallback */ }
+
+    const amounts = await Promise.all(allMilestoneAmounts.map((a) => parseUnits(a, decimals)))
+    const total = amounts.reduce((a, b) => a + b, 0n)
+
+    // Check balance
+    const rawBalance = await c.publicClient.readContract({ address: c.usdcAddress, abi: ERC20_ABI, functionName: "balanceOf", args: [account] })
+    const formattedBalance = formatUnits(rawBalance, decimals)
+    const formattedRequired = formatUnits(total, decimals)
+    if (rawBalance < total) {
+      throw new Error(
+        `Insufficient ${symbol} balance. Your wallet has ${formattedBalance} ${symbol} but this project needs ${formattedRequired} ${symbol}. Use "Mint 1,000 Free USDC" in your Wallet page first.`
+      )
+    }
+
+    // Create escrow vault on-chain if it doesn't exist yet
+    if (!escrowExists) {
+      onStage("Step 1/4 — Creating escrow vault on-chain (confirm in MetaMask)...")
+      await confirm(
+        await wallet.writeContract({
+          account,
+          address: c.escrowAddress,
+          abi: ESCROW_ABI,
+          functionName: "createEscrow",
+          args: [projectId, freelancerWallet, c.usdcAddress, amounts],
+        }),
+      )
+    } else if (escrow[0].toLowerCase() !== account.toLowerCase()) {
+      throw new Error("The connected wallet is not the authorized client for this escrow.")
+    }
+
+    // Approve USDC spend if needed
+    const allowance = await c.publicClient.readContract({
+      address: c.usdcAddress,
+      abi: ERC20_ABI,
+      functionName: "allowance",
+      args: [account, c.escrowAddress],
+    })
+    if (allowance < total) {
+      onStage(`Step 2/4 — Approving ${formattedRequired} ${symbol} spend (confirm in MetaMask)...`)
+      await confirm(
+        await wallet.writeContract({
+          account,
+          address: c.usdcAddress,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [c.escrowAddress, total],
+        }),
+      )
+    }
+
+    // Fund the escrow vault
+    onStage("Step 3/4 — Locking funds in escrow vault (confirm in MetaMask)...")
+    const _fundHash = await wallet.writeContract({
+      account,
+      address: c.escrowAddress,
+      abi: ESCROW_ABI,
+      functionName: "fund",
+      args: [projectId],
+    })
+    onStage("Waiting for escrow funding confirmation on-chain...")
+    await confirm(_fundHash)
+    fundTxHash = _fundHash
+  }
+
+  // Release the specific milestone to the freelancer
+  onStage(fundTxHash
+    ? "Step 4/4 — Releasing milestone payment to freelancer (confirm in MetaMask)..."
+    : "Releasing milestone payment to freelancer (confirm in MetaMask)...")
+  const releaseTxHash = await wallet.writeContract({
+    account,
+    address: c.escrowAddress,
+    abi: ESCROW_ABI,
+    functionName: "releaseMilestone",
+    args: [projectId, BigInt(milestoneIndex)],
+  })
+  onStage("Waiting for payment confirmation on-chain...")
+  await confirm(releaseTxHash)
+
+  return { fundTxHash, releaseTxHash }
+}
+
 export async function raiseEscrowDispute(projectId: string, reason: string, verifiedWallet: string) {
   const c = configured()
   const { wallet, account } = await connectWallet()

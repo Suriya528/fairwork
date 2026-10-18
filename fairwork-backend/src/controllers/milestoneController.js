@@ -1,36 +1,39 @@
 const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const User = require("../models/User");
-const OutboxEvent = require("../models/OutboxEvent");
 const { recordActivitySafely } = require("../services/activityService");
-const { reconcileMilestoneRelease } = require("../services/reconciliationService");
+const { reconcileEscrowFunding, reconcileMilestoneRelease } = require("../services/reconciliationService");
 const { verifyPullRequestCI } = require("../services/githubService");
 
 /**
- * POST /api/projects/:projectId/milestones/:milestoneId/approve-and-release
- * 
- * Production automated milestone verification & release pipeline:
- * 1. Validates client ownership.
- * 2. Runs automated deliverable & GitHub PR CI check validation.
- * 3. Atomically reconciles on-chain milestone release if txHash provided or marks approved.
- * 4. Writes transactional outbox entry for reliable event publishing.
- * 5. Emits real-time notification to the freelancer.
+ * POST /api/projects/:id/milestones/:milestoneId/approve-and-release
+ *
+ * Unified milestone approval + payment release endpoint.
+ *
+ * Accepts:
+ *   { releaseTxHash }              — escrow was already funded; just reconcile release
+ *   { fundTxHash, releaseTxHash }  — escrow was just funded AND released in one go
+ *
+ * Both cases:
+ *   1. Validate client ownership
+ *   2. Optionally run GitHub PR CI verification
+ *   3. Reconcile funding state in DB (if fundTxHash provided)
+ *   4. Reconcile release state in DB
+ *   5. Emit real-time socket notification to freelancer
  */
 exports.approveAndReleaseMilestone = async (req, res) => {
   try {
     const { id: projectId, milestoneId } = req.params;
-    const { txnHash } = req.body;
+    const { releaseTxHash, fundTxHash } = req.body;
 
     const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
-    }
+    if (!project) return res.status(404).json({ message: "Project not found" });
 
     if (String(project.clientId) !== String(req.user.id) && req.user.role !== "admin") {
       return res.status(403).json({ message: "Only the project client can approve deliverables and release funds." });
     }
 
-    // Identify milestone by Mongoose ID or zero-based index
+    // Identify milestone by Mongoose ObjectId or numeric index
     let milestone = project.milestones.id(milestoneId);
     let milestoneIndex = -1;
 
@@ -44,12 +47,16 @@ exports.approveAndReleaseMilestone = async (req, res) => {
       }
     }
 
-    if (!milestone) {
-      return res.status(404).json({ message: "Milestone not found" });
-    }
+    if (!milestone) return res.status(404).json({ message: "Milestone not found" });
 
-    // 1. Automated Deliverable & GitHub PR CI Check Verification
-    const deliverable = (project.deliverables || []).find((d) => String(d.milestoneId) === String(milestone._id));
+    const freelancerId = project.freelancerId?._id
+      ? String(project.freelancerId._id)
+      : String(project.freelancerId || "");
+
+    // --- GitHub PR CI Verification (non-blocking) ---
+    const deliverable = (project.deliverables || []).find(
+      (d) => String(d.milestoneId) === String(milestone._id)
+    );
     if (deliverable && deliverable.githubPrUrl) {
       try {
         const freelancer = await User.findById(project.freelancerId);
@@ -62,90 +69,86 @@ exports.approveAndReleaseMilestone = async (req, res) => {
           checkedAt: new Date(),
         };
         await project.save();
-
         if (ci.status === "failed") {
           return res.status(400).json({
-            message: "Automated verification failed: GitHub PR CI checks failed. Please request revisions.",
+            message: "Automated CI verification failed. Please request revisions from the freelancer.",
             ci,
           });
         }
       } catch (ciErr) {
-        console.warn("[MilestoneController] CI verification notice:", ciErr.message);
+        console.warn("[MilestoneController] CI check skipped:", ciErr.message);
       }
     }
 
-    // 2. On-Chain Release Reconcile (if client performed MetaMask on-chain release)
-    const freelancerId = project.freelancerId?._id ? String(project.freelancerId._id) : String(project.freelancerId || "");
-
-    if (txnHash && project.escrowFunded) {
-      const reconciledProject = await reconcileMilestoneRelease(
-        String(project._id),
-        milestoneIndex,
-        txnHash,
-        req.user.id
-      );
-
-      // Real-time socket notification to freelancer room
-      try {
-        const io = req.app.get("io");
-        if (io && freelancerId) {
-          io.to(`user:${freelancerId}`).emit("notification", {
-            type: "PAYMENT_RELEASED",
-            title: "Payment Released!",
-            message: `$${milestone.amount} USDC has been released directly to your wallet for “${milestone.title}”.`,
-            txHash: txnHash,
-            projectId: project._id,
-          });
-        }
-      } catch (socketErr) {
-        console.warn("[MilestoneController] Socket notification notice:", socketErr.message);
-      }
-
-      return res.json({
-        success: true,
-        message: "Milestone approved and on-chain payment verified.",
-        project: reconciledProject,
-        txHash: txnHash,
+    // --- Require an on-chain release transaction hash ---
+    if (!releaseTxHash) {
+      return res.status(400).json({
+        message: "releaseTxHash is required. The client must sign the on-chain releaseMilestone transaction.",
       });
     }
 
-    // 3. Off-Chain Completion Fallback (if escrow was not funded on-chain)
-    milestone.status = "completed";
-
-    // If all milestones completed, update project status
-    if (project.milestones.every((m) => m.status === "completed")) {
-      project.status = "completed";
+    // --- Step 1: Reconcile funding if escrow was just funded ---
+    if (fundTxHash) {
+      try {
+        await reconcileEscrowFunding(String(project._id), fundTxHash, req.user.id);
+      } catch (fundErr) {
+        console.warn("[MilestoneController] Funding reconciliation warning:", fundErr.message);
+        // Even if reconciliation has a minor issue, proceed — the on-chain state is truth
+      }
     }
 
-    await project.save();
+    // --- Step 2: Reconcile milestone release ---
+    const updatedProject = await reconcileMilestoneRelease(
+      String(project._id),
+      milestoneIndex,
+      releaseTxHash,
+      req.user.id
+    );
 
-    // Role-specific notifications
+    // --- Step 3: Real-time notification to freelancer ---
+    try {
+      const io = req.app.get("io");
+      if (io && freelancerId) {
+        io.to(`user:${freelancerId}`).emit("notification", {
+          type: "PAYMENT_RELEASED",
+          title: "Payment Released! 🎉",
+          message: `$${milestone.amount} USDC has been sent directly to your wallet for "${milestone.title}".`,
+          txHash: releaseTxHash,
+          projectId: project._id,
+        });
+      }
+    } catch (socketErr) {
+      console.warn("[MilestoneController] Socket notification skipped:", socketErr.message);
+    }
+
+    // --- Step 4: Activity log notifications ---
     recordActivitySafely({
       userIds: [req.user.id],
-      eventKey: `milestone-approved-client:${project._id}:${milestone._id}`,
+      eventKey: `milestone-released-client:${project._id}:${milestone._id}`,
       actorId: req.user.id,
-      type: "milestone_approved",
-      title: "Milestone Approved",
-      message: `You approved milestone “${milestone.title}”.`,
+      type: "payment_released",
+      title: "Payment Released",
+      message: `You approved and released payment for "${milestone.title}".`,
       projectId: project._id,
     });
-
     if (freelancerId) {
       recordActivitySafely({
         userIds: [freelancerId],
-        eventKey: `milestone-approved-freelancer:${project._id}:${milestone._id}`,
+        eventKey: `milestone-released-freelancer:${project._id}:${milestone._id}`,
         actorId: req.user.id,
-        type: "milestone_approved",
-        title: "Milestone Approved!",
-        message: `Client approved milestone “${milestone.title}”.`,
+        type: "payment_released",
+        title: "Payment Received!",
+        message: `$${milestone.amount} USDC was sent to your wallet for "${milestone.title}".`,
         projectId: project._id,
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Milestone approved successfully.",
-      project,
+      message: "Milestone approved. Payment released to freelancer wallet on-chain.",
+      project: updatedProject,
+      releaseTxHash,
+      ...(fundTxHash ? { fundTxHash } : {}),
     });
   } catch (err) {
     console.error("[MilestoneController] approveAndReleaseMilestone error:", err);

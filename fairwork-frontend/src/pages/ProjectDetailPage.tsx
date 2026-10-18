@@ -58,7 +58,6 @@ import {
   uploadProjectReferenceFile,
   submitMilestone,
   requestMilestoneRevision,
-  approveMilestone,
   approveAndReleaseMilestone,
   assignFreelancer,
   type ApiDeliverable,
@@ -79,7 +78,15 @@ import {
   signContract,
   type ApiContract,
 } from "@/services/contractsApi"
-import { fundEscrow, raiseEscrowDispute, releaseEscrowMilestone, requestEscrowRefund, cancelEscrowRefund, claimEscrowRefund } from "@/services/web3"
+import {
+  fundAndReleaseMilestone,
+  fundEscrow,
+  releaseEscrowMilestone,
+  raiseEscrowDispute,
+  requestEscrowRefund,
+  cancelEscrowRefund,
+  claimEscrowRefund,
+} from "@/services/web3"
 import { depositEscrow, releaseEscrowPayment } from "@/services/escrowApi"
 import { raiseDispute } from "@/services/disputesApi"
 import { getReleasedAmount, getUnreleasedAmount } from "@/lib/financial"
@@ -422,20 +429,19 @@ function MilestoneRow({
 
           {/* Client Review Controls */}
           {isClient && milestone.status === "submitted" && (
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id, index)}>
-                  {canRelease ? "Approve & Release Payment" : "Approve Milestone (Off-Chain)"}
-                </Button>
-                <Button size="sm" variant="secondary" onClick={handleRevisionClick}>
-                  Request Revision
-                </Button>
-              </div>
-              {!canRelease && (
-                <span className="text-[10px] text-warning">
-                  ⚠️ Escrow unfunded: approval will not send crypto
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => onApprove(milestone.id, index)}
+                disabled={releasing}
+                loading={releasing}
+              >
+                Approve &amp; Release Payment
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleRevisionClick} disabled={releasing}>
+                Request Revision
+              </Button>
             </div>
           )}
 
@@ -450,12 +456,10 @@ function MilestoneRow({
             ) : isClient ? (
               <div className="flex items-center gap-2">
                 <Badge tone="warning">Payment: Pending Release</Badge>
-                {canRelease ? (
+                {canRelease && (
                   <Button size="sm" variant="primary" onClick={onRelease}>
                     Release Escrow Payout
                   </Button>
-                ) : (
-                  <Badge tone="neutral" className="text-[10px]">Escrow Not Funded On-Chain</Badge>
                 )}
               </div>
             ) : (
@@ -927,35 +931,65 @@ export function ProjectDetailPage() {
     setActionError("")
 
     if (!user?.walletAddress) {
-      setActionError("Client wallet required: Please connect and verify your Web3 client wallet before approving milestone deliverables.")
+      setActionError("Client wallet required: Please connect and verify your Web3 wallet in Settings → Wallet before approving milestones.")
+      return
+    }
+
+    if (!user?.isEmailVerified) {
+      setVerificationActionName("approve and release milestone payment")
+      setVerificationModalOpen(true)
+      setActionError("Email verification required before releasing payments.")
+      return
+    }
+
+    // Resolve freelancer wallet
+    const freelancerWallet = (
+      project.freelancerWalletAddress ||
+      (typeof project.freelancerId === "object" && project.freelancerId !== null
+        ? (project.freelancerId as any).walletAddress
+        : undefined)
+    ) as string | undefined
+
+    if (!freelancerWallet) {
+      setActionError("The freelancer must connect and verify their Web3 wallet before payment can be released on-chain. Ask them to go to their Wallet settings.")
+      return
+    }
+
+    if (milestoneIndex === undefined || !Number.isInteger(milestoneIndex) || milestoneIndex < 0) {
+      setActionError("Unable to identify milestone index for on-chain release.")
       return
     }
 
     try {
-      // If escrow was funded on-chain, automatically execute on-chain release via MetaMask
-      if (escrowActive && Number.isInteger(milestoneIndex) && milestoneIndex !== undefined && milestoneIndex >= 0) {
-        setActionState("Prompting MetaMask to release milestone payment...")
-        const releaseTxHash = await releaseEscrowMilestone(project.id, milestoneIndex, user.walletAddress)
-        setActionState("Verifying transaction and releasing funds...")
-        const updated = await approveAndReleaseMilestone(project.id, milestoneId, token, releaseTxHash)
-        setProject(updated)
-        setActionState("Milestone approved and payment released successfully!")
-        setTimeout(() => setActionState(""), 3000)
-        if (updated.status === "completed") {
-          setRatingModalOpen(true)
-        }
-        return
-      }
+      setActionState("Starting on-chain payment release...")
 
-      // Fallback off-chain approval if escrow was not funded on-chain
-      const updated = await approveMilestone(project.id, milestoneId, token)
+      const { fundTxHash, releaseTxHash } = await fundAndReleaseMilestone(
+        project.id,
+        milestoneIndex,
+        freelancerWallet as `0x${string}`,
+        (project.milestones || []).map((m) => String(m.amount)),
+        user.walletAddress,
+        (stage) => setActionState(stage),
+      )
+
+      setActionState("Syncing payment with server...")
+      const updated = await approveAndReleaseMilestone(
+        project.id,
+        milestoneId,
+        token,
+        releaseTxHash,
+        fundTxHash ?? undefined,
+      )
       setProject(updated)
+      setActionState("✅ Payment released to freelancer wallet!")
+      setTimeout(() => setActionState(""), 4000)
+
       if (updated.status === "completed") {
         setRatingModalOpen(true)
       }
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to approve milestone.")
-    } finally {
+      const msg = err instanceof Error ? err.message : "Failed to approve and release payment."
+      setActionError(msg)
       setTimeout(() => setActionState(""), 3000)
     }
   }
@@ -983,7 +1017,7 @@ export function ProjectDetailPage() {
         targetFreelancerWallet as `0x${string}`,
         (project.milestones || []).map((m) => String(m.amount)),
         user.walletAddress,
-        (stage) => setActionState(stage),
+        (stage: string) => setActionState(stage),
       )
       setActionState("Syncing escrow status with server...")
       const response = await depositEscrow(project.id, fundTxHash, token)
@@ -1662,21 +1696,21 @@ export function ProjectDetailPage() {
             {tab === "milestones" && (
               <div className="flex flex-col gap-4">
                 {isClient && !escrowActive && hasFreelancer && (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-xs">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-xs">
                     <div className="flex items-start gap-3">
-                      <FiAlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
+                      <FiShield className="h-5 w-5 shrink-0 text-primary mt-0.5" />
                       <div>
-                        <p className="font-semibold text-sm text-foreground">Escrow Not Funded On-Chain</p>
+                        <p className="font-semibold text-sm text-foreground">Smart Contract Escrow Protected</p>
                         <p className="mt-1 text-muted">
-                          This project is running off-chain. To enable automatic smart contract USDC release to the freelancer upon deliverable approval, fund the escrow first.
+                          When you approve submitted milestone deliverables, USDC payment will be automatically funded and released directly to the freelancer's wallet via smart contract in one seamless flow.
                         </p>
                       </div>
                     </div>
                     {(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) ? (
-                      <span className="shrink-0 text-xs text-warning font-medium">Freelancer wallet required to fund</span>
+                      <span className="shrink-0 text-xs text-warning font-medium">⚠️ Freelancer Web3 wallet pending</span>
                     ) : (
-                      <Button size="sm" variant="primary" onClick={fund} loading={Boolean(actionState)} disabled={Boolean(actionState)} leftIcon={<FiLock className="h-3.5 w-3.5" />}>
-                        Fund Escrow Now
+                      <Button size="sm" variant="secondary" onClick={fund} loading={Boolean(actionState)} disabled={Boolean(actionState)} leftIcon={<FiLock className="h-3.5 w-3.5" />}>
+                        Pre-fund Escrow (Optional)
                       </Button>
                     )}
                   </div>

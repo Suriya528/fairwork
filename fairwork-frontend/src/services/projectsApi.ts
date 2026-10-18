@@ -457,11 +457,12 @@ export async function approveAndReleaseMilestone(
   projectId: string,
   milestoneId: string,
   token: string,
-  txnHash?: string,
+  releaseTxHash: string,
+  fundTxHash?: string,
 ): Promise<ApiProject> {
   const data = await apiFetch<BackendProject | { project: BackendProject }>(`/projects/${projectId}/milestones/${milestoneId}/approve-and-release`, {
     method: "POST",
-    body: txnHash ? { txnHash } : undefined,
+    body: { releaseTxHash, ...(fundTxHash ? { fundTxHash } : {}) },
     token,
   })
   const projectObj = (data && typeof data === "object" && "project" in data) ? (data as { project: BackendProject }).project : (data as BackendProject)
