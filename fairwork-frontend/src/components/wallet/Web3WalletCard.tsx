@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { getAddress } from "viem"
 import {
   FiAlertTriangle,
   FiCheck,
@@ -47,11 +48,18 @@ export function Web3WalletCard({
   const [copied, setCopied] = useState(false)
   const [addingToken, setAddingToken] = useState(false)
 
-  const usdcAddress = (
+  const rawAddress = (
     import.meta.env.VITE_USDC_ADDRESS ||
     import.meta.env.VITE_TOKEN_ADDRESS ||
     "0xf21bdf6737a3009359f9ec1fa515e6d74702f575"
   ).trim()
+
+  let usdcAddress = rawAddress
+  try {
+    usdcAddress = getAddress(rawAddress)
+  } catch {
+    usdcAddress = rawAddress
+  }
 
   const handleCopyAddress = async () => {
     try {

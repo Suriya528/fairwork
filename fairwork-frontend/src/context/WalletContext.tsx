@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { createWalletClient, custom } from "viem"
+import { createWalletClient, custom, getAddress } from "viem"
 import { useAuth } from "./AuthContext"
 import { useToast } from "@/components/ui/Toast"
 import { getWalletNonce, verifyWallet as apiVerifyWallet } from "@/services/authApi"
@@ -805,61 +805,228 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   // 1-Click Import of FairWork Mock USDC into MetaMask (EIP-747)
   const addUsdcToWallet = useCallback(async (): Promise<boolean> => {
-    try {
-      const provider = getInjectedProvider()
-      if (!provider) {
-        toast({
-          title: "Wallet Not Found",
-          description: "No Web3 browser wallet detected.",
-          tone: "error",
-        })
-        return false
-      }
-      const tokenAddress = (
-        import.meta.env.VITE_USDC_ADDRESS ||
-        import.meta.env.VITE_TOKEN_ADDRESS ||
-        "0xf21bdf6737a3009359f9ec1fa515e6d74702f575"
-      ).trim()
+    const rawAddress = (
+      import.meta.env.VITE_USDC_ADDRESS ||
+      import.meta.env.VITE_TOKEN_ADDRESS ||
+      "0xf21bdf6737a3009359f9ec1fa515e6d74702f575"
+    ).trim()
 
-      const wasAdded = await provider.request({
-        method: "wallet_watchAsset",
-        params: {
-          type: "ERC20",
-          options: {
-            address: tokenAddress,
-            symbol: "USDC",
-            decimals: 6,
-            image: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
-          },
-        },
+    let checksumAddress = rawAddress
+    try {
+      checksumAddress = getAddress(rawAddress)
+    } catch {
+      checksumAddress = rawAddress
+    }
+
+    const provider = getInjectedProvider()
+    if (!provider) {
+      try {
+        await navigator.clipboard.writeText(checksumAddress)
+      } catch {}
+      setNoWalletModalOpen(true)
+      toast({
+        title: "No Wallet Detected",
+        description: "No Web3 browser wallet found. Token address copied to clipboard!",
+        tone: "warning",
       })
-      if (wasAdded) {
+      return false
+    }
+
+    try {
+      // Step 1: Ensure wallet account is authorized / active
+      let activeAcc = connectedAccount
+      if (!activeAcc) {
+        try {
+          const existing = await provider.request({ method: "eth_accounts" })
+          if (Array.isArray(existing) && existing.length > 0) {
+            activeAcc = existing[0]
+            setConnectedAccount(existing[0].toLowerCase())
+          } else {
+            const requested = await withTimeout(
+              provider.request({ method: "eth_requestAccounts" }),
+              15000,
+              "Wallet connection timed out or was closed in MetaMask."
+            )
+            if (Array.isArray(requested) && requested.length > 0) {
+              activeAcc = requested[0]
+              setConnectedAccount(requested[0].toLowerCase())
+            }
+          }
+        } catch (accErr: any) {
+          if (accErr?.code === 4001 || (typeof accErr?.message === "string" && accErr.message.includes("User rejected"))) {
+            toast({
+              title: "Connection Required",
+              description: "Please connect and authorize your wallet before importing tokens.",
+              tone: "info",
+            })
+            return false
+          }
+          if (accErr?.code === -32002 || (typeof accErr?.message === "string" && accErr.message.includes("already pending"))) {
+            setPendingApprovalModalOpen(true)
+            toast({
+              title: "MetaMask Prompt Pending",
+              description: "Click the 🦊 MetaMask extension icon in your browser toolbar to approve the pending request.",
+              tone: "warning",
+            })
+            return false
+          }
+        }
+      }
+
+      // Step 2: Ensure the wallet is actively on Sepolia (Chain ID 11155111 / 0xaa36a7)
+      try {
+        const currentChainHex = await provider.request({ method: "eth_chainId" })
+        if (currentChainHex && currentChainHex.toLowerCase() !== TARGET_CHAIN_HEX.toLowerCase()) {
+          toast({
+            title: "Switching to Sepolia",
+            description: `Switching wallet network to ${targetChain.name}...`,
+            tone: "info",
+          })
+          const switched = await switchNetwork()
+          if (!switched) {
+            toast({
+              title: "Network Switch Required",
+              description: `Please switch to ${targetChain.name} (Chain ID ${TARGET_CHAIN_ID}) to import USDC.`,
+              tone: "warning",
+            })
+            return false
+          }
+        }
+      } catch (chainErr) {
+        console.warn("Chain ID verification failed before token import:", chainErr)
+      }
+
+      // Step 3: Trigger wallet_watchAsset (EIP-747)
+      const imageUri = typeof window !== "undefined"
+        ? `${window.location.origin}/usdc.svg`
+        : "https://cryptologos.cc/logos/usd-coin-usdc-logo.png"
+
+      let wasAdded: boolean | undefined = false
+      try {
+        wasAdded = await withTimeout(
+          provider.request({
+            method: "wallet_watchAsset",
+            params: {
+              type: "ERC20",
+              options: {
+                address: checksumAddress,
+                symbol: "USDC",
+                decimals: 6,
+                image: imageUri,
+              },
+            },
+          }),
+          30000,
+          "Token import prompt timed out. Please check the MetaMask popup."
+        )
+      } catch (watchErr: any) {
+        // If user cancelled or rejected
+        if (watchErr?.code === 4001 || (typeof watchErr?.message === "string" && watchErr.message.includes("User rejected"))) {
+          try {
+            await navigator.clipboard.writeText(checksumAddress)
+          } catch {}
+          toast({
+            title: "Import Cancelled",
+            description: "Token import was cancelled in MetaMask. Contract address copied to clipboard.",
+            tone: "info",
+          })
+          return false
+        }
+
+        // If another request is pending in toolbar
+        if (watchErr?.code === -32002 || (typeof watchErr?.message === "string" && watchErr.message.includes("already pending"))) {
+          setPendingApprovalModalOpen(true)
+          toast({
+            title: "MetaMask Prompt Pending",
+            description: "Click the 🦊 MetaMask icon in your browser toolbar to approve the token import.",
+            tone: "warning",
+          })
+          return false
+        }
+
+        // Fallback retry 1: without image (in case external SVG/image triggers CSP or CORS rejection)
+        try {
+          wasAdded = await provider.request({
+            method: "wallet_watchAsset",
+            params: {
+              type: "ERC20",
+              options: {
+                address: checksumAddress,
+                symbol: "USDC",
+                decimals: 6,
+              },
+            },
+          })
+        } catch (retryErr: any) {
+          // Fallback retry 2: with array-wrapped params for non-standard wallet wrappers
+          try {
+            wasAdded = await provider.request({
+              method: "wallet_watchAsset",
+              params: [
+                {
+                  type: "ERC20",
+                  options: {
+                    address: checksumAddress,
+                    symbol: "USDC",
+                    decimals: 6,
+                  },
+                },
+              ],
+            })
+          } catch {
+            throw retryErr || watchErr
+          }
+        }
+      }
+
+      if (wasAdded || wasAdded === undefined) {
         toast({
-          title: "Token Imported",
-          description: "USDC token successfully imported into your MetaMask wallet!",
+          title: "Token Imported Successfully",
+          description: "FairWork USDC (6 decimals) added to your MetaMask wallet on Sepolia!",
           tone: "success",
         })
         return true
+      } else {
+        // When MetaMask returns false without an error, it often means the token is already tracked
+        try {
+          await navigator.clipboard.writeText(checksumAddress)
+        } catch {}
+        toast({
+          title: "USDC Token Verified",
+          description: "Token is already tracked in MetaMask or prompt was dismissed. Contract address copied!",
+          tone: "info",
+        })
+        return true
       }
-      return false
     } catch (err: any) {
       console.error("Failed to add USDC token to wallet:", err)
-      if (err?.code === 4001) {
+      try {
+        await navigator.clipboard.writeText(checksumAddress)
+      } catch {}
+
+      if (err?.code === 4001 || (typeof err?.message === "string" && err.message.includes("User rejected"))) {
         toast({
           title: "Import Cancelled",
-          description: "Token import was cancelled in MetaMask.",
+          description: "Token import was cancelled in MetaMask. Contract address copied to clipboard.",
           tone: "info",
+        })
+      } else if (err?.code === -32002 || (typeof err?.message === "string" && err.message.includes("already pending"))) {
+        setPendingApprovalModalOpen(true)
+        toast({
+          title: "MetaMask Prompt Pending",
+          description: "A request is already pending in MetaMask. Click the MetaMask icon in your browser toolbar.",
+          tone: "warning",
         })
       } else {
         toast({
-          title: "Token Import Failed",
-          description: err?.message || "Failed to add USDC token to MetaMask.",
-          tone: "error",
+          title: "Manual Import Available",
+          description: `MetaMask auto-import unavailable (${err?.message || "error"}). Token address copied to clipboard! Paste it into MetaMask > Import tokens.`,
+          tone: "warning",
         })
       }
       return false
     }
-  }, [toast])
+  }, [connectedAccount, switchNetwork, toast])
 
   return (
     <WalletContext.Provider

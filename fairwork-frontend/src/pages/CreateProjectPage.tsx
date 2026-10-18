@@ -10,6 +10,8 @@ import {
   FiRefreshCw,
   FiAlertTriangle,
   FiCheckCircle,
+  FiCopy,
+  FiCheck,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/Card"
@@ -98,7 +100,22 @@ export function CreateProjectPage() {
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [mintingToken, setMintingToken] = useState(false)
   const [addingToken, setAddingToken] = useState(false)
+  const [tokenCopied, setTokenCopied] = useState(false)
   const [mintSuccess, setMintSuccess] = useState("")
+
+  const usdcAddress = (
+    import.meta.env.VITE_USDC_ADDRESS ||
+    import.meta.env.VITE_TOKEN_ADDRESS ||
+    "0xf21bdf6737a3009359f9ec1fa515e6d74702f575"
+  ).trim()
+
+  const handleCopyUsdcAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(usdcAddress)
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 2000)
+    } catch {}
+  }
 
   const handleAddUsdcToMetaMask = async () => {
     setAddingToken(true)
@@ -578,17 +595,37 @@ export function CreateProjectPage() {
                     <FiCheckCircle className="h-4 w-4 shrink-0" />
                     <span>{mintSuccess}</span>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    loading={addingToken}
-                    onClick={handleAddUsdcToMetaMask}
-                    className="shrink-0 text-xs h-7 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
-                    title="Automatically add FairWork USDC to your MetaMask token list"
-                  >
-                    Add USDC to MetaMask
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      loading={addingToken}
+                      onClick={handleAddUsdcToMetaMask}
+                      className="shrink-0 text-xs h-7 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                      title="Automatically add FairWork USDC to your MetaMask token list"
+                    >
+                      Add USDC to MetaMask
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={handleCopyUsdcAddress}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface hover:bg-surface-hover border border-border text-[11px] text-muted hover:text-foreground cursor-pointer transition-colors"
+                      title="Copy USDC contract address"
+                    >
+                      {tokenCopied ? (
+                        <>
+                          <FiCheck className="h-3 w-3 text-emerald-500" />
+                          <span className="text-emerald-500 font-semibold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiCopy className="h-3 w-3 text-muted" />
+                          <span>Copy Address</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -835,6 +872,24 @@ export function CreateProjectPage() {
                 >
                   Add USDC to MetaMask
                 </Button>
+                <button
+                  type="button"
+                  onClick={handleCopyUsdcAddress}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-xs text-muted hover:text-foreground cursor-pointer transition-colors"
+                  title="Copy token contract address"
+                >
+                  {tokenCopied ? (
+                    <>
+                      <FiCheck className="h-3.5 w-3.5 text-emerald-500" />
+                      <span className="text-emerald-500 font-medium">Address Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiCopy className="h-3.5 w-3.5" />
+                      <span>Copy Token Address</span>
+                    </>
+                  )}
+                </button>
                 <Button disabled title="Insufficient wallet balance to cover project budget">
                   Insufficient Balance to Post
                 </Button>
