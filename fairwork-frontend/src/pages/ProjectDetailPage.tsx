@@ -422,13 +422,20 @@ function MilestoneRow({
 
           {/* Client Review Controls */}
           {isClient && milestone.status === "submitted" && (
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id, index)}>
-                {canRelease ? "Approve & Release Payment" : "Approve Milestone"}
-              </Button>
-              <Button size="sm" variant="secondary" onClick={handleRevisionClick}>
-                Request Revision
-              </Button>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id, index)}>
+                  {canRelease ? "Approve & Release Payment" : "Approve Milestone (Off-Chain)"}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={handleRevisionClick}>
+                  Request Revision
+                </Button>
+              </div>
+              {!canRelease && (
+                <span className="text-[10px] text-warning">
+                  ⚠️ Escrow unfunded: approval will not send crypto
+                </span>
+              )}
             </div>
           )}
 
@@ -1654,6 +1661,26 @@ export function ProjectDetailPage() {
 
             {tab === "milestones" && (
               <div className="flex flex-col gap-4">
+                {isClient && !escrowActive && hasFreelancer && (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-xs">
+                    <div className="flex items-start gap-3">
+                      <FiAlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">Escrow Not Funded On-Chain</p>
+                        <p className="mt-1 text-muted">
+                          This project is running off-chain. To enable automatic smart contract USDC release to the freelancer upon deliverable approval, fund the escrow first.
+                        </p>
+                      </div>
+                    </div>
+                    {(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) ? (
+                      <span className="shrink-0 text-xs text-warning font-medium">Freelancer wallet required to fund</span>
+                    ) : (
+                      <Button size="sm" variant="primary" onClick={fund} loading={Boolean(actionState)} disabled={Boolean(actionState)} leftIcon={<FiLock className="h-3.5 w-3.5" />}>
+                        Fund Escrow Now
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {(!project.milestones || project.milestones.length === 0) ? (
                   <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted">No milestones defined for this project.</p>
                 ) : (
@@ -1910,14 +1937,23 @@ export function ProjectDetailPage() {
                 )}
 
                 {isClient && (
-                  <Button
-                    disabled={(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) || project.escrowFunded || Boolean(actionState)}
-                    loading={Boolean(actionState)}
-                    onClick={fund}
-                    leftIcon={<FiLock className="h-4 w-4" />}
-                  >
-                    Fund escrow
-                  </Button>
+                  <div className="flex flex-col gap-1.5">
+                    <Button
+                      disabled={(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) || project.escrowFunded || Boolean(actionState)}
+                      loading={Boolean(actionState)}
+                      onClick={fund}
+                      leftIcon={<FiLock className="h-4 w-4" />}
+                    >
+                      {project.escrowFunded ? "Escrow Funded ✓" : "Fund escrow"}
+                    </Button>
+                    {!project.escrowFunded && (
+                      <p className="text-[11px] text-muted">
+                        {(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress)
+                          ? "Waiting for hired freelancer to connect a verified wallet address before escrow can be funded."
+                          : "Locks project funds into the smart contract vault so payments transfer directly to freelancer upon milestone approval."}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 <Button
