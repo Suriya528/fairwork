@@ -348,6 +348,7 @@ function SubmitWorkModal({
 
 function MilestoneRow({
   milestone,
+  index,
   project,
   isClient,
   isFreelancer,
@@ -360,6 +361,7 @@ function MilestoneRow({
   onRelease,
 }: {
   milestone: ApiMilestone
+  index: number
   project: ApiProject
   isClient: boolean
   isFreelancer: boolean
@@ -421,7 +423,7 @@ function MilestoneRow({
           {/* Client Review Controls */}
           {isClient && milestone.status === "submitted" && (
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id, milestone.order - 1)}>
+              <Button size="sm" variant="primary" onClick={() => onApprove(milestone.id, index)}>
                 {canRelease ? "Approve & Release Payment" : "Approve Milestone"}
               </Button>
               <Button size="sm" variant="secondary" onClick={handleRevisionClick}>
@@ -924,7 +926,7 @@ export function ProjectDetailPage() {
 
     try {
       // If escrow was funded on-chain, automatically execute on-chain release via MetaMask
-      if (escrowActive && typeof milestoneIndex === "number" && milestoneIndex >= 0) {
+      if (escrowActive && Number.isInteger(milestoneIndex) && milestoneIndex !== undefined && milestoneIndex >= 0) {
         setActionState("Prompting MetaMask to release milestone payment...")
         const releaseTxHash = await releaseEscrowMilestone(project.id, milestoneIndex, user.walletAddress)
         setActionState("Verifying transaction and releasing funds...")
@@ -1659,6 +1661,7 @@ export function ProjectDetailPage() {
                     <MilestoneRow
                       key={milestone.id}
                       milestone={milestone}
+                      index={index}
                       project={project}
                       isClient={isClient}
                       isFreelancer={isAssignedFreelancer}

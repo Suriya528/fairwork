@@ -75,44 +75,21 @@ exports.approveAndReleaseMilestone = async (req, res) => {
     }
 
     // 2. On-Chain Release Reconcile (if client performed MetaMask on-chain release)
+    const freelancerId = project.freelancerId?._id ? String(project.freelancerId._id) : String(project.freelancerId || "");
+
     if (txnHash && project.escrowFunded) {
       const reconciledProject = await reconcileMilestoneRelease(
-        project._id,
+        String(project._id),
         milestoneIndex,
         txnHash,
         req.user.id
       );
 
-      // Create Transactional Outbox Entry for guaranteed event publishing
-      try {
-        await OutboxEvent.findOneAndUpdate(
-          { sourceEventKey: `milestone-release:${project._id}:${milestoneIndex}:${txnHash}`, eventType: "MILESTONE_PAYMENT_RELEASED" },
-          {
-            $setOnInsert: {
-              sourceEventKey: `milestone-release:${project._id}:${milestoneIndex}:${txnHash}`,
-              eventType: "MILESTONE_PAYMENT_RELEASED",
-              projectId: project._id,
-              content: JSON.stringify({
-                freelancerId: project.freelancerId,
-                milestoneIndex,
-                milestoneTitle: milestone.title,
-                amountUSDC: milestone.amount,
-                txnHash,
-              }),
-              status: "PENDING",
-            },
-          },
-          { upsert: true, returnDocument: "after" }
-        );
-      } catch (outboxErr) {
-        console.warn("[MilestoneController] Outbox queue notice:", outboxErr.message);
-      }
-
       // Real-time socket notification to freelancer room
       try {
         const io = req.app.get("io");
-        if (io) {
-          io.to(`user:${project.freelancerId}`).emit("notification", {
+        if (io && freelancerId) {
+          io.to(`user:${freelancerId}`).emit("notification", {
             type: "PAYMENT_RELEASED",
             title: "Payment Released!",
             message: `$${milestone.amount} USDC has been released directly to your wallet for “${milestone.title}”.`,
@@ -134,6 +111,12 @@ exports.approveAndReleaseMilestone = async (req, res) => {
 
     // 3. Off-Chain Completion Fallback (if escrow was not funded on-chain)
     milestone.status = "completed";
+
+    // If all milestones completed, update project status
+    if (project.milestones.every((m) => m.status === "completed")) {
+      project.status = "completed";
+    }
+
     await project.save();
 
     // Role-specific notifications
@@ -147,15 +130,17 @@ exports.approveAndReleaseMilestone = async (req, res) => {
       projectId: project._id,
     });
 
-    recordActivitySafely({
-      userIds: [project.freelancerId],
-      eventKey: `milestone-approved-freelancer:${project._id}:${milestone._id}`,
-      actorId: req.user.id,
-      type: "milestone_approved",
-      title: "Milestone Approved!",
-      message: `Client approved milestone “${milestone.title}”.`,
-      projectId: project._id,
-    });
+    if (freelancerId) {
+      recordActivitySafely({
+        userIds: [freelancerId],
+        eventKey: `milestone-approved-freelancer:${project._id}:${milestone._id}`,
+        actorId: req.user.id,
+        type: "milestone_approved",
+        title: "Milestone Approved!",
+        message: `Client approved milestone “${milestone.title}”.`,
+        projectId: project._id,
+      });
+    }
 
     res.json({
       success: true,
