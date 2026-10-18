@@ -184,13 +184,25 @@ exports.assignFreelancer = async (req, res) => {
       return res.status(409).json({ message: "Project status conflict" });
     }
 
+    // Client notification
     recordActivitySafely({
-      userIds: [project.clientId, freelancer._id],
-      eventKey: `freelancer-assigned:${project._id}`,
+      userIds: [project.clientId],
+      eventKey: `freelancer-assigned-client:${project._id}`,
       actorId: req.user.id,
       type: "freelancer_assigned",
-      title: "Freelancer assigned",
-      message: `A freelancer was assigned to “${project.title}”.`,
+      title: "Freelancer Assigned",
+      message: `You assigned a freelancer to “${project.title}”.`,
+      projectId: project._id,
+    });
+
+    // Freelancer notification
+    recordActivitySafely({
+      userIds: [freelancer._id],
+      eventKey: `freelancer-assigned-freelancer:${project._id}`,
+      actorId: req.user.id,
+      type: "freelancer_assigned",
+      title: "Assigned to Project",
+      message: `You were assigned to project “${project.title}”.`,
       projectId: project._id,
     });
     res.json(project);
@@ -337,13 +349,25 @@ exports.uploadProjectDeliverable = async (req, res) => {
     await project.save();
     await project.populate("deliverables.uploadedBy", "firstName lastName");
 
+    // Client notification: Freelancer submitted deliverable
     recordActivitySafely({
-      userIds: [project.clientId, req.user.id],
-      eventKey: `deliverable-uploaded:${project._id}:${req.file.originalname}`,
+      userIds: [project.clientId],
+      eventKey: `deliverable-uploaded-client:${project._id}:${req.file.originalname}`,
       actorId: req.user.id,
       type: "deliverable_uploaded",
-      title: "Deliverable uploaded",
+      title: "Deliverable Received",
       message: `Work deliverable “${req.file.originalname}” was submitted for “${project.title}”.`,
+      projectId: project._id,
+    });
+
+    // Freelancer notification: You submitted deliverable
+    recordActivitySafely({
+      userIds: [req.user.id],
+      eventKey: `deliverable-uploaded-freelancer:${project._id}:${req.file.originalname}`,
+      actorId: req.user.id,
+      type: "deliverable_uploaded",
+      title: "Deliverable Uploaded",
+      message: `You submitted work deliverable “${req.file.originalname}” for “${project.title}”.`,
       projectId: project._id,
     });
 
@@ -406,13 +430,25 @@ exports.submitMilestone = async (req, res) => {
 
     await project.save();
 
+    // Client notification: Milestone ready for review
     recordActivitySafely({
-      userIds: [project.clientId, req.user.id],
-      eventKey: `milestone-submitted:${project._id}:${milestone._id}`,
+      userIds: [project.clientId],
+      eventKey: `milestone-submitted-client:${project._id}:${milestone._id}`,
       actorId: req.user.id,
       type: "milestone_submitted",
-      title: "Milestone submitted",
-      message: `Milestone “${milestone.title}” was submitted for review.`,
+      title: "Milestone Submitted for Review",
+      message: `Freelancer submitted milestone “${milestone.title}” for your review.`,
+      projectId: project._id,
+    });
+
+    // Freelancer notification: Confirmation
+    recordActivitySafely({
+      userIds: [req.user.id],
+      eventKey: `milestone-submitted-freelancer:${project._id}:${milestone._id}`,
+      actorId: req.user.id,
+      type: "milestone_submitted",
+      title: "Milestone Submitted",
+      message: `You submitted milestone “${milestone.title}” for client approval.`,
       projectId: project._id,
     });
 
@@ -441,13 +477,25 @@ exports.requestMilestoneRevision = async (req, res) => {
 
     await project.save();
 
+    // Client notification: Confirmation
     recordActivitySafely({
-      userIds: [project.freelancerId, req.user.id],
-      eventKey: `milestone-revision:${project._id}:${milestone._id}`,
+      userIds: [req.user.id],
+      eventKey: `milestone-revision-client:${project._id}:${milestone._id}`,
       actorId: req.user.id,
       type: "milestone_revision_requested",
-      title: "Revision requested",
-      message: `Client requested a revision for milestone “${milestone.title}”.`,
+      title: "Revision Requested",
+      message: `You requested revisions for milestone “${milestone.title}”.`,
+      projectId: project._id,
+    });
+
+    // Freelancer notification: Action required
+    recordActivitySafely({
+      userIds: [project.freelancerId],
+      eventKey: `milestone-revision-freelancer:${project._id}:${milestone._id}`,
+      actorId: req.user.id,
+      type: "milestone_revision_requested",
+      title: "Revision Requested",
+      message: `Client requested revisions on milestone “${milestone.title}”.`,
       projectId: project._id,
     });
 
@@ -473,13 +521,25 @@ exports.approveMilestone = async (req, res) => {
     milestone.status = "completed";
     await project.save();
 
+    // Client notification: Confirmation
     recordActivitySafely({
-      userIds: [project.freelancerId, req.user.id],
-      eventKey: `milestone-approved:${project._id}:${milestone._id}`,
+      userIds: [req.user.id],
+      eventKey: `milestone-approved-client:${project._id}:${milestone._id}`,
       actorId: req.user.id,
       type: "milestone_approved",
-      title: "Milestone approved",
-      message: `Client approved milestone “${milestone.title}”.`,
+      title: "Milestone Approved",
+      message: `You approved milestone “${milestone.title}”.`,
+      projectId: project._id,
+    });
+
+    // Freelancer notification: Payment released
+    recordActivitySafely({
+      userIds: [project.freelancerId],
+      eventKey: `milestone-approved-freelancer:${project._id}:${milestone._id}`,
+      actorId: req.user.id,
+      type: "milestone_approved",
+      title: "Milestone Approved!",
+      message: `Client approved milestone “${milestone.title}”. Payment has been released!`,
       projectId: project._id,
     });
 

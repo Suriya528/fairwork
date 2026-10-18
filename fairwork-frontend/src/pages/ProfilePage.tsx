@@ -106,7 +106,7 @@ export function ProfilePage() {
     totalSpentUSDC: 0,
     completedProjectsCount: completedCount,
     completedMilestonesCount: completedCount * 2,
-    ratingCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: userReviewCount },
+    ratingCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
   }
 
   const handleShareProfile = () => {
@@ -784,7 +784,7 @@ export function ProfilePage() {
               <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-8">
                 <div className="text-center sm:text-left">
                   <div className="text-5xl font-extrabold text-foreground font-mono">
-                    {userRating.toFixed(1)}
+                    {userReviewCount > 0 ? userRating.toFixed(1) : "—"}
                   </div>
                   <div className="flex gap-1 justify-center sm:justify-start my-2">
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -792,12 +792,14 @@ export function ProfilePage() {
                         key={n}
                         className={cn(
                           "h-4 w-4",
-                          n <= Math.round(userRating) ? "fill-current text-warning" : "text-subtle",
+                          userReviewCount > 0 && n <= Math.round(userRating) ? "fill-current text-warning" : "text-subtle",
                         )}
                       />
                     ))}
                   </div>
-                  <p className="text-xs text-muted">{userReviewCount} Platform Ratings</p>
+                  <p className="text-xs text-muted">
+                    {userReviewCount > 0 ? `${userReviewCount} Platform Ratings` : "No platform reviews yet"}
+                  </p>
                   {onChainRep.isAvailable && (
                     <div className="mt-2 pt-2 border-t border-border/40">
                       <a
@@ -815,24 +817,32 @@ export function ProfilePage() {
                 </div>
 
                 {/* Rating Distribution Breakdown */}
-                <div className="flex-1 w-full space-y-1.5">
-                  {[5, 4, 3, 2, 1].map((stars) => {
-                    const count = stats.ratingCounts[stars as keyof typeof stats.ratingCounts] || 0
-                    const percentage = userReviewCount > 0 ? (count / userReviewCount) * 100 : 0
-                    return (
-                      <div key={stars} className="flex items-center gap-3 text-xs">
-                        <span className="w-6 font-mono font-medium text-muted">{stars}★</span>
-                        <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden border border-border/40">
-                          <div
-                            className="h-full bg-warning rounded-full transition-all"
-                            style={{ width: `${percentage}%` }}
-                          />
+                {userReviewCount > 0 ? (
+                  <div className="flex-1 w-full space-y-1.5">
+                    {[5, 4, 3, 2, 1].map((stars) => {
+                      const count = stats.ratingCounts[stars as keyof typeof stats.ratingCounts] || 0
+                      const percentage = (count / userReviewCount) * 100
+                      return (
+                        <div key={stars} className="flex items-center gap-3 text-xs">
+                          <span className="w-6 font-mono font-medium text-muted">{stars}★</span>
+                          <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden border border-border/40">
+                            <div
+                              className="h-full bg-warning rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="w-8 text-right font-mono text-muted">{count}</span>
                         </div>
-                        <span className="w-8 text-right font-mono text-muted">{count}</span>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex-1 w-full flex flex-col items-center justify-center p-6 rounded-xl border border-dashed border-border/60 text-center">
+                    <FiStar className="h-6 w-6 text-subtle mb-1" />
+                    <p className="text-xs font-medium text-muted">No review distribution yet</p>
+                    <p className="text-[11px] text-subtle">Client reviews and on-chain ratings will populate here upon project completion.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

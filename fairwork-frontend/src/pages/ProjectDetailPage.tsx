@@ -1286,10 +1286,17 @@ export function ProjectDetailPage() {
                                   <span className="text-[10px] text-primary underline opacity-0 group-hover:opacity-100 transition">View Profile</span>
                                 </h4>
                                 <div className="flex items-center gap-2 mt-0.5 text-xs text-muted">
-                                  <span className="flex items-center gap-1 text-warning font-medium">
-                                    <FiStar className="h-3.5 w-3.5 fill-current" />
-                                    {app.freelancer?.rating?.toFixed(1) || "5.0"}
-                                  </span>
+                                  {app.freelancer?.reviewCount && app.freelancer.reviewCount > 0 ? (
+                                    <span className="flex items-center gap-1 text-warning font-medium">
+                                      <FiStar className="h-3.5 w-3.5 fill-current" />
+                                      {app.freelancer.rating ? app.freelancer.rating.toFixed(1) : "0.0"} ({app.freelancer.reviewCount})
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-subtle text-xs">
+                                      <FiStar className="h-3.5 w-3.5 text-subtle" />
+                                      No reviews yet
+                                    </span>
+                                  )}
                                   <span>·</span>
                                   <span>Applied {formatDate(app.createdAt)}</span>
                                 </div>

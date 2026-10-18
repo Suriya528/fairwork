@@ -55,16 +55,30 @@ exports.createApplication = async (req, res) => {
 
     const populated = await application.populate([
       { path: "projectId", select: "title budget status category clientId" },
-      { path: "freelancerId", select: "firstName lastName avatarUrl walletAddress rating reviewCount" },
+      { path: "freelancerId", select: "firstName lastName avatarUrl walletAddress reputationScore totalReviews" },
     ]);
 
+    const applicantName = req.user.firstName ? `${req.user.firstName} ${req.user.lastName || ""}`.trim() : "A freelancer";
+
+    // Client notification: Freelancer applied to project
     recordActivitySafely({
-      userIds: [project.clientId, req.user.id],
-      eventKey: `application-submitted:${application._id}`,
+      userIds: [project.clientId],
+      eventKey: `application-submitted-client:${application._id}`,
       actorId: req.user.id,
       type: "application_submitted",
       title: "New Application Received",
-      message: `A freelancer applied to “${project.title}”.`,
+      message: `${applicantName} submitted a proposal for “${project.title}”.`,
+      projectId: project._id,
+    });
+
+    // Freelancer notification: You submitted proposal
+    recordActivitySafely({
+      userIds: [req.user.id],
+      eventKey: `application-submitted-freelancer:${application._id}`,
+      actorId: req.user.id,
+      type: "application_submitted",
+      title: "Proposal Submitted",
+      message: `You submitted a proposal for “${project.title}”.`,
       projectId: project._id,
     });
 
@@ -110,7 +124,7 @@ exports.getProjectApplications = async (req, res) => {
     }
 
     const applications = await Application.find({ projectId })
-      .populate("freelancerId", "firstName lastName avatarUrl walletAddress rating reviewCount createdAt bio tagline skills githubUrl githubIdentity hourlyRate availability")
+      .populate("freelancerId", "firstName lastName avatarUrl walletAddress reputationScore totalReviews rating reviewCount createdAt bio tagline skills githubUrl githubIdentity hourlyRate availability")
       .sort({ createdAt: -1 });
 
     res.json(applications);
@@ -204,9 +218,10 @@ Either party may initiate dispute resolution or contract termination through the
       { status: "rejected" }
     );
 
+    // Client notification: You hired a freelancer
     recordActivitySafely({
-      userIds: [project.clientId, application.freelancerId],
-      eventKey: `application-accepted:${application._id}`,
+      userIds: [project.clientId],
+      eventKey: `application-accepted-client:${application._id}`,
       actorId: req.user.id,
       type: "application_accepted",
       title: "Freelancer Hired",
@@ -214,9 +229,20 @@ Either party may initiate dispute resolution or contract termination through the
       projectId: updatedProject._id,
     });
 
+    // Freelancer notification: You have been hired
+    recordActivitySafely({
+      userIds: [application.freelancerId],
+      eventKey: `application-accepted-freelancer:${application._id}`,
+      actorId: req.user.id,
+      type: "application_accepted",
+      title: "Application Accepted!",
+      message: `Congratulations! Your proposal for “${updatedProject.title}” was accepted. You are hired!`,
+      projectId: updatedProject._id,
+    });
+
     const populated = await application.populate([
       { path: "projectId", select: "title budget status category clientId freelancerId contractId" },
-      { path: "freelancerId", select: "firstName lastName avatarUrl walletAddress rating reviewCount createdAt bio tagline skills githubUrl githubIdentity" },
+      { path: "freelancerId", select: "firstName lastName avatarUrl walletAddress reputationScore totalReviews rating reviewCount createdAt bio tagline skills githubUrl githubIdentity" },
     ]);
 
     res.json({ application: populated, project: updatedProject });
@@ -249,6 +275,17 @@ exports.rejectApplication = async (req, res) => {
 
     application.status = "rejected";
     await application.save();
+
+    // Freelancer notification: Application was not selected
+    recordActivitySafely({
+      userIds: [application.freelancerId],
+      eventKey: `application-rejected:${application._id}`,
+      actorId: req.user.id,
+      type: "application_rejected",
+      title: "Proposal Status Update",
+      message: `Your application for “${project.title}” was not selected.`,
+      projectId: project._id,
+    });
 
     res.json(application);
   } catch (err) {

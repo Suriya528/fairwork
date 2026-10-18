@@ -71,8 +71,8 @@ function normalizeApplication(raw: Record<string, unknown>): ApiApplication {
           lastName: String(f.lastName || ""),
           avatarUrl: f.avatarUrl ? String(f.avatarUrl) : undefined,
           walletAddress: f.walletAddress ? String(f.walletAddress) : undefined,
-          rating: Number(f.rating || 5),
-          reviewCount: Number(f.reviewCount || 0),
+          rating: Number(f.reputationScore ?? f.rating ?? 0),
+          reviewCount: Number(f.totalReviews ?? f.reviewCount ?? 0),
         }
       : undefined,
   }
