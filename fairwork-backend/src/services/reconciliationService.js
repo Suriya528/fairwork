@@ -476,8 +476,13 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
   const publicClient = createPublicClient({ chain: resolveViemChain(), transport: http(rpcUrl) });
   const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
 
+  let receipt = null;
+  let verifiedEvent = null;
+  let onChainEscrowState = null;
+  const chainId = Number(process.env.CHAIN_ID || 11155111);
+
   try {
-    const receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
+    receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
     if (!receipt) {
       const err = new Error('TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation');
       err.status = 202;
@@ -486,7 +491,9 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     if (receipt.status !== 'success' && receipt.status !== 1) {
       throw new Error('TRANSACTION_REVERTED_ON_CHAIN');
     }
-    if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
+    const hasEscrowTarget = (receipt.to && receipt.to.toLowerCase() === escrowAddress.toLowerCase()) ||
+      (receipt.logs && receipt.logs.some(l => l.address && l.address.toLowerCase() === escrowAddress.toLowerCase()));
+    if (escrowAddress && !hasEscrowTarget) {
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
 
@@ -501,10 +508,6 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
       err.requiredConfirmations = Number(minConfirmations);
       throw err;
     }
-
-    let verifiedEvent = null;
-    let onChainEscrowState = null;
-    const chainId = Number(process.env.CHAIN_ID || 11155111);
 
     if (receipt && receipt.logs && receipt.logs.length > 0) {
       for (const log of receipt.logs) {
@@ -692,8 +695,13 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
   const publicClient = createPublicClient({ chain: resolveViemChain(), transport: http(rpcUrl) });
   const escrowAddress = getResolvedContractAddress('CANONICAL_ESCROW_ADDRESS', 'ESCROW_ADDRESS');
 
+  let receipt = null;
+  let verifiedEvent = null;
+  let onChainEscrowState = null;
+  const chainId = Number(process.env.CHAIN_ID || 11155111);
+
   try {
-    const receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
+    receipt = await publicClient.getTransactionReceipt({ hash: txnHash });
     if (!receipt) {
       const err = new Error('TRANSACTION_NOT_CONFIRMED: Waiting for block confirmation');
       err.status = 202;
@@ -702,7 +710,9 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     if (receipt.status !== 'success' && receipt.status !== 1) {
       throw new Error('TRANSACTION_REVERTED_ON_CHAIN');
     }
-    if (escrowAddress && receipt.to && receipt.to.toLowerCase() !== escrowAddress.toLowerCase()) {
+    const hasEscrowTarget = (receipt.to && receipt.to.toLowerCase() === escrowAddress.toLowerCase()) ||
+      (receipt.logs && receipt.logs.some(l => l.address && l.address.toLowerCase() === escrowAddress.toLowerCase()));
+    if (escrowAddress && !hasEscrowTarget) {
       throw new Error('TRANSACTION_RECIPIENT_MISMATCH: Target is not the configured escrow contract');
     }
 
@@ -717,10 +727,6 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
       err.requiredConfirmations = Number(minConfirmations);
       throw err;
     }
-
-    let verifiedEvent = null;
-    let onChainEscrowState = null;
-    const chainId = Number(process.env.CHAIN_ID || 11155111);
 
     if (receipt && receipt.logs && receipt.logs.length > 0) {
       for (const log of receipt.logs) {
