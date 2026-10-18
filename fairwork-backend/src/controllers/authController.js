@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Project = require("../models/Project");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -329,6 +330,12 @@ exports.verifyWallet = async (req, res) => {
     const consumed = await WalletNonce.findOneAndDelete({ _id: record._id, userId: req.user.id, sessionId: req.user.sessionId, nonce });
     if (!consumed) return res.status(400).json({ message: "Wallet verification nonce is expired or invalid" });
     const user = await User.findByIdAndUpdate(req.user.id, { walletAddress: claimed }, { returnDocument: "after", runValidators: true }).select("-password");
+    if (user && user.role === "freelancer") {
+      await Project.updateMany(
+        { freelancerId: user._id, $or: [{ freelancerWalletAddress: { $exists: false } }, { freelancerWalletAddress: null }, { freelancerWalletAddress: "" }] },
+        { $set: { freelancerWalletAddress: claimed } }
+      );
+    }
     const { invalidateAuthCache } = require("../middleware/auth");
     await invalidateAuthCache(user._id);
     recordActivitySafely({ userIds: [user._id], eventKey: `wallet-verified:${user._id}:${claimed}`, actorId: user._id, type: "wallet_verified", title: "Wallet verified", message: "Your wallet ownership was verified." });
