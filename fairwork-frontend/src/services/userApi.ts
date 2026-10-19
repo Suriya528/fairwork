@@ -74,6 +74,17 @@ export interface UserProfileDTO {
     reviewerId?: { firstName: string; lastName: string; avatarUrl?: string }
     createdAt: string
   }>
+  openProjects?: Array<{
+    id: string
+    title: string
+    category: string
+    description?: string
+    budget: number
+    status: string
+    milestonesCount: number
+    createdAt: string
+    deadlineAt?: string
+  }>
 }
 
 export interface NotificationPreferences {

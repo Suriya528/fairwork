@@ -62,6 +62,15 @@ exports.getPublicProfile = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(15);
 
+    // If client, fetch active/open project opportunities posted by this client
+    const openProjects = user.role === "client" ? await Project.find({
+      clientId: id,
+      status: { $in: ["open", "in_progress"] },
+    })
+      .select("title category description budget status milestones createdAt deadlineAt")
+      .sort({ createdAt: -1 })
+      .limit(6) : [];
+
     // Pre-computed O(1) stats fallback
     const stats = user.stats || {
       totalEarnedUSDC: 0,
@@ -138,6 +147,17 @@ exports.getPublicProfile = async (req, res) => {
       },
       workHistory,
       reviews,
+      openProjects: openProjects.map((p) => ({
+        id: p._id,
+        title: p.title,
+        category: p.category,
+        description: p.description,
+        budget: p.budget,
+        status: p.status,
+        milestonesCount: p.milestones ? p.milestones.length : 0,
+        createdAt: p.createdAt,
+        deadlineAt: p.deadlineAt,
+      })),
     });
   } catch (err) {
     console.error("[UserController] getUserProfile error:", err);
