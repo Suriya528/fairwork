@@ -89,6 +89,7 @@ import {
 import { depositEscrow } from "@/services/escrowApi"
 import { raiseDispute } from "@/services/disputesApi"
 import { getReleasedAmount, getUnreleasedAmount } from "@/lib/financial"
+import { checkProjectReview, type ApiProjectReviewResponse } from "@/services/reviewApi"
 
 type TabValue = "overview" | "applications" | "proposals" | "contract" | "milestones" | "files" | "disputes" | "activity"
 
@@ -618,6 +619,8 @@ export function ProjectDetailPage() {
   const [verificationModalOpen, setVerificationModalOpen] = useState(false)
   const [verificationActionName, setVerificationActionName] = useState("fund escrow")
   const [ratingModalOpen, setRatingModalOpen] = useState(false)
+  const [existingReview, setExistingReview] = useState<ApiProjectReviewResponse["review"] | null>(null)
+  const [hasReviewed, setHasReviewed] = useState(false)
   const [ciRefreshing, setCiRefreshing] = useState<Record<string, boolean>>({})
 
   const formatDDMMYYYY = (dateInput?: string | Date | null): string => {
@@ -708,6 +711,27 @@ export function ProjectDetailPage() {
       active = false
     }
   }, [id, token])
+
+  useEffect(() => {
+    if (!id || !token) return
+    let active = true
+    checkProjectReview(id, token)
+      .then((res) => {
+        if (active) {
+          setHasReviewed(Boolean(res.hasReviewed))
+          setExistingReview(res.review)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setHasReviewed(false)
+          setExistingReview(null)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [id, token, project?.status])
 
   const handleGenerateContract = async () => {
     if (!token || !project || !hasFreelancer) return
@@ -983,7 +1007,7 @@ export function ProjectDetailPage() {
       setActionState("✅ Payment released to freelancer wallet!")
       setTimeout(() => setActionState(""), 4000)
 
-      if (updated.status === "completed") {
+      if (updated.status === "completed" && !hasReviewed) {
         setRatingModalOpen(true)
       }
     } catch (err) {
@@ -1184,14 +1208,21 @@ export function ProjectDetailPage() {
             </div>
             <div className="flex items-center gap-3">
               {project.status === "completed" && (isClient || isAssignedFreelancer) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<FiStar className="h-4 w-4 text-warning" />}
-                  onClick={() => setRatingModalOpen(true)}
-                >
-                  Rate {isClient ? "Freelancer" : "Client"}
-                </Button>
+                hasReviewed ? (
+                  <Badge tone="success" className="gap-1.5 px-3 py-1.5 text-xs font-semibold">
+                    <FiCheck className="h-3.5 w-3.5" />
+                    Rated ({existingReview?.rating || 5}/5 ★)
+                  </Badge>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<FiStar className="h-4 w-4 text-warning" />}
+                    onClick={() => setRatingModalOpen(true)}
+                  >
+                    Rate {isClient ? "Freelancer" : "Client"}
+                  </Button>
+                )
               )}
               {isFreelancer && project.status === "open" && !project.freelancerId && (
                 myApplication ? (
@@ -1215,16 +1246,27 @@ export function ProjectDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3">
             <div className="flex items-center gap-2 text-sm text-emerald-400">
               <FiAward className="h-5 w-5 shrink-0" />
-              <span>Project completed! You can record your feedback and submit an on-chain rating to the Sepolia reputation contract.</span>
+              <span>
+                {hasReviewed
+                  ? `Project completed & reputation confirmed! You submitted a ${existingReview?.rating || 5}-star review.`
+                  : "Project completed! You can record your feedback and submit an on-chain rating to the Sepolia reputation contract."}
+              </span>
             </div>
-            <Button
-              size="sm"
-              variant="primary"
-              leftIcon={<FiStar className="h-4 w-4" />}
-              onClick={() => setRatingModalOpen(true)}
-            >
-              Rate {isClient ? "Freelancer" : "Client"}
-            </Button>
+            {hasReviewed ? (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+                <FiCheck className="h-4 w-4 text-emerald-400" />
+                <span>★ Rated ({existingReview?.rating || 5}/5) — Review Submitted</span>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<FiStar className="h-4 w-4" />}
+                onClick={() => setRatingModalOpen(true)}
+              >
+                Rate {isClient ? "Freelancer" : "Client"}
+              </Button>
+            )}
           </div>
         )}
 
@@ -1996,13 +2038,20 @@ export function ProjectDetailPage() {
                 )}
 
                 {project.status === "completed" && (isClient || isAssignedFreelancer) && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setRatingModalOpen(true)}
-                    leftIcon={<FiStar className="h-4 w-4 text-warning" />}
-                  >
-                    Rate {isClient ? "Freelancer" : "Client"}
-                  </Button>
+                  hasReviewed ? (
+                    <div className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400">
+                      <FiCheck className="h-4 w-4" />
+                      <span>Review Submitted ({existingReview?.rating || 5}/5 ★)</span>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => setRatingModalOpen(true)}
+                      leftIcon={<FiStar className="h-4 w-4 text-warning" />}
+                    >
+                      Rate {isClient ? "Freelancer" : "Client"}
+                    </Button>
+                  )
                 )}
 
                 {escrowActive && <Badge tone="success">Payment protected by escrow</Badge>}
@@ -2063,8 +2112,16 @@ export function ProjectDetailPage() {
             ? (project.freelancerWalletAddress || (typeof project.freelancerId === 'object' && project.freelancerId ? (project.freelancerId as any).walletAddress : undefined))
             : (project.clientWalletAddress || (typeof project.clientId === 'object' && project.clientId ? (project.clientId as any).walletAddress : undefined))
         }
+        existingReview={existingReview}
         onSuccess={() => {
           setRatingModalOpen(false)
+          setHasReviewed(true)
+          if (id && token) {
+            void checkProjectReview(id, token).then((res) => {
+              setHasReviewed(Boolean(res.hasReviewed))
+              setExistingReview(res.review)
+            })
+          }
           void loadProject()
         }}
       />

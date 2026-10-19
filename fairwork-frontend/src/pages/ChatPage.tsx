@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useEffect, useRef, useState, useCallback, useMemo } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import type { Socket } from "socket.io-client"
 import {
   FiMessageSquare,
@@ -12,10 +12,12 @@ import {
   FiChevronLeft,
   FiFileText,
   FiExternalLink,
+  FiSearch,
+  FiLock,
 } from "react-icons/fi"
 import { Button } from "@/components/ui/Button"
-import { Textarea } from "@/components/ui/Textarea"
 import { Badge } from "@/components/ui/Badge"
+import { Avatar } from "@/components/ui/Avatar"
 import { EmptyState } from "@/components/feedback/EmptyState"
 import { PageHeader } from "@/components/common/PageHeader"
 import { sanitizeUrl } from "@/lib/sanitizeUrl"
@@ -34,10 +36,12 @@ import {
   type EscrowSnapshot,
 } from "@/services/chatApi"
 import { formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 export function ChatPage() {
   const { user, token } = useAuth()
   const { formatAmount } = useCurrency()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const socketRef = useRef<Socket | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -47,6 +51,7 @@ export function ChatPage() {
   const [messages, setMessages] = useState<ApiMessage[]>([])
   const [snapshot, setSnapshot] = useState<EscrowSnapshot | null>(null)
   const [draft, setDraft] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
   const [typingUser, setTypingUser] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [showSidePanel, setShowSidePanel] = useState(true)
@@ -359,81 +364,210 @@ export function ChatPage() {
     ? (activeProject?.freelancerName || "Assigned Freelancer")
     : (activeProject?.clientName || "Project Client")
 
+  // Filter project threads by search query
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) return projects
+    const q = searchQuery.toLowerCase()
+    return projects.filter((p) => {
+      const partner = p.clientId === user?.id ? p.freelancerName : p.clientName
+      return (
+        p.title.toLowerCase().includes(q) ||
+        (partner && partner.toLowerCase().includes(q)) ||
+        p.category.toLowerCase().includes(q)
+      )
+    })
+  }, [projects, searchQuery, user?.id])
+
+  // Format timestamp like WhatsApp (e.g. "10:45 AM")
+  const formatTime = (isoString?: string) => {
+    if (!isoString) return ""
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) return ""
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="p-3 sm:p-6 lg:p-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5">
         <PageHeader
           title="Workroom Chat"
           description="Real-time Web3 workroom messaging, milestone system logs, and deliverable file sharing."
         />
 
-        {error && <p className="text-sm text-danger">{error}</p>}
+        {error && (
+          <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-2.5 text-xs text-danger flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="text-danger font-bold text-sm">✕</button>
+          </div>
+        )}
 
         {projects.length ? (
-          <div className="grid min-h-[580px] grid-cols-1 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-[#0c1219] md:grid-cols-[260px_1fr_auto]">
-            {/* Thread List Sidebar */}
-            <aside className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 md:border-b-0 md:border-r flex flex-col">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/80">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Workrooms ({projects.length})</p>
+          <div className="min-h-[600px] w-full rounded-2xl border border-border/80 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-[280px_1fr_auto] bg-surface dark:bg-[#111b21]">
+            {/* WHATSAPP LEFT COLUMN: CHAT LIST SIDEBAR */}
+            <aside className="border-b md:border-b-0 md:border-r border-border/60 flex flex-col bg-surface dark:bg-[#111b21] max-h-[300px] md:max-h-none">
+              {/* WhatsApp Header */}
+              <div className="h-16 px-4 flex items-center justify-between border-b border-border/60 bg-surface-elevated/40 dark:bg-[#202c33]">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Avatar name={user?.name || "User"} src={user?.avatarUrl || undefined} size="sm" />
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-surface" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Workroom Chats</h3>
+                    <p className="text-[11px] text-muted">{projects.length} Active Thread{projects.length !== 1 ? "s" : ""}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setShowSidePanel(!showSidePanel)}
+                    title="Toggle Escrow Snapshot"
+                    className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-surface-elevated/70 dark:hover:bg-[#2a3942] transition-colors"
+                  >
+                    <FiShield className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="overflow-y-auto flex-1 divide-y divide-slate-200/60 dark:divide-slate-800/60">
-                {projects.map((p) => {
-                  const isClientUser =
-                    p.clientId === user?.id || (p as any).clientId?._id === user?.id
-                  const threadPartner = isClientUser
-                    ? (p.freelancerName || "Assigned Freelancer")
-                    : (p.clientName || "Project Client")
+
+              {/* WhatsApp Search Bar */}
+              <div className="p-2.5 border-b border-border/40 bg-surface dark:bg-[#111b21]">
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-surface-elevated/80 dark:bg-[#202c33] border border-border/40 focus-within:border-primary/60 transition-colors">
+                  <FiSearch className="h-3.5 w-3.5 text-muted shrink-0" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search or start new chat..."
+                    className="w-full text-xs bg-transparent text-foreground placeholder:text-muted/60 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="text-muted hover:text-foreground text-xs">
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* WhatsApp Conversation List */}
+              <div className="flex-1 overflow-y-auto divide-y divide-border/20">
+                {filteredProjects.map((p) => {
+                  const isClientUser = p.clientId === user?.id || (p as any).clientId?._id === user?.id
+                  const threadPartner = isClientUser ? (p.freelancerName || "Assigned Freelancer") : (p.clientName || "Project Client")
+                  const isSelected = p.id === selected
 
                   return (
-                    <button
+                    <div
                       key={p.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleSelectProject(p.id)}
-                      className={`w-full p-4 text-left text-sm transition-colors ${
-                        p.id === selected
-                          ? "bg-blue-50 dark:bg-blue-950/30 border-l-4 border-blue-600 font-semibold"
-                          : "hover:bg-slate-100/80 dark:hover:bg-slate-800/50"
-                      }`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          handleSelectProject(p.id)
+                        }
+                      }}
+                      className={cn(
+                        "w-full p-3.5 text-left transition-colors flex items-center gap-3 cursor-pointer group relative",
+                        isSelected
+                          ? "bg-primary/10 dark:bg-[#2a3942] border-l-4 border-primary dark:border-[#00a884]"
+                          : "hover:bg-surface-elevated/60 dark:hover:bg-[#202c33]",
+                      )}
                     >
-                      <p className={`font-medium truncate ${p.id === selected ? "text-blue-700 dark:text-blue-300" : "text-slate-900 dark:text-slate-100"}`}>
-                        {p.title}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                        With {threadPartner}
-                      </p>
-                    </button>
+                      <div className="relative shrink-0">
+                        <Avatar name={threadPartner} size="md" />
+                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-surface" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <h4 className={cn("text-sm font-semibold truncate", isSelected ? "text-primary dark:text-[#00a884]" : "text-foreground")}>
+                            {p.title}
+                          </h4>
+                          <span className="text-[10px] text-muted font-mono shrink-0">
+                            {formatAmount(p.budget)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <p className="text-xs text-muted truncate">
+                            With <span className="text-foreground/90 font-medium">{threadPartner}</span>
+                          </p>
+                          <Badge
+                            tone={p.status === "completed" ? "success" : p.escrowFunded ? "info" : "neutral"}
+                            className="text-[9px] px-1.5 py-0 shrink-0 font-normal capitalize"
+                          >
+                            {p.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
                   )
                 })}
               </div>
             </aside>
 
-            {/* Center Chat Stream */}
-            <section className="flex min-h-[460px] flex-col bg-white dark:bg-[#0c1219]">
-              {/* Chat Header */}
-              <header className="border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/50">
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
-                    {activeProject?.title}
-                    <Badge tone="primary" className="text-[10px]">
-                      {activeProject?.status}
-                    </Badge>
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Workroom with {activeCounterpartyName}
-                  </p>
+            {/* WHATSAPP CENTER COLUMN: CHAT STREAM & INPUT */}
+            <section className="flex-1 flex flex-col min-w-0 bg-[#efeae2]/50 dark:bg-[#0b141a] relative">
+              {/* WhatsApp Active Chat Header */}
+              <header className="h-16 px-4 sm:px-6 flex items-center justify-between border-b border-border/60 bg-surface-elevated/70 dark:bg-[#202c33] backdrop-blur-sm z-10 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative shrink-0">
+                    <Avatar name={activeCounterpartyName} size="md" />
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-surface" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-foreground truncate flex items-center gap-2">
+                      {activeProject?.title}
+                      <span className="text-xs font-normal text-muted">•</span>
+                      <span className="text-xs font-semibold text-primary dark:text-[#00a884]">{activeCounterpartyName}</span>
+                    </h3>
+                    <p className="text-xs text-muted truncate flex items-center gap-1.5">
+                      {typingUser ? (
+                        <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          typing...
+                        </span>
+                      ) : (
+                        <span>Workroom Chat • Non-custodial Escrow Protected</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowSidePanel(!showSidePanel)}
-                  className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  {showSidePanel ? <FiChevronRight /> : <FiChevronLeft />} Escrow Info
-                </Button>
+
+                <div className="flex items-center gap-2">
+                  {selected && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate(`/projects/${selected}`)}
+                      className="text-xs text-muted hover:text-foreground hidden sm:flex items-center gap-1"
+                    >
+                      <span>Project Details</span>
+                      <FiExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSidePanel(!showSidePanel)}
+                    className="text-xs border-border/80 text-foreground hover:bg-surface-elevated flex items-center gap-1.5"
+                  >
+                    <FiShield className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>{showSidePanel ? "Hide Details" : "Escrow Info"}</span>
+                    {showSidePanel ? <FiChevronRight className="h-3.5 w-3.5" /> : <FiChevronLeft className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
               </header>
 
-              {/* Message Stream */}
-              <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 max-h-[420px] bg-white dark:bg-[#0c1219]">
+              {/* WhatsApp Chat Stream (Wall-paper Texture) */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 bg-[#efeae2]/60 dark:bg-[#0b141a]">
+                {/* WhatsApp Security Encryption Pill */}
+                <div className="mx-auto w-fit max-w-md rounded-xl bg-amber-100/80 dark:bg-[#182229] border border-amber-300/40 dark:border-border/60 px-3.5 py-1.5 text-center text-[11px] text-amber-900 dark:text-amber-200/90 shadow-xs flex items-center justify-center gap-1.5">
+                  <FiLock className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Messages and smart-contract settlements are verified on-chain via EIP-712 auth.</span>
+                </div>
+
                 {messages.map((m) => {
                   const currentUserId = user?.id || (user as any)?._id
                   const isMe = Boolean(
@@ -450,14 +584,18 @@ export function ChatPage() {
                     return (
                       <div
                         key={m.id}
-                        className="mx-auto my-2 max-w-md w-full rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 p-3 text-center text-xs text-blue-950 dark:text-blue-200 shadow-xs"
+                        className="mx-auto my-3 max-w-lg w-full rounded-2xl bg-white/95 dark:bg-[#182229] border border-border/80 p-3.5 text-center text-xs text-foreground shadow-sm"
                       >
-                        <div className="flex items-center justify-center gap-1.5 font-semibold text-blue-600 dark:text-blue-400 mb-0.5">
-                          <FiShield className="h-3.5 w-3.5" />
+                        <div className="flex items-center justify-center gap-1.5 font-semibold text-emerald-600 dark:text-[#00a884] mb-1">
+                          <FiShield className="h-4 w-4 shrink-0" />
                           <span>On-Chain Milestone Event</span>
                         </div>
-                        <p className="leading-relaxed">{m.content.replace("[SYSTEM_EVENT]", "").trim()}</p>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-1">{formatDate(m.createdAt)}</span>
+                        <p className="leading-relaxed text-foreground/90 font-medium">
+                          {m.content.replace("[SYSTEM_EVENT]", "").trim()}
+                        </p>
+                        <span className="text-[10px] text-muted block mt-1.5 font-mono">
+                          {formatDate(m.createdAt)}
+                        </span>
                       </div>
                     )
                   }
@@ -465,62 +603,102 @@ export function ChatPage() {
                   return (
                     <div
                       key={m.id}
-                      className={`flex flex-col max-w-[80%] ${isMe ? "self-end items-end" : "self-start items-start"}`}
-                    >
-                      {!isMe && (
-                        <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mb-1 px-1">
-                          {m.senderName || activeCounterpartyName}
-                        </span>
+                      className={cn(
+                        "flex flex-col max-w-[85%] sm:max-w-[70%]",
+                        isMe ? "ml-auto items-end" : "mr-auto items-start",
                       )}
+                    >
+                      {/* WhatsApp Speech Bubble */}
                       <div
-                        className={`rounded-2xl p-3.5 text-sm shadow-sm transition-colors ${
+                        className={cn(
+                          "relative px-4 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] transition-all",
                           isMe
-                            ? "bg-blue-600 dark:bg-blue-600 text-white rounded-br-none shadow-blue-500/10"
-                            : "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-bl-none shadow-slate-200/50 dark:shadow-none"
-                        }`}
+                            ? "bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-2xl rounded-tr-xs border border-[#c1f3b8] dark:border-transparent"
+                            : "bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-2xl rounded-tl-xs border border-border/50 dark:border-transparent",
+                        )}
                       >
+                        {!isMe && (
+                          <div className="text-[11px] font-bold text-emerald-700 dark:text-[#53bdeb] mb-1">
+                            {m.senderName || activeCounterpartyName}
+                          </div>
+                        )}
+
                         {m.type === "FILE" || m.fileUrl ? (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 font-medium">
-                              <FiFileText className={`h-4 w-4 ${isMe ? "text-blue-100" : "text-blue-600 dark:text-blue-400"}`} />
-                              <span className={`truncate ${isMe ? "text-white" : "text-slate-900 dark:text-slate-100"}`}>
-                                {m.content || m.fileMeta?.filename || "Attachment"}
-                              </span>
+                          <div className="space-y-2 min-w-[200px]">
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-black/5 dark:bg-black/20 border border-black/10 dark:border-white/10">
+                              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                <FiFileText className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-xs truncate">
+                                  {m.content || m.fileMeta?.filename || "Attachment"}
+                                </p>
+                                {m.fileMeta?.size && (
+                                  <p className="text-[10px] text-muted">
+                                    {(m.fileMeta.size / 1024).toFixed(0)} KB
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             <a
                               href={sanitizeUrl(m.fileUrl)}
                               target="_blank"
                               rel="noreferrer"
-                              className={`inline-flex items-center gap-1 text-xs hover:underline pt-1 ${
-                                isMe ? "text-blue-100 hover:text-white" : "text-blue-600 dark:text-blue-400 font-medium"
-                              }`}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 text-xs font-semibold hover:underline",
+                                isMe ? "text-emerald-800 dark:text-emerald-200" : "text-primary dark:text-[#53bdeb]",
+                              )}
                             >
-                              View / Download File <FiExternalLink className="h-3 w-3" />
+                              Download File <FiExternalLink className="h-3 w-3" />
                             </a>
                           </div>
                         ) : (
-                          <p className={`whitespace-pre-wrap leading-relaxed ${isMe ? "text-white" : "text-slate-900 dark:text-slate-100"}`}>
+                          <p className="whitespace-pre-wrap leading-relaxed text-sm break-words">
                             {m.content}
                           </p>
                         )}
+
+                        {/* WhatsApp Time & Double Checkmark (bottom-right inside bubble) */}
+                        <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-muted/80 font-mono">
+                          <span>{formatTime(m.createdAt)}</span>
+                          {isMe && (
+                            m.id.startsWith("temp-") ? (
+                              <FiClock className="h-3 w-3 text-muted shrink-0" />
+                            ) : m.read ? (
+                              <span className="text-[#53bdeb] font-bold flex tracking-tighter" title="Read">
+                                ✓✓
+                              </span>
+                            ) : (
+                              <span className="text-[#8696a0] font-bold flex tracking-tighter" title="Delivered">
+                                ✓✓
+                              </span>
+                            )
+                          )}
+                        </div>
                       </div>
-                      <span className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 px-1 font-medium">
-                        {formatDate(m.createdAt)} {isMe && (m.id.startsWith("temp-") ? "• Sending..." : m.read ? "• Read" : "• Sent")}
-                      </span>
                     </div>
                   )
                 })}
+
                 {typingUser && (
-                  <div className="text-xs text-blue-600 dark:text-blue-400 font-mono animate-pulse flex items-center gap-1">
-                    <FiClock className="h-3 w-3 animate-spin" /> {typingUser}
+                  <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 bg-white/70 dark:bg-[#202c33]/70 rounded-full w-fit shadow-xs animate-pulse">
+                    <span className="flex gap-1 items-center px-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
+                    </span>
+                    <span>{typingUser}</span>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Chat Input Bar */}
-              <div className="flex gap-2 border-t border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-[#0c1219] items-center">
-                <label className="cursor-pointer p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors" title="Attach file">
+              {/* WhatsApp Bottom Input Toolbar */}
+              <div className="p-3 bg-surface-elevated/60 dark:bg-[#202c33] border-t border-border/60 flex items-center gap-2.5 shrink-0">
+                <label
+                  className="cursor-pointer p-2.5 rounded-full text-muted hover:text-foreground hover:bg-surface-elevated dark:hover:bg-[#2a3942] transition-colors"
+                  title="Attach File or Deliverable"
+                >
                   <FiPaperclip className="h-5 w-5" />
                   <input
                     type="file"
@@ -530,84 +708,116 @@ export function ChatPage() {
                   />
                 </label>
 
-                <Textarea
-                  value={draft}
-                  onChange={(e) => handleDraftChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      send()
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Type a message or press Enter to send..."
-                  className="flex-1 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus-visible:ring-blue-600"
-                />
+                <div className="flex-1 relative flex items-center">
+                  <input
+                    type="text"
+                    value={draft}
+                    onChange={(e) => handleDraftChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        send()
+                      }
+                    }}
+                    placeholder="Type a message..."
+                    className="w-full rounded-full bg-surface dark:bg-[#2a3942] border border-border/60 px-4 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
+                  />
+                </div>
 
-                <Button
+                <button
+                  type="button"
                   aria-label="Send message"
                   onClick={send}
                   disabled={!draft.trim() || uploading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-colors"
+                  className={cn(
+                    "h-10 w-10 rounded-full flex items-center justify-center transition-all shrink-0 shadow-md",
+                    draft.trim()
+                      ? "bg-[#00a884] hover:bg-[#008f6f] text-white active:scale-95"
+                      : "bg-surface-elevated text-muted cursor-not-allowed",
+                  )}
                 >
-                  <FiSend />
-                </Button>
+                  <FiSend className="h-4 w-4 -translate-x-0.5 translate-y-0.5" />
+                </button>
               </div>
             </section>
 
-            {/* Collapsible Workroom Side Panel */}
+            {/* WHATSAPP RIGHT COLUMN: ESCROW SNAPSHOT & SECURITY DRAWER */}
             {showSidePanel && (
-              <aside className="w-64 border-l border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-5">
+              <aside className="w-full md:w-72 lg:w-80 border-t md:border-t-0 md:border-l border-border/60 flex flex-col bg-surface dark:bg-[#111b21] p-4 sm:p-5 space-y-5 overflow-y-auto shrink-0">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                    Escrow Snapshot
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5">
+                    <FiShield className="text-emerald-500" />
+                    <span>Escrow Snapshot</span>
                   </h4>
+
                   {snapshot ? (
-                    <div className="space-y-3 bg-white dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shadow-xs">
-                      <div>
-                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">TOTAL BUDGET</span>
-                        <span className="font-mono font-bold text-sm text-slate-900 dark:text-slate-100">
+                    <div className="space-y-3 bg-surface-elevated/50 dark:bg-[#202c33] p-4 rounded-2xl border border-border/60 text-xs shadow-xs">
+                      <div className="flex justify-between items-center pb-2.5 border-b border-border/40">
+                        <span className="text-[11px] text-muted">TOTAL BUDGET</span>
+                        <span className="font-mono font-bold text-sm text-foreground">
                           {formatAmount(snapshot.totalBudget)}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">PAID / RELEASED</span>
-                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="flex justify-between items-center pb-2.5 border-b border-border/40">
+                        <span className="text-[11px] text-muted">PAID / RELEASED</span>
+                        <span className="font-mono font-bold text-emerald-500">
                           {formatAmount(snapshot.releasedAmount)}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">UNRELEASED MILESTONES</span>
-                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                      <div className="flex justify-between items-center pb-2.5 border-b border-border/40">
+                        <span className="text-[11px] text-muted">UNRELEASED</span>
+                        <span className="font-mono font-bold text-primary">
                           {formatAmount(snapshot.unreleasedAmount)}
                         </span>
                       </div>
-                      <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                        <Badge tone={snapshot.escrowFunded ? "success" : "warning"} className="w-full justify-center">
-                          {snapshot.escrowFunded ? "Escrow Funded" : "Unfunded Draft"}
+                      <div className="pt-1">
+                        <Badge
+                          tone={snapshot.escrowFunded ? "success" : "warning"}
+                          className="w-full justify-center py-1 text-xs"
+                        >
+                          {snapshot.escrowFunded ? "Escrow Funded ✓" : "Unfunded Draft ⚠️"}
                         </Badge>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Loading snapshot...</p>
+                    <div className="p-4 rounded-2xl border border-border/60 bg-surface-elevated/30 text-xs text-muted flex items-center gap-2">
+                      <FiClock className="h-4 w-4 animate-spin text-primary" />
+                      <span>Loading escrow state...</span>
+                    </div>
                   )}
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                    Workroom Security
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5">
+                    <FiLock className="text-primary" />
+                    <span>Workroom Security</span>
                   </h4>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
-                    <p className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <FiShield className="h-3.5 w-3.5" /> EIP-712 Encrypted Auth
-                    </p>
-                    <p className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <FiCheckCircle className="h-3.5 w-3.5" /> Reconciled Milestones
+                  <div className="p-4 rounded-2xl border border-border/60 bg-surface-elevated/40 space-y-2.5 text-xs text-muted">
+                    <div className="flex items-center gap-2 text-foreground font-medium">
+                      <FiCheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span>EIP-712 Encrypted Auth</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-foreground font-medium">
+                      <FiCheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span>Reconciled Milestones</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed pt-1 border-t border-border/40 text-muted">
+                      Funds are held in non-custodial smart contracts on Sepolia and released only upon client approval.
                     </p>
                   </div>
                 </div>
-              </aside>
 
+                {selected && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/projects/${selected}`)}
+                    className="w-full text-xs"
+                  >
+                    View Full Project &amp; Milestones
+                  </Button>
+                )}
+              </aside>
             )}
           </div>
         ) : (

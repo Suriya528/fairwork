@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom"
 import { FiShield } from "react-icons/fi"
 import { Card, CardBody } from "@/components/ui/Card"
 import { Progress } from "@/components/ui/Progress"
@@ -22,6 +23,84 @@ const escrowLabel = (project: ApiProject): string => {
 }
 
 export function ActiveContracts({ projects, role }: { projects: ApiProject[]; role: "client" | "freelancer" }) {
+  const navigate = useNavigate()
   const active = projects.filter((project) => project.status === "in_progress" || project.status === "disputed")
-  return <section className="flex flex-col gap-4"><SectionHeading id="active-contracts-heading" title="Active projects" description={role === "client" ? "Projects currently underway" : "Assigned work currently underway"} actionLabel="View projects" actionTo="/projects/mine" />{active.length ? <div className="grid gap-4 md:grid-cols-2">{active.map((project) => { const released = project.milestones.filter((milestone) => milestone.paymentReleased).length; const progress = project.milestones.length ? released / project.milestones.length * 100 : 0; return <Card key={project.id} interactive><CardBody className="space-y-4 p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold">{project.title}</p><p className="truncate text-xs text-subtle">{role === "client" ? project.freelancerName ?? "Freelancer not assigned" : project.clientName ?? "Client unavailable"}</p></div><ProjectStatusBadge status={project.status} /></div><div className="space-y-2"><div className="flex justify-between text-xs text-muted"><span>Released milestones</span><span>{released}/{project.milestones.length}</span></div><Progress className="mt-1.5" value={progress} tone={project.escrowDisputed ? "danger" : "primary"} /></div><Badge tone={escrowTone(project)} dot>{escrowLabel(project)}</Badge></CardBody></Card> })}</div> : <EmptyState icon={FiShield} title="No active projects" description={role === "client" ? "Projects in progress will appear here." : "Projects assigned to you will appear here."} />}</section>
+  return (
+    <section className="flex flex-col gap-4">
+      <SectionHeading
+        id="active-contracts-heading"
+        title="Active projects"
+        description={role === "client" ? "Projects currently underway" : "Assigned work currently underway"}
+        actionLabel="View projects"
+        actionTo="/projects/mine"
+      />
+      {active.length ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {active.map((project) => {
+            const released = project.milestones.filter((milestone) => milestone.paymentReleased).length
+            const progress = project.milestones.length ? (released / project.milestones.length) * 100 : 0
+            return (
+              <Card
+                key={project.id}
+                interactive
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/projects/${project.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    navigate(`/projects/${project.id}`)
+                  }
+                }}
+                className="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
+              >
+                <CardBody className="space-y-4 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground hover:text-primary transition-colors">
+                        {project.title}
+                      </p>
+                      <p className="truncate text-xs text-subtle">
+                        {role === "client"
+                          ? project.freelancerName ?? "Freelancer not assigned"
+                          : project.clientName ?? "Client unavailable"}
+                      </p>
+                    </div>
+                    <ProjectStatusBadge status={project.status} />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-muted">
+                      <span>Released milestones</span>
+                      <span>
+                        {released}/{project.milestones.length}
+                      </span>
+                    </div>
+                    <Progress
+                      className="mt-1.5"
+                      value={progress}
+                      tone={project.escrowDisputed ? "danger" : "primary"}
+                    />
+                  </div>
+                  <Badge tone={escrowTone(project)} dot>
+                    {escrowLabel(project)}
+                  </Badge>
+                </CardBody>
+              </Card>
+            )
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          icon={FiShield}
+          title="No active projects"
+          description={
+            role === "client"
+              ? "Projects in progress will appear here."
+              : "Projects assigned to you will appear here."
+          }
+        />
+      )}
+    </section>
+  )
 }
+

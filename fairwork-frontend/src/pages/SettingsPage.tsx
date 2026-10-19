@@ -472,8 +472,6 @@ export function SettingsPage() {
               <FiUser className="text-primary-400" />{" "}
               {isAdmin
                 ? "Administrator Identity & Platform Responsibilities"
-                : isClient
-                ? "Company & Hirer Profile Information"
                 : "Profile & Professional Reputation Information"}
             </CardTitle>
             <CardDescription>

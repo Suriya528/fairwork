@@ -79,3 +79,17 @@ exports.getReviews = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+exports.getProjectReview = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const existing = await Review.findOne({ projectId, reviewerId: req.user.id });
+    res.json({
+      hasReviewed: Boolean(existing),
+      review: existing || null,
+    });
+  } catch (err) {
+    console.error("[ReviewController] getProjectReview error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

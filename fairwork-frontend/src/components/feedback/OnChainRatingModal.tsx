@@ -13,6 +13,11 @@ export interface OnChainRatingModalProps {
   revieweeId: string
   revieweeName: string
   revieweeAddress?: string
+  existingReview?: {
+    rating: number
+    comment: string
+    createdAt?: string
+  } | null
   onSuccess?: () => void
 }
 
@@ -24,16 +29,18 @@ export function OnChainRatingModal({
   revieweeId,
   revieweeName,
   revieweeAddress,
+  existingReview,
   onSuccess,
 }: OnChainRatingModalProps) {
   const { token } = useAuth()
   const { toast } = useToast()
 
-  const [rating, setRating] = useState(5)
+  const [rating, setRating] = useState(existingReview?.rating || 5)
   const [hoverRating, setHoverRating] = useState(0)
-  const [comment, setComment] = useState("")
+  const [comment, setComment] = useState(existingReview?.comment || "")
   const [submitOnChain, setSubmitOnChain] = useState(Boolean(revieweeAddress))
   const [submitting, setSubmitting] = useState(false)
+  const hasAlreadyReviewed = Boolean(existingReview)
 
   if (!isOpen) return null
 
@@ -135,127 +142,165 @@ export function OnChainRatingModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-4">
-          {/* Star Rating Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-              Performance Rating (1 - 5 Stars)
-            </label>
-            <div className="flex items-center gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className="p-1.5 transition-transform hover:scale-110 focus:outline-none"
-                >
+        {hasAlreadyReviewed ? (
+          <div className="space-y-4 pt-4">
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 space-y-1.5">
+              <div className="font-semibold text-sm flex items-center gap-1.5 text-emerald-400">
+                <FiCheck className="w-4 h-4" /> Review Already Submitted
+              </div>
+              <p className="text-muted">
+                You have already submitted a review for this project. Reviews are immutable and can only be submitted once per project to maintain on-chain reputation integrity.
+              </p>
+            </div>
+
+            <div className="space-y-3 p-4 rounded-xl bg-surface-elevated/40 border border-border/60">
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
                   <FiStar
-                    className={`w-7 h-7 ${
-                      (hoverRating || rating) >= star
-                        ? "text-amber-400 fill-amber-400 drop-shadow"
-                        : "text-muted/30"
+                    key={star}
+                    className={`w-5 h-5 ${
+                      rating >= star ? "text-amber-400 fill-amber-400" : "text-muted/30"
                     }`}
                   />
-                </button>
-              ))}
-              <span className="ml-3 text-sm font-bold text-foreground">
-                {rating} of 5 Stars
-              </span>
+                ))}
+                <span className="ml-2 text-sm font-bold text-foreground">{rating} / 5 Stars</span>
+              </div>
+              {comment && (
+                <p className="text-xs text-foreground/90 italic bg-base p-3 rounded-lg border border-border/40">
+                  &ldquo;{comment}&rdquo;
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button type="button" variant="primary" size="sm" onClick={onClose}>
+                Close
+              </Button>
             </div>
           </div>
-
-          {/* Written Feedback */}
-          <div>
-            <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">
-              Review Notes &amp; Testimonial
-            </label>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder={`Share details about your collaboration with ${revieweeName}...`}
-              rows={3}
-              maxLength={1000}
-              className="w-full text-sm bg-base border border-border/80 rounded-xl px-3.5 py-2.5 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
-            />
-          </div>
-
-          {/* On-Chain Sepolia Toggle */}
-          {revieweeAddress ? (
-            <div className="p-3.5 rounded-xl bg-surface-elevated/60 border border-border/80 space-y-2">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={submitOnChain}
-                  onChange={(e) => setSubmitOnChain(e.target.checked)}
-                  className="mt-0.5 rounded border-border text-primary focus:ring-primary h-4 w-4"
-                />
-                <div className="text-xs">
-                  <div className="font-semibold text-foreground flex items-center gap-1.5">
-                    Record to Sepolia Blockchain
-                    <span className="text-[10px] px-1.5 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-mono">
-                      ReputationContract.sol
-                    </span>
-                  </div>
-                  <p className="text-muted mt-0.5">
-                    Writes an immutable rating to the verified on-chain accumulator. Non-transferable &amp; permanent proof of performance.
-                  </p>
-                </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5 pt-4">
+            {/* Star Rating Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Performance Rating (1 - 5 Stars)
               </label>
-
-              {reputationAddress && submitOnChain && (
-                <div className="text-[11px] text-muted flex items-center justify-between pt-1 border-t border-border/40 font-mono">
-                  <span>Target: {revieweeAddress.slice(0, 8)}...{revieweeAddress.slice(-6)}</span>
-                  <a
-                    href={`https://sepolia.etherscan.io/address/${reputationAddress}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline flex items-center gap-1"
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="p-1.5 transition-transform hover:scale-110 focus:outline-none"
                   >
-                    Contract <FiExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                </div>
-              )}
+                    <FiStar
+                      className={`w-7 h-7 ${
+                        (hoverRating || rating) >= star
+                          ? "text-amber-400 fill-amber-400 drop-shadow"
+                          : "text-muted/30"
+                      }`}
+                    />
+                  </button>
+                ))}
+                <span className="ml-3 text-sm font-bold text-foreground">
+                  {rating} of 5 Stars
+                </span>
+              </div>
             </div>
-          ) : (
-            <div className="p-3 rounded-xl bg-surface-elevated/40 border border-border/40 text-xs text-muted">
-              Counterparty has not linked an Ethereum wallet yet. Review will be recorded within FairWork.
-            </div>
-          )}
 
-          {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={submitting}
-              className="bg-primary hover:bg-primary-hover text-white font-medium"
-            >
-              {submitting ? (
-                <>
-                  <FiLoader className="w-4 h-4 animate-spin mr-2" />
-                  {submitOnChain ? "Signing on Sepolia..." : "Saving Review..."}
-                </>
-              ) : (
-                <>
-                  <FiCheck className="w-4 h-4 mr-1.5" />
-                  Submit Rating
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+            {/* Written Feedback */}
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">
+                Review Notes &amp; Testimonial
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={`Share details about your collaboration with ${revieweeName}...`}
+                rows={3}
+                maxLength={1000}
+                className="w-full text-sm bg-base border border-border/80 rounded-xl px-3.5 py-2.5 text-foreground placeholder:text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
+              />
+            </div>
+
+            {/* On-Chain Sepolia Toggle */}
+            {revieweeAddress ? (
+              <div className="p-3.5 rounded-xl bg-surface-elevated/60 border border-border/80 space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={submitOnChain}
+                    onChange={(e) => setSubmitOnChain(e.target.checked)}
+                    className="mt-0.5 rounded border-border text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <div className="text-xs">
+                    <div className="font-semibold text-foreground flex items-center gap-1.5">
+                      Record to Sepolia Blockchain
+                      <span className="text-[10px] px-1.5 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-mono">
+                        ReputationContract.sol
+                      </span>
+                    </div>
+                    <p className="text-muted mt-0.5">
+                      Writes an immutable rating to the verified on-chain accumulator. Non-transferable &amp; permanent proof of performance.
+                    </p>
+                  </div>
+                </label>
+
+                {reputationAddress && submitOnChain && (
+                  <div className="text-[11px] text-muted flex items-center justify-between pt-1 border-t border-border/40 font-mono">
+                    <span>Target: {revieweeAddress.slice(0, 8)}...{revieweeAddress.slice(-6)}</span>
+                    <a
+                      href={`https://sepolia.etherscan.io/address/${reputationAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline flex items-center gap-1"
+                    >
+                      Contract <FiExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-surface-elevated/40 border border-border/40 text-xs text-muted">
+                Counterparty has not linked an Ethereum wallet yet. Review will be recorded within FairWork.
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={submitting}
+                className="bg-primary hover:bg-primary-hover text-white font-medium"
+              >
+                {submitting ? (
+                  <>
+                    <FiLoader className="w-4 h-4 animate-spin mr-2" />
+                    {submitOnChain ? "Signing on Sepolia..." : "Saving Review..."}
+                  </>
+                ) : (
+                  <>
+                    <FiCheck className="w-4 h-4 mr-1.5" />
+                    Submit Rating
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

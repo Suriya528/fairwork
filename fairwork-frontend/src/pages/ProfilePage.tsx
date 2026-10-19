@@ -8,6 +8,7 @@ import {
   FiSettings,
   FiStar,
   FiShield,
+  FiArrowRight,
   FiGlobe,
   FiGithub,
   FiLinkedin,
@@ -134,6 +135,24 @@ export function ProfilePage() {
     completedMilestonesCount: completedCount * 2,
     ratingCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
   }
+
+  const workHistoryList = useMemo(() => {
+    if (publicData?.workHistory && publicData.workHistory.length > 0) {
+      return publicData.workHistory
+    }
+    return projects
+      .filter((p) => p.status === "completed")
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        budget: p.budget,
+        milestonesCount: p.milestones?.length || 0,
+        escrowTxnHash: p.escrowTxnHash || "",
+        etherscanUrl: p.escrowTxnHash ? `https://sepolia.etherscan.io/tx/${p.escrowTxnHash}` : null,
+        completedAt: (p as any).updatedAt || new Date().toISOString(),
+      }))
+  }, [publicData?.workHistory, projects])
 
   // Profile completeness calculation for self-view
   const completeness = useMemo(() => {
@@ -787,7 +806,7 @@ export function ProfilePage() {
               >
                 On-Chain Work History
                 <Badge tone="neutral" className="text-[10px]">
-                  {publicData?.workHistory?.length || completedCount}
+                  {workHistoryList.length}
                 </Badge>
               </button>
 
@@ -1139,22 +1158,44 @@ export function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              {publicData?.workHistory && publicData.workHistory.length > 0 ? (
+              {workHistoryList.length > 0 ? (
                 <div className="divide-y divide-border/60">
-                  {publicData.workHistory.map((item) => (
-                    <div key={item.id} className="py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h4 className="font-semibold text-foreground text-sm">{item.title}</h4>
-                        <div className="flex items-center gap-3 text-xs text-muted mt-1 flex-wrap">
+                  {workHistoryList.map((item) => (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/projects/${item.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          navigate(`/projects/${item.id}`)
+                        }
+                      }}
+                      className="py-4.5 px-3 -mx-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group hover:bg-surface-elevated/60 transition-all border border-transparent hover:border-border/60"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate">
+                            {item.title}
+                          </h4>
+                          <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            View Details <FiArrowRight className="h-3 w-3" />
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted mt-1.5 flex-wrap">
                           <span className="font-medium text-foreground">{item.category}</span>
                           <span>•</span>
-                          <span>{item.milestonesCount} Milestones Verified</span>
+                          <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                            <FiCheckCircle className="h-3 w-3" />
+                            {item.milestonesCount} Milestones Settled
+                          </span>
                           <span>•</span>
                           <span>Completed {formatDate(item.completedAt)}</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 self-end sm:self-center">
+                      <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
                         <span className="font-mono font-extrabold text-emerald-400 text-sm">
                           {formatAmount(item.budget)}
                         </span>
@@ -1163,11 +1204,23 @@ export function ProfilePage() {
                             href={sanitizeUrl(item.etherscanUrl)}
                             target="_blank"
                             rel="noopener noreferrer nofollow"
+                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 text-xs text-primary-400 hover:underline font-mono bg-primary-500/10 border border-primary-500/30 px-2.5 py-1 rounded-lg transition-colors hover:bg-primary-500/20"
                           >
                             Sepolia Etherscan <FiExternalLink className="h-3 w-3" />
                           </a>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/projects/${item.id}`)
+                          }}
+                          className="h-8 px-2.5 text-xs text-muted group-hover:text-primary group-hover:bg-primary/10"
+                        >
+                          Details <FiArrowRight className="ml-1 h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
                   ))}
