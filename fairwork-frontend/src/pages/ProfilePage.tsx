@@ -695,21 +695,25 @@ export function ProfilePage() {
               label="Total Spent"
               value={formatAmount(stats.totalSpentUSDC || totalVolume)}
               icon={FiDollarSign}
+              to={isPublicView ? undefined : "/transactions"}
             />
             <MetricCard
               label="Projects Commissioned"
               value={String(isPublicView && publicData ? publicData.stats.completedProjectsCount : projects.length)}
               icon={FiFolder}
+              to={isPublicView ? undefined : "/projects/mine"}
             />
             <MetricCard
               label="Milestones Settled"
               value={String(stats.completedMilestonesCount || completedCount * 2)}
               icon={FiCheckCircle}
+              to={isPublicView ? undefined : "/milestones"}
             />
             <MetricCard
               label="Payment Reliability"
               value="100% Escrow"
               icon={FiShield}
+              to={isPublicView ? undefined : "/escrow"}
             />
           </div>
         ) : (
@@ -718,6 +722,7 @@ export function ProfilePage() {
               label="Total Earned"
               value={formatAmount(stats.totalEarnedUSDC || totalVolume)}
               icon={FiDollarSign}
+              to={isPublicView ? undefined : "/wallet"}
             />
             <MetricCard
               label="Job Satisfaction"
@@ -728,11 +733,13 @@ export function ProfilePage() {
               label="Completed Milestones"
               value={String(stats.completedMilestonesCount || completedCount)}
               icon={FiCheckCircle}
+              to={isPublicView ? undefined : "/milestones"}
             />
             <MetricCard
               label="Active Contracts"
               value={String(activeCount)}
               icon={FiFolder}
+              to={isPublicView ? undefined : "/projects/mine?filter=in_progress"}
             />
           </div>
         )}

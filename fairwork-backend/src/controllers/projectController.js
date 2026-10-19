@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const User = require("../models/User");
 const { recordActivitySafely } = require("../services/activityService");
@@ -6,6 +7,7 @@ const { canAccessProject } = require("../services/projectAccess");
 const { sendErrorResponse } = require("../utils/errorResponse");
 
 async function projectForParty(projectId, userId) {
+  if (!mongoose.isValidObjectId(projectId)) return { error: { status: 404, message: "Project not found" } };
   const project = await Project.findById(projectId);
   if (!project) return { error: { status: 404, message: "Project not found" } };
   if (!await canAccessProject(project, userId)) return { error: { status: 403, message: "You do not have access to this project's files" } };
@@ -133,12 +135,18 @@ exports.getAllProjects = async (req, res) => {
 
 exports.getProject = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Project not found" });
+    }
     const project = await Project.findById(req.params.id)
       .populate("clientId", "firstName lastName walletAddress")
       .populate("freelancerId", "firstName lastName walletAddress");
     if (!project) return res.status(404).json({ message: "Project not found" });
     res.json(project);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Project not found" });
+    }
     console.error("[ProjectController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }

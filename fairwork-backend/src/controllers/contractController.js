@@ -20,6 +20,9 @@ const populateContractQuery = (query) =>
 exports.generateContract = async (req, res) => {
   try {
     const { projectId } = req.body;
+    if (!projectId || !mongoose.isValidObjectId(projectId)) {
+      return res.status(400).json({ message: "Valid projectId is required" });
+    }
     const project = await Project.findById(projectId).populate("clientId", "firstName lastName email");
 
     if (!project) return res.status(404).json({ message: "Project not found" });
@@ -138,16 +141,17 @@ Either party may initiate dispute resolution or contract termination through the
 exports.getContract = async (req, res) => {
   try {
     const paramId = req.params.id;
-    let query;
-    if (mongoose.isValidObjectId(paramId)) {
-      query = { $or: [{ _id: paramId }, { projectId: paramId }] };
-    } else {
-      query = { projectId: paramId };
+    if (!paramId || !mongoose.isValidObjectId(paramId)) {
+      return res.status(404).json({ message: "Contract not found" });
     }
+    const query = { $or: [{ _id: paramId }, { projectId: paramId }] };
     const contract = await populateContractQuery(Contract.findOne(query));
     if (!contract) return res.status(404).json({ message: "Contract not found" });
     res.json(contract);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Contract not found" });
+    }
     console.error("[ContractController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -155,10 +159,16 @@ exports.getContract = async (req, res) => {
 
 exports.getContractByProjectId = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.projectId)) {
+      return res.status(404).json({ message: "Contract not found" });
+    }
     const contract = await populateContractQuery(Contract.findOne({ projectId: req.params.projectId }));
     if (!contract) return res.status(404).json({ message: "Contract not found" });
     res.json(contract);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Contract not found" });
+    }
     console.error("[ContractController] getContractByProjectId error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -166,6 +176,9 @@ exports.getContractByProjectId = async (req, res) => {
 
 exports.signContract = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Contract not found" });
+    }
     const existing = await Contract.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: "Contract not found" });
 
@@ -197,6 +210,9 @@ exports.signContract = async (req, res) => {
 
     res.json(updated);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Contract not found" });
+    }
     console.error("[ContractController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }

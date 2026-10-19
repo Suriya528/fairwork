@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { reconcileEscrowFunding, reconcileMilestoneRelease } = require("../services/reconciliationService");
 
 /**
@@ -11,7 +12,7 @@ const { reconcileEscrowFunding, reconcileMilestoneRelease } = require("../servic
 exports.depositEscrow = async (req, res) => {
   try {
     const { projectId, txnHash } = req.body;
-    if (!projectId) return res.status(400).json({ message: "projectId is required" });
+    if (!projectId || !mongoose.isValidObjectId(projectId)) return res.status(400).json({ message: "Valid projectId is required" });
     if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 
     const project = await reconcileEscrowFunding(projectId, txnHash, req.user.id);
@@ -34,7 +35,7 @@ exports.depositEscrow = async (req, res) => {
 exports.releaseEscrow = async (req, res) => {
   try {
     const { projectId, milestoneIndex, txnHash } = req.body;
-    if (!projectId) return res.status(400).json({ message: "projectId is required" });
+    if (!projectId || !mongoose.isValidObjectId(projectId)) return res.status(400).json({ message: "Valid projectId is required" });
     if (milestoneIndex === undefined || milestoneIndex === null) return res.status(400).json({ message: "milestoneIndex is required" });
     if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 

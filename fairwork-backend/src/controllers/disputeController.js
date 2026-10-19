@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Dispute = require("../models/Dispute");
 const Project = require("../models/Project");
 const { recordActivitySafely } = require("../services/activityService");
@@ -5,6 +6,9 @@ const { recordActivitySafely } = require("../services/activityService");
 exports.raiseDispute = async (req, res) => {
   try {
     const { projectId, reason } = req.body;
+    if (!projectId || !mongoose.isValidObjectId(projectId)) {
+      return res.status(404).json({ message: "Project not found" });
+    }
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
 
@@ -43,6 +47,9 @@ exports.raiseDispute = async (req, res) => {
 
     res.status(201).json(dispute);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Project not found" });
+    }
     console.error("[DisputeController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -55,6 +62,9 @@ exports.voteDispute = async (req, res) => {
       return res.status(400).json({ message: "Vote must be either 'client' or 'freelancer'." });
     }
 
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     const dispute = await Dispute.findById(req.params.id);
     if (!dispute) return res.status(404).json({ message: "Dispute not found" });
 
@@ -91,6 +101,10 @@ exports.resolveDispute = async (req, res) => {
       return res.status(403).json({ message: "Only administrators can resolve disputes" });
     }
 
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
+
     const dispute = await Dispute.findByIdAndUpdate(
       req.params.id,
       { status: "resolved", winner },
@@ -115,9 +129,14 @@ exports.resolveDispute = async (req, res) => {
           disputeId: dispute._id,
         });
       }
+    } else {
+      return res.status(404).json({ message: "Dispute not found" });
     }
     res.json(dispute);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     console.error("[DisputeController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -125,10 +144,16 @@ exports.resolveDispute = async (req, res) => {
 
 exports.getDispute = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.projectId)) {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     const dispute = await Dispute.findOne({ projectId: req.params.projectId })
       .populate("raisedBy", "firstName lastName");
     res.json(dispute);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     console.error("[DisputeController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -140,6 +165,9 @@ exports.getDispute = async (req, res) => {
  */
 exports.evaluateDisputeWithAI = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     const dispute = await Dispute.findById(req.params.id);
     if (!dispute) return res.status(404).json({ message: "Dispute not found" });
 
@@ -210,6 +238,9 @@ exports.evaluateDisputeWithAI = async (req, res) => {
 
     res.json(dispute);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     console.error("[DisputeController] AI evaluation error:", err);
     res.status(500).json({ message: "Failed to evaluate dispute with AI." });
   }
@@ -221,6 +252,9 @@ exports.evaluateDisputeWithAI = async (req, res) => {
  */
 exports.acceptAiRecommendation = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     const dispute = await Dispute.findById(req.params.id);
     if (!dispute) return res.status(404).json({ message: "Dispute not found" });
 
@@ -320,6 +354,9 @@ exports.acceptAiRecommendation = async (req, res) => {
     await dispute.save();
     res.json({ dispute, settled });
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Dispute not found" });
+    }
     console.error("[DisputeController] accept AI error:", err);
     res.status(500).json({ message: "Internal server error" });
   }

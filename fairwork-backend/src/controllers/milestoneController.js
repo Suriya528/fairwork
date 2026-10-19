@@ -26,6 +26,10 @@ exports.approveAndReleaseMilestone = async (req, res) => {
     const { id: projectId, milestoneId } = req.params;
     const { releaseTxHash, fundTxHash } = req.body;
 
+    if (!projectId || !mongoose.isValidObjectId(projectId)) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
 
@@ -151,6 +155,9 @@ exports.approveAndReleaseMilestone = async (req, res) => {
       ...(fundTxHash ? { fundTxHash } : {}),
     });
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Project or milestone not found" });
+    }
     console.error("[MilestoneController] approveAndReleaseMilestone error:", err);
     res.status(err.status || 500).json({ message: err.message || "Internal server error" });
   }

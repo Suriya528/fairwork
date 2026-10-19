@@ -4,23 +4,79 @@ const { execSync } = require('child_process');
 
 const docsDir = path.join(__dirname, '..', 'docs');
 const figuresDir = path.join(docsDir, 'figures');
-const logoPath = path.join(docsDir, 'srm_logo.png');
+const logoPath = path.join(docsDir, 'srm_logo_hd.png');
 
-const PAGE_BREAK = '<br clear="all" style="page-break-before:always; mso-break-type:section-break;" />';
+const SECTION_BREAK = '<br clear="all" style="page-break-before:always; mso-break-type:section-break;" />';
 
-// Helper to format image tag with caption
-function renderFigure(imageName, figNumber, caption, textAnalysis = '') {
+const imageDimensions = {
+  // Suriya Diagrams & Figures
+  "fig_arch_suriya.png": { width: 2400, height: 1440, ratio: 1.667 },
+  "fig_dfd_lvl0_suriya.png": { width: 2400, height: 1240, ratio: 1.935 },
+  "fig_dfd_lvl1_suriya.png": { width: 2400, height: 1360, ratio: 1.765 },
+  "fig_dfd_lvl2_suriya.png": { width: 2400, height: 1360, ratio: 1.765 },
+  "fig_financial_er_model.png": { width: 2400, height: 1844, ratio: 1.302 },
+  "fig_escrow_statemachine.png": { width: 2400, height: 1040, ratio: 2.308 },
+  "fig_refund_timelock_flow.png": { width: 2400, height: 1120, ratio: 2.143 },
+  "fig_generation_fencing_seq.png": { width: 2400, height: 1120, ratio: 2.143 },
+  "fig_dispute_consensus_pipeline.png": { width: 2400, height: 1120, ratio: 2.143 },
+
+  // Vignesh Diagrams & Figures
+  "fig_arch_vignesh.png": { width: 2400, height: 1440, ratio: 1.667 },
+  "fig_frontend_dfd_lvl0.png": { width: 2400, height: 1240, ratio: 1.935 },
+  "fig_frontend_dfd_lvl1.png": { width: 2400, height: 1360, ratio: 1.765 },
+  "fig_client_escrow_flow.png": { width: 2400, height: 1120, ratio: 2.143 },
+  "fig_freelancer_ci_seq.png": { width: 2400, height: 1120, ratio: 2.143 },
+  "fig_dispute_consensus_state.png": { width: 2400, height: 1040, ratio: 2.308 },
+
+  // Live Application Screenshots (High-Resolution Pristine Light Mode)
+  "screenshot_landing_page.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_projects_marketplace.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_project_workspace.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_milestones_studio.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_ask_ai_chat.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_wallet_escrow.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_wallet_required_banner.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_contracts_registry.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_disputes_consensus.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_wallet_escrow_balances.png": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_project_detail_mobile.jpg": { width: 2880, height: 1800, ratio: 1.600 },
+  "screenshot_ask_ai_chat.jpg": { width: 2880, height: 1800, ratio: 1.600 }
+};
+
+// Helper to format image tag with caption (renders as clean block div, not a table)
+function renderFigure(imageName, figNumber, caption) {
   const imgPath = path.join(figuresDir, imageName);
-  let html = `
-<div class="figure-container">
-  <div class="figure-img-box">
-    <img src="${imgPath}" alt="${caption}" />
-  </div>
-  <p class="figure-caption"><strong>Figure ${figNumber}:</strong> ${caption}</p>
-</div>`;
-  if (textAnalysis) {
-    html += `\n<p style="text-align: justify; font-size: 11pt; color: #1e293b; margin-top: 4pt; margin-bottom: 10pt;">${textAnalysis}</p>\n`;
+  const info = imageDimensions[imageName] || { ratio: 1.6 };
+  let targetWidthPt, targetHeightPt;
+
+  if (imageName.startsWith('screenshot_')) {
+    // Large application screenshots: 395pt width (91.2% of printable page width)
+    // Allows two screenshots + captions + descriptions to fit cleanly on one page (total ~610pt < 698pt usable height)
+    targetWidthPt = 395;
+    targetHeightPt = Math.round(targetWidthPt / info.ratio); // 247 pt
+  } else if (info.ratio >= 1.8) {
+    // Wide diagrams (DFD Level 0, sequence diagrams, state machines)
+    targetWidthPt = 415;
+    targetHeightPt = Math.round(targetWidthPt / info.ratio);
+  } else if (info.ratio >= 1.5) {
+    // Architecture and standard diagrams
+    targetWidthPt = 415;
+    targetHeightPt = Math.round(targetWidthPt / info.ratio);
+  } else {
+    // Taller models (ER model: ratio 1.302)
+    targetWidthPt = 390;
+    targetHeightPt = Math.round(targetWidthPt / info.ratio);
   }
+
+  const imgBorder = imageName.startsWith('screenshot_') ? 'border: 1px solid #000000;' : '';
+
+  let html = `
+<div class="figure-container" style="text-align: center; margin-top: 2pt; margin-bottom: 2pt; page-break-inside: avoid !important;">
+  <p align="center" style="text-align: center; margin: 0 auto; line-height: 1.0; mso-line-height-rule: exactly; page-break-inside: avoid; page-break-after: avoid; mso-keep-with-next: yes;">
+    <img src="${imgPath}" alt="${caption}" style="width: ${targetWidthPt}pt; max-width: 100%; height: auto; display: block; margin: 0 auto; ${imgBorder}" />
+  </p>
+  <p align="center" class="figure-caption" style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; color: #000000; margin-top: 2pt; margin-bottom: 2pt; line-height: 1.15; page-break-before: avoid; page-break-after: avoid; mso-keep-with-next: yes;">Figure ${figNumber}: ${caption}</p>
+</div>`;
   return html;
 }
 
@@ -34,38 +90,35 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
   let inTable = false;
   let tableBuffer = [];
   let inList = false;
-  let listType = '';
+  let listItems = [];
 
   function flushList() {
-    if (inList) {
-      htmlLines.push(`</${listType}>`);
+    if (inList && listItems.length > 0) {
+      htmlLines.push('<ul style="margin-left: 20pt; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">');
+      for (const item of listItems) {
+        htmlLines.push(`  <li style="margin-bottom: 3pt; text-align: justify; font-size: 12pt; line-height: 1.5;">${item}</li>`);
+      }
+      htmlLines.push('</ul>');
+      listItems = [];
       inList = false;
-      listType = '';
     }
   }
 
   function flushTable() {
-    if (inTable) {
-      let tableHtml = '<table class="academic-table">\n';
-      tableBuffer.forEach((row, idx) => {
-        const cells = row.split('|').map(c => c.trim()).filter((c, i, arr) => i > 0 && i < arr.length - 1);
-        if (cells.every(c => /^:?-+:?$/.test(c))) return;
-        const tag = idx === 0 ? 'th' : 'td';
-        tableHtml += '  <tr>\n';
-        cells.forEach(cell => {
-          tableHtml += `    <${tag}>${formatInline(cell)}</${tag}>\n`;
-        });
-        tableHtml += '  </tr>\n';
-      });
-      tableHtml += '</table>\n';
-      htmlLines.push(tableHtml);
-      inTable = false;
+    if (inTable && tableBuffer.length > 0) {
+      htmlLines.push(convertMarkdownTableToHtml(tableBuffer));
       tableBuffer = [];
+      inTable = false;
     }
   }
 
   function formatInline(text) {
     return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\\([$])/g, '$1')
+      .replace(/\$([^\$]+)\$/g, '$1')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -76,10 +129,21 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
 
+    // Explicit \newpage
     if (line.trim() === '\\newpage') {
       flushList();
       flushTable();
-      htmlLines.push(PAGE_BREAK);
+      let nextIsHeading = false;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (lines[j].trim().length === 0) continue;
+        if (lines[j].trim().startsWith('# ')) {
+          nextIsHeading = true;
+        }
+        break;
+      }
+      if (!nextIsHeading) {
+        htmlLines.push('<div style="page-break-before: always;"></div>');
+      }
       continue;
     }
 
@@ -88,19 +152,21 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
       flushList();
       flushTable();
       if (inCodeBlock) {
-        // Closing code fence!
         const codeText = codeBuffer.join('\n');
         inCodeBlock = false;
         codeBuffer = [];
 
-        // Check if this code block was ASCII art diagram!
-        const isAsciiArt = codeText.includes('+----+') || codeText.includes('+---') || codeText.includes('|    |') || codeText.includes('|---');
+        // Check if ASCII art diagram
+        const isAsciiArt = (codeLanguage === '' || codeLanguage === 'text') && (
+          codeText.includes('+----+') || codeText.includes('+---') || codeText.includes('|    |') ||
+          codeText.includes('|---') || codeText.includes('┌──') || codeText.includes('│') ||
+          codeText.includes('──>') || codeText.includes('==>') || codeText.includes('+-------')
+        );
 
-        // Check if the next line is a Figure caption (e.g. *Figure 3.1: ...*)
         let nextCaptionLine = '';
         let captionLineIdx = -1;
         for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          if (lines[j].trim().startsWith('*Figure') || lines[j].trim().startsWith('Figure ')) {
+          if (lines[j].trim().startsWith('*Figure') || lines[j].trim().match(/^Figure\s+\d+\.\d+:/)) {
             nextCaptionLine = lines[j].trim();
             captionLineIdx = j;
             break;
@@ -110,12 +176,11 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
           }
         }
 
-        if (isAsciiArt || nextCaptionLine) {
-          // Find matching figure from figuresMap
+        if (isAsciiArt) {
           let matchedFig = null;
           if (nextCaptionLine) {
             for (const [key, figData] of Object.entries(figuresMap)) {
-              if (nextCaptionLine.includes(key)) {
+              if (nextCaptionLine.includes(key + ":") || nextCaptionLine.includes(key + " :")) {
                 matchedFig = figData;
                 break;
               }
@@ -123,18 +188,17 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
           }
 
           if (matchedFig) {
-            htmlLines.push(renderFigure(matchedFig.image, matchedFig.num, matchedFig.caption, matchedFig.analysis));
+            htmlLines.push(renderFigure(matchedFig.image, matchedFig.num, matchedFig.caption));
             if (captionLineIdx !== -1) {
-              i = captionLineIdx; // Skip caption line since rendered in figure
+              i = captionLineIdx;
             }
             continue;
-          } else if (isAsciiArt) {
-            // Drop unmapped ASCII art
+          } else {
             continue;
           }
         }
 
-        // Normal code block
+        // Real code block
         const escaped = codeText
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
@@ -155,11 +219,11 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
       continue;
     }
 
-    // Check standalone Figure caption that wasn't adjacent to code block
-    if (line.trim().startsWith('*Figure') || line.trim().startsWith('Figure ')) {
+    // Standalone Figure caption
+    if (line.trim().startsWith('*Figure') || line.trim().match(/^Figure\s+\d+\.\d+:/)) {
       let matchedFig = null;
       for (const [key, figData] of Object.entries(figuresMap)) {
-        if (line.includes(key)) {
+        if (line.includes(key + ":") || line.includes(key + " :")) {
           matchedFig = figData;
           break;
         }
@@ -167,9 +231,18 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
       if (matchedFig) {
         flushList();
         flushTable();
-        htmlLines.push(renderFigure(matchedFig.image, matchedFig.num, matchedFig.caption, matchedFig.analysis));
+        htmlLines.push(renderFigure(matchedFig.image, matchedFig.num, matchedFig.caption));
         continue;
       }
+    }
+
+    // Table caption (e.g. *Table 2.1: ...*)
+    if (line.trim().startsWith('*Table ') || line.trim().startsWith('Table ')) {
+      flushList();
+      flushTable();
+      const rawCaption = line.trim().replace(/^\*|\*$/g, '').trim();
+      htmlLines.push(`<p align="center" class="table-caption" style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; font-style: normal; color: #000000; margin-top: 10pt; margin-bottom: 4pt; page-break-after: avoid !important; mso-pagination: lines-together; mso-keep-with-next: yes;">${formatInline(rawCaption)}</p>`);
+      continue;
     }
 
     // Tables
@@ -185,7 +258,12 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
     // Headings
     if (line.startsWith('# ')) {
       flushList();
-      htmlLines.push(`<h1 class="chapter-heading">${formatInline(line.slice(2).trim())}</h1>`);
+      const h1Title = formatInline(line.slice(2).trim());
+      if (h1Title.startsWith('CHAPTER 1') || h1Title.startsWith('1 ')) {
+        htmlLines.push(`<h1 class="chapter-heading" style="page-break-before: auto; margin-top: 0pt; margin-bottom: 12pt;">${h1Title}</h1>`);
+      } else {
+        htmlLines.push(`<h1 class="chapter-heading" style="page-break-before: always; margin-top: 0pt; margin-bottom: 12pt;">${h1Title}</h1>`);
+      }
       continue;
     }
     if (line.startsWith('## ')) {
@@ -198,51 +276,34 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
       htmlLines.push(`<h3>${formatInline(line.slice(4).trim())}</h3>`);
       continue;
     }
-    if (line.startsWith('#### ')) {
+
+    // Bullet lists
+    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+      inList = true;
+      listItems.push(formatInline(line.trim().slice(2)));
+      continue;
+    } else {
       flushList();
-      htmlLines.push(`<h4>${formatInline(line.slice(5).trim())}</h4>`);
+    }
+
+    // Empty lines
+    if (line.trim().length === 0) {
       continue;
     }
 
-    // Horizontal rule
+    // Horizontal rules
     if (line.trim() === '---' || line.trim() === '***') {
-      flushList();
       continue;
     }
 
-    // Unordered list
-    if (/^\s*[-*]\s+/.test(line)) {
-      if (!inList || listType !== 'ul') {
-        flushList();
-        htmlLines.push('<ul>');
-        inList = true;
-        listType = 'ul';
-      }
-      const c = line.replace(/^\s*[-*]\s+/, '');
-      htmlLines.push(`  <li>${formatInline(c)}</li>`);
+    // Bibliography entries (12pt font, hanging indent)
+    if (line.trim().match(/^\[\d+\]/)) {
+      htmlLines.push(`<p class="bibliography-entry">${formatInline(line.trim())}</p>`);
       continue;
     }
 
-    // Ordered list
-    if (/^\s*\d+\.\s+/.test(line)) {
-      if (!inList || listType !== 'ol') {
-        flushList();
-        htmlLines.push('<ol>');
-        inList = true;
-        listType = 'ol';
-      }
-      const c = line.replace(/^\s*\d+\.\s+/, '');
-      htmlLines.push(`  <li>${formatInline(c)}</li>`);
-      continue;
-    }
-
-    if (line.trim() === '') {
-      flushList();
-      continue;
-    }
-
-    flushList();
-    htmlLines.push(`<p>${formatInline(line.trim())}</p>`);
+    // Regular body paragraphs (12pt font, 1.5 line spacing)
+    htmlLines.push(`<p>${formatInline(line)}</p>`);
   }
 
   flushList();
@@ -250,321 +311,461 @@ function parseMarkdownForAcademic(mdText, figuresMap) {
   return htmlLines.join('\n');
 }
 
-// Generate base document style
+// Convert markdown table rows into academic table HTML with 1px black borders & subtle gray header
+function convertMarkdownTableToHtml(tableLines) {
+  if (tableLines.length < 2) return '';
+  const parseRow = (rowStr) =>
+    rowStr
+      .split('|')
+      .slice(1, -1)
+      .map(c => c.trim());
+
+  const headers = parseRow(tableLines[0]);
+  let dataRows = [];
+  let startIndex = 1;
+
+  if (tableLines[1].includes('---') || tableLines[1].includes(':---')) {
+    startIndex = 2;
+  }
+
+  for (let i = startIndex; i < tableLines.length; i++) {
+    dataRows.push(parseRow(tableLines[i]));
+  }
+
+  let html = '<table class="academic-table" style="width: 100%; border-collapse: collapse; margin-top: 4pt; margin-bottom: 6pt; border: 1px solid #000000; page-break-inside: auto;">\n  <thead>\n    <tr style="page-break-inside: avoid; mso-keep-with-next: yes;">\n';
+  for (const h of headers) {
+    html += `      <th style="border: 1px solid #000000; background-color: #ffffff; padding: 3pt 6pt; font-family: 'Times New Roman', serif; font-size: 10.5pt; font-weight: bold; color: #000000; text-align: left;">${h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</th>\n`;
+  }
+  html += '    </tr>\n  </thead>\n  <tbody>\n';
+
+  for (const row of dataRows) {
+    html += '    <tr style="page-break-inside: avoid;">\n';
+    for (let c = 0; c < row.length; c++) {
+      const cell = row[c] || '';
+      const formatted = cell
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\\([$])/g, '$1')
+        .replace(/\$([^\$]+)\$/g, '$1')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+      html += `      <td style="border: 1px solid #000000; padding: 2.5pt 6pt; font-family: 'Times New Roman', serif; font-size: 10pt; line-height: 1.2; color: #000000; vertical-align: top;">${formatted}</td>\n`;
+    }
+    html += '    </tr>\n';
+  }
+  html += '  </tbody>\n</table>';
+  return html;
+}
+
+// Base styles strictly following SRM academic specification: Headings 15pt, Body 12pt, Line-spacing 1.5
 const baseStyles = `
-  @page {
-    size: A4;
-    margin-top: 1.0in;
-    margin-bottom: 1.0in;
-    margin-left: 1.25in;
-    margin-right: 1.0in;
-  }
-  body {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 12pt;
-    line-height: 1.5;
-    color: #111111;
-    margin: 0;
-    padding: 0;
-  }
-  h1, h2, h3, h4 {
-    font-family: 'Times New Roman', Times, serif;
-    color: #000000;
-    page-break-after: avoid;
-  }
-  h1.cover-title {
-    font-size: 15pt;
-    font-weight: bold;
-    text-align: center;
-    line-height: 1.35;
-    margin-top: 6pt;
-    margin-bottom: 14pt;
-    text-transform: uppercase;
-  }
-  h1.chapter-heading {
-    font-size: 15pt;
-    font-weight: bold;
-    text-align: center;
-    margin-top: 16pt;
-    margin-bottom: 12pt;
-    text-transform: uppercase;
-  }
-  h2 {
-    font-size: 13pt;
-    font-weight: bold;
-    margin-top: 14pt;
-    margin-bottom: 6pt;
-  }
-  h3 {
-    font-size: 12pt;
-    font-weight: bold;
-    margin-top: 10pt;
-    margin-bottom: 4pt;
-  }
-  h4 {
-    font-size: 11pt;
-    font-weight: bold;
-    margin-top: 8pt;
-    margin-bottom: 2pt;
-  }
-  p {
-    text-align: justify;
-    text-justify: inter-word;
-    margin-top: 0;
-    margin-bottom: 6pt;
-    line-height: 1.5;
-  }
-  .center { text-align: center; }
-  .right { text-align: right; }
-  .bold { font-weight: bold; }
-  .academic-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 8pt;
-    margin-bottom: 12pt;
-    page-break-inside: avoid;
-  }
-  .academic-table th, .academic-table td {
-    border: 1px solid #333333;
-    padding: 4.5pt 6pt;
-    font-size: 9.5pt;
-    vertical-align: top;
-  }
-  .academic-table th {
-    background-color: #f1f5f9;
-    font-weight: bold;
-    text-align: left;
-  }
-  .borderless-table {
-    width: 100%;
-    border-collapse: collapse;
-    border: none;
-  }
-  .borderless-table td {
-    border: none;
-    padding: 2pt 4pt;
-    vertical-align: top;
-  }
-  .figure-container {
-    text-align: center;
-    margin-top: 14pt;
-    margin-bottom: 14pt;
-    page-break-inside: avoid;
-  }
-  .figure-img-box {
-    display: inline-block;
-    max-width: 95%;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    padding: 4px;
-    background-color: #ffffff;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  }
-  .figure-img-box img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    border-radius: 6px;
-  }
-  .figure-caption {
-    font-style: italic;
-    font-size: 10pt;
-    text-align: center;
-    margin-top: 6pt;
-    color: #334155;
-  }
-  pre {
-    background-color: #f8fafc;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 8pt 10pt;
-    font-family: Consolas, 'Courier New', monospace;
-    font-size: 9.5pt;
-    line-height: 1.35;
-    white-space: pre-wrap;
-    word-break: break-all;
-    margin-top: 6pt;
-    margin-bottom: 8pt;
-    page-break-inside: avoid;
-  }
-  code {
-    font-family: Consolas, 'Courier New', monospace;
-    font-size: 10pt;
-    background-color: #f1f5f9;
-    padding: 1pt 3pt;
-    border-radius: 3px;
-  }
-  pre code {
-    background: none;
-    padding: 0;
-  }
-  ul, ol {
-    margin-top: 0;
-    margin-bottom: 8pt;
-    padding-left: 24pt;
-  }
-  li {
-    margin-bottom: 3pt;
-    text-align: justify;
-    line-height: 1.5;
-  }
+@page {
+  size: A4 portrait;
+  margin-top: 1.0in;
+  margin-bottom: 1.0in;
+  margin-left: 1.25in;
+  margin-right: 1.0in;
+  mso-header-margin: 0.5in;
+  mso-footer-margin: 0.5in;
+  mso-page-border-surround-header: no;
+  mso-page-border-surround-footer: no;
+}
+
+body {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #000000;
+  background-color: #ffffff;
+  margin: 0;
+  padding: 0;
+}
+
+h1.chapter-heading {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 15pt;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: 0pt;
+  margin-bottom: 10pt;
+  color: #000000;
+  page-break-after: avoid;
+  mso-keep-with-next: yes;
+}
+
+h1.frontmatter-heading {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 15pt;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: 0pt;
+  margin-bottom: 10pt;
+  page-break-before: auto;
+  page-break-after: avoid;
+  color: #000000;
+  mso-keep-with-next: yes;
+}
+
+h2 {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 15pt;
+  font-weight: bold;
+  margin-top: 10pt;
+  margin-bottom: 4pt;
+  page-break-after: avoid;
+  color: #000000;
+  mso-keep-with-next: yes;
+}
+
+h3 {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  font-weight: bold;
+  margin-top: 7pt;
+  margin-bottom: 3pt;
+  page-break-after: avoid;
+  color: #000000;
+  mso-keep-with-next: yes;
+}
+
+p {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  text-align: justify;
+  text-justify: inter-word;
+  margin-top: 0pt;
+  margin-bottom: 5pt;
+  color: #000000;
+}
+
+p.table-caption, .table-caption {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 11pt;
+  font-weight: bold;
+  font-style: normal;
+  text-align: center;
+  color: #000000;
+  margin-top: 10pt;
+  margin-bottom: 4pt;
+  page-break-after: avoid !important;
+  mso-pagination: lines-together;
+  mso-keep-with-next: yes;
+}
+
+p.figure-caption, .figure-caption {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 11pt;
+  font-weight: bold;
+  font-style: normal;
+  text-align: center;
+  color: #000000;
+  margin-top: 4pt;
+  margin-bottom: 4pt;
+  page-break-before: avoid !important;
+  page-break-after: avoid !important;
+  mso-pagination: lines-together;
+  mso-keep-with-next: yes;
+}
+
+pre {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 4pt 6pt;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 8.5pt;
+  line-height: 1.2;
+  margin-top: 3pt;
+  margin-bottom: 5pt;
+  page-break-inside: avoid;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+code {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 9pt;
+  background-color: #f1f5f9;
+  padding: 1pt 3pt;
+  border-radius: 2pt;
+}
+
+table.academic-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6pt;
+  margin-bottom: 8pt;
+  page-break-inside: auto;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 10pt;
+  border: 1px solid #000000;
+}
+
+table.academic-table th, table.academic-table td {
+  border: 1px solid #000000;
+  padding: 4pt 6pt;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.25;
+  color: #000000;
+}
+
+table.academic-table th {
+  background-color: #ffffff;
+  color: #000000;
+  font-weight: bold;
+  text-align: left;
+  font-size: 10.5pt;
+}
+
+table.toc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4pt;
+  margin-bottom: 0pt;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.25;
+  border: 1px solid #000000;
+}
+
+table.toc-table th, table.toc-table td {
+  border: 1px solid #000000;
+  padding: 3pt 5pt;
+  vertical-align: middle;
+  color: #000000;
+  font-size: 12pt;
+}
+
+table.toc-table th {
+  background-color: #ffffff;
+  color: #000000;
+  font-weight: bold;
+  text-align: center;
+  font-size: 12pt;
+}
+
+table.toc-table td.center {
+  text-align: center;
+  vertical-align: middle;
+}
+
+p.bibliography-entry {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.35;
+  text-align: justify;
+  text-justify: inter-word;
+  margin-top: 0pt;
+  margin-bottom: 4pt;
+  padding-left: 22pt;
+  text-indent: -22pt;
+  color: #000000;
+}
+
+table.borderless-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8pt;
+  margin-bottom: 8pt;
+}
+
+table.borderless-table td {
+  border: none;
+  padding: 2pt 4pt;
+  vertical-align: top;
+}
+
+.center { text-align: center; }
+.right { text-align: right; }
 `;
 
-// Build Document HTML
 function generateStudentDocumentHtml(cfg, bodyHtml) {
   return `<!DOCTYPE html>
-<html lang="en">
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta charset="utf-8">
-<title>${cfg.title} - ${cfg.studentName}</title>
-<style>${baseStyles}</style>
+<title>${cfg.title}</title>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+${baseStyles}
+.abstract-p {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  text-align: justify;
+  text-justify: inter-word;
+  margin-top: 0pt;
+  margin-bottom: 10pt;
+  text-indent: 0pt;
+  color: #000000;
+}
+</style>
 </head>
 <body>
 
-<!-- 1. COVER PAGE (Page 1) -->
-<div style="text-align: center; margin-top: 4pt;">
-  <h1 class="cover-title">${cfg.title}</h1>
-  
-  <p class="center bold" style="font-size: 11pt; margin-top: 10pt; margin-bottom: 2pt;">
-    A PROJECT REPORT SUBMITTED TO SRM INSTITUTE OF SCIENCE & TECHNOLOGY
-  </p>
-  <p class="center" style="font-size: 10.5pt; margin-bottom: 2pt;">
-    IN PARTIAL FULFILMENT OF THE REQUIREMENTS FOR THE AWARD OF THE DEGREE OF
-  </p>
-  <p class="center bold" style="font-size: 13pt; margin-bottom: 12pt;">
-    MASTER OF COMPUTER APPLICATIONS
+<!-- 1. TITLE / COVER PAGE (Page 1 - EXACT SRM REFERENCE LAYOUT) -->
+<div style="text-align: center; margin-top: 0pt; line-height: 1.3;">
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 14pt; font-weight: bold; margin-top: 0pt; margin-bottom: 8pt; letter-spacing: 0.5px; text-transform: uppercase;">CAPSTONE PROJECT REPORT</p>
+
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; font-weight: bold; margin-top: 0pt; margin-bottom: 8pt; text-transform: uppercase;">ON</p>
+
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 12.5pt; font-weight: bold; line-height: 1.35; margin-top: 0pt; margin-bottom: 14pt; text-transform: uppercase;">
+    ${cfg.title}
   </p>
 
-  <p class="center" style="font-size: 10.5pt; margin-bottom: 2pt;">SUBMITTED BY:</p>
-  <p class="center bold" style="font-size: 12.5pt; margin-bottom: 2pt;">${cfg.studentName}</p>
-  <p class="center bold" style="font-size: 11.5pt; margin-bottom: 12pt;">REG NO: ${cfg.regNo}</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">A PROJECT REPORT SUBMITTED TO</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; font-weight: bold; margin-top: 0pt; margin-bottom: 10pt; text-transform: uppercase;">SRM INSTITUTE OF SCIENCE &amp; TECHNOLOGY</p>
 
-  <p class="center" style="font-size: 10.5pt; margin-bottom: 2pt;">UNDER THE GUIDANCE OF</p>
-  <p class="center bold" style="font-size: 12.5pt; margin-bottom: 2pt;">${cfg.guide}</p>
-  <p class="center" style="font-size: 10.5pt; margin-bottom: 12pt;">${cfg.guideRole}</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 10pt; font-weight: normal; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">IN PARTIAL FULFILMENT OF THE REQUIREMENTS FOR THE AWARD OF THE DEGREE OF</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; font-weight: bold; margin-top: 0pt; margin-bottom: 12pt; text-transform: uppercase;">MASTER OF COMPUTER APPLICATION</p>
 
-  <div style="margin-top: 4pt; margin-bottom: 12pt;">
-    <img src="${logoPath}" width="195" alt="SRM Institute of Science & Technology" />
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 3pt; text-transform: uppercase;">BY</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">${cfg.studentName}</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 12pt; text-transform: uppercase;">REG NO: ${cfg.regNo}</p>
+
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">UNDER THE GUIDANCE OF</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; font-weight: bold; margin-top: 0pt; margin-bottom: 10pt;">${cfg.guide}</p>
+
+  <div style="margin-top: 0pt; margin-bottom: 10pt; text-align: center;">
+    <img src="${logoPath}" alt="SRM Logo" width="200" height="68" style="width: 150pt; height: 50.8pt; display: block; margin: 0 auto;" />
   </div>
 
-  <p class="center bold" style="font-size: 11.5pt; margin-bottom: 2pt;">DEPARTMENT OF COMPUTER APPLICATIONS (MCA)</p>
-  <p class="center bold" style="font-size: 10.5pt; margin-bottom: 2pt;">FACULTY OF LIBERAL ARTS AND BUSINESS STUDIES</p>
-  <p class="center bold" style="font-size: 11.5pt; margin-bottom: 2pt;">SRM INSTITUTE OF SCIENCE AND TECHNOLOGY</p>
-  <p class="center bold" style="font-size: 10.5pt; margin-bottom: 2pt;">VADAPALANI CAMPUS, CHENNAI – 600026</p>
-  <p class="center bold" style="font-size: 11.5pt; margin-top: 4pt;">ACADEMIC YEAR: 2025 – 2026</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">DEPARTMENT OF COMPUTER APPLICATIONS (MCA)</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">FACULTY OF LIBERAL ARTS BUSINESS STUDIES</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">SRM INSTITUTE OF SCIENCE AND TECHNOLOGY</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 10pt; text-transform: uppercase;">VADAPALANI, CHENNAI</p>
+
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; font-weight: bold; margin-top: 0pt; margin-bottom: 0pt;">2026-2027</p>
 </div>
 
-${PAGE_BREAK}
+${SECTION_BREAK}
 
-<!-- 2. BONAFIDE CERTIFICATE (Page 2 - STRICTLY 1 PAGE) -->
-<div style="text-align: center;">
-  <p class="center bold" style="font-size: 11pt; margin-bottom: 2pt;">DEPARTMENT OF COMPUTER APPLICATIONS (MCA)</p>
-  <p class="center bold" style="font-size: 10pt; margin-bottom: 2pt;">FACULTY OF LIBERAL ARTS AND BUSINESS STUDIES</p>
-  <p class="center bold" style="font-size: 11pt; margin-bottom: 2pt;">SRM INSTITUTE OF SCIENCE AND TECHNOLOGY</p>
-  <p class="center bold" style="font-size: 10pt; margin-bottom: 6pt;">VADAPALANI CAMPUS, CHENNAI – 600026</p>
+<!-- 2. BONAFIDE CERTIFICATE (Page 2 - EXACT SRM REFERENCE LAYOUT) -->
+<div style="text-align: center; margin-top: 0pt; line-height: 1.3;">
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">DEPARTMENT OF COMPUTER APPLICATIONS (MCA)</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">FACULTY OF LIBERAL ARTS BUSINESS STUDIES</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 2pt; text-transform: uppercase;">SRM INSTITUTE OF SCIENCE AND TECHNOLOGY</p>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: bold; margin-top: 0pt; margin-bottom: 8pt; text-transform: uppercase;">VADAPALANI, CHENNAI</p>
 
-  <div style="margin-bottom: 6pt;">
-    <img src="${logoPath}" width="125" alt="SRM Logo" />
+  <div style="margin-top: 0pt; margin-bottom: 8pt; text-align: center;">
+    <img src="${logoPath}" alt="SRM Logo" width="173" height="59" style="width: 130pt; height: 44pt; display: block; margin: 0 auto;" />
   </div>
 
-  <h2 class="center bold" style="font-size: 13pt; margin-top: 4pt; margin-bottom: 10pt;">BONAFIDE CERTIFICATE</h2>
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; font-weight: bold; margin-top: 0pt; margin-bottom: 12pt; letter-spacing: 0.5px;">BONAFIDE CERTIFICATE</p>
 </div>
 
-<p style="text-indent: 24pt; line-height: 1.45; font-size: 11pt; margin-bottom: 12pt;">
-  This is to certify that the project report titled <strong>“${cfg.title}”</strong> is the bonafide work done and submitted by <strong>${cfg.studentName} (Reg. No: ${cfg.regNo})</strong> during the <strong>2025–2026</strong> academic year, in partial fulfillment of the requirements for the award of the degree of <strong>MASTER OF COMPUTER APPLICATIONS</strong>, at <strong>SRM INSTITUTE OF SCIENCE & TECHNOLOGY, Vadapalani, Chennai</strong>.
+<p style="font-family: 'Times New Roman', Times, serif; text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 11.5pt; margin-top: 0pt; margin-bottom: 16pt;">
+  This is to certify that the project report titled <strong>&ldquo;${cfg.title}&rdquo;</strong> is work done and submitted by <strong>${cfg.studentName} (Reg. No: ${cfg.regNo})</strong> and submitted during 2026&ndash;2027 academic year, in partial fulfillment of the requirements for the award of the degree of <strong>MASTER OF COMPUTER APPLICATION</strong>, at <strong>SRM INSTITUTE OF SCIENCE &amp; TECHNOLOGY</strong>, Vadapalani, Chennai.
 </p>
 
-<table class="borderless-table" style="margin-top: 14pt; margin-bottom: 10pt;">
+<table class="borderless-table" style="width: 100%; margin-top: 10pt; margin-bottom: 14pt;">
   <tr>
-    <td style="width: 50%; text-align: left; font-size: 10pt; line-height: 1.3;">
-      <div style="margin-bottom: 24pt;">_____________________________</div>
-      <strong>Signature of the Guide</strong><br />
+    <td style="width: 50%; text-align: left; font-size: 11pt; line-height: 1.35; vertical-align: top;">
+      <strong>Signature of the Guide</strong><br /><br /><br />
       <strong>${cfg.guide}</strong><br />
-      ${cfg.guideRole}<br />
-      SRM IST, Vadapalani Campus
+      Associate Professor
     </td>
-    <td style="width: 50%; text-align: right; font-size: 10pt; line-height: 1.3;">
-      <div style="margin-bottom: 24pt;">_____________________________</div>
-      <strong>Signature of the HOD</strong><br />
+    <td style="width: 50%; text-align: right; font-size: 11pt; line-height: 1.35; vertical-align: top;">
+      <strong>Signature of the HOD</strong><br /><br /><br />
       <strong>${cfg.hod}</strong><br />
-      Head of the Department<br />
-      Department of Computer Applications<br />
-      SRM IST, Vadapalani Campus
+      Head of the Department, MCA
     </td>
   </tr>
 </table>
 
-<div style="margin-top: 10pt;">
-  <p style="margin-bottom: 2pt; font-size: 10.5pt;">
-    Submitted for Project Work Viva-Voce Examination held on: ____________________
-  </p>
-  <table class="borderless-table" style="margin-top: 2pt; margin-bottom: 8pt;">
-    <tr>
-      <td style="width: 50%; font-size: 10pt;"><strong>Place:</strong> VADAPALANI, CHENNAI</td>
-      <td style="width: 50%; text-align: right; font-size: 10pt;"><strong>Date:</strong> ____________________</td>
-    </tr>
-  </table>
+<p style="font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; line-height: 1.4; margin-top: 8pt; margin-bottom: 3pt;">
+  <strong>Submitted for Project Work Viva-Voce Examination on ______________________</strong>
+</p>
+<p style="font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; font-weight: bold; margin-bottom: 18pt;">Place: VADAPALANI</p>
 
-  <table class="borderless-table" style="margin-top: 10pt;">
-    <tr>
-      <td style="width: 50%; text-align: left; font-size: 10pt;">
-        <div style="margin-bottom: 20pt;">_____________________________</div>
-        <strong>INTERNAL EXAMINER</strong>
-      </td>
-      <td style="width: 50%; text-align: right; font-size: 10pt;">
-        <div style="margin-bottom: 20pt;">_____________________________</div>
-        <strong>EXTERNAL EXAMINER</strong>
-      </td>
-    </tr>
-  </table>
+<table class="borderless-table" style="width: 100%; margin-top: 6pt; margin-bottom: 0pt;">
+  <tr>
+    <td style="width: 50%; text-align: left; font-size: 11pt; font-weight: bold; vertical-align: bottom;">
+      INTERNAL EXAMINER
+    </td>
+    <td style="width: 50%; text-align: right; font-size: 11pt; font-weight: bold; vertical-align: bottom;">
+      EXTERNAL EXAMINER
+    </td>
+  </tr>
+</table>
+
+${SECTION_BREAK}
+
+<!-- 3. DECLARATION (Page 3 - EXACT SRM REFERENCE LAYOUT) -->
+<div style="text-align: center; margin-top: 10pt; margin-bottom: 20pt;">
+  <p style="font-family: 'Times New Roman', Times, serif; font-size: 15pt; font-weight: bold; letter-spacing: 0.5px;">DECLARATION</p>
 </div>
 
-${PAGE_BREAK}
-
-<!-- 3. ACKNOWLEDGEMENT (Page 3 - iii) -->
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">iii</p>
-<h1 class="chapter-heading">ACKNOWLEDGEMENT</h1>
-<p>First and foremost, I would like to express with a deep sense of gratitude my heartfelt thanks to the management of <strong>SRM Institute of Science & Technology</strong> for providing modern laboratory infrastructure, technical facilities, and an encouraging academic environment.</p>
-<p>I wish to express my sincere gratitude to the <strong>Dean</strong>, Faculty of Liberal Arts and Business Studies, for his constant administrative support and encouragement throughout the course of this MCA program.</p>
-<p>I express my deepest gratitude to my esteemed project guide, <strong>${cfg.guide}</strong>, ${cfg.guideRole}, for her thoughtful guidance, insightful feedback, technical suggestions, and patient mentoring across every phase of designing and implementing this major project.</p>
-<p>I extend my sincere thanks to <strong>${cfg.hod}</strong>, Head of the Department of Computer Applications, for her dedicated academic leadership, departmental support, and for facilitating the computational resources required to successfully complete this project.</p>
-<p>I would also like to thank my class coordinator, faculty members, and staff of the Department of Computer Applications for their academic assistance, cooperation, and words of encouragement.</p>
-<p>Finally, I convey my warmest gratitude to my parents and friends for their enduring patience, understanding, moral encouragement, and unconditional support during my project endeavors.</p>
-
-<p class="right bold" style="margin-top: 24pt;">
-  ${cfg.studentName}<br />
-  <span style="font-size: 10pt; font-weight: normal;">(Reg. No: ${cfg.regNo})</span><br />
-  <span style="font-size: 10pt; font-weight: normal;">Department of Computer Applications (MCA)</span><br />
-  <span style="font-size: 10pt; font-weight: normal;">SRM Institute of Science & Technology, Vadapalani</span>
+<p style="font-family: 'Times New Roman', Times, serif; text-align: justify; text-justify: inter-word; line-height: 1.6; font-size: 12pt; margin-top: 10pt; margin-bottom: 16pt;">
+  I hereby declare that the project report entitled <strong>&ldquo;${cfg.title}&rdquo;</strong> submitted to <strong>SRM INSTITUTE OF SCIENCE &amp; TECHNOLOGY</strong>, Vadapalani, Chennai, in partial fulfillment of the requirements for the award of the degree of <strong>MASTER OF COMPUTER APPLICATION</strong>, is a bonafide record of the original project work carried out by me under the guidance of <strong>${cfg.guide}</strong>, Department of Computer Applications (MCA).
 </p>
 
-${PAGE_BREAK}
+<p style="font-family: 'Times New Roman', Times, serif; text-align: justify; text-justify: inter-word; line-height: 1.6; font-size: 12pt; margin-top: 10pt; margin-bottom: 36pt;">
+  I further declare that this project work has not been submitted previously in part or in full to any other University or Institution for the award of any degree, diploma, or other similar academic recognition.
+</p>
 
-<!-- 4. ABSTRACT (Page 4 - iv) -->
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">iv</p>
-<h1 class="chapter-heading">ABSTRACT</h1>
+<table class="borderless-table" style="width: 100%; margin-top: 24pt; margin-bottom: 10pt;">
+  <tr>
+    <td style="width: 50%; text-align: left; font-size: 11pt; line-height: 1.4; vertical-align: top;">
+      <strong>Place: VADAPALANI, CHENNAI</strong><br /><br />
+      <strong>Date:</strong>
+    </td>
+    <td style="width: 50%; text-align: right; font-size: 11pt; line-height: 1.4; vertical-align: top;">
+      <strong>Signature of the Candidate</strong><br /><br /><br /><br />
+      <strong>${cfg.studentName}</strong><br />
+      <strong>REG NO: ${cfg.regNo}</strong>
+    </td>
+  </tr>
+</table>
+
+${SECTION_BREAK}
+
+<!-- 4. ABSTRACT (Page 4 - (i)) -->
+<h1 class="frontmatter-heading">ABSTRACT</h1>
 ${cfg.abstractHtml}
 
-${PAGE_BREAK}
+${SECTION_BREAK}
 
-<!-- 5. TABLE OF CONTENTS (Page 5 - v - STRICTLY 1 SINGLE PAGE) -->
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">v</p>
-<h1 class="chapter-heading" style="margin-bottom: 8pt;">TABLE OF CONTENTS</h1>
+<!-- 5. ACKNOWLEDGEMENT (Page 5 - (ii)) -->
+<h1 class="frontmatter-heading">ACKNOWLEDGEMENT</h1>
+${cfg.acknowledgementHtml}
+
+${SECTION_BREAK}
+
+<!-- 6. TABLE OF CONTENTS (Pages 6 & 7 - (iii) & (iv)) -->
+<h1 class="frontmatter-heading" style="margin-bottom: 8pt;">TABLE OF CONTENTS</h1>
 ${cfg.tocHtml}
 
-${PAGE_BREAK}
+${SECTION_BREAK}
 
-<!-- 6. LIST OF TABLES (Page 6 - vi) -->
-${cfg.listTablesHtml}
+<!-- 7. LIST OF TABLES (Page 8 - (v)) -->
+<h1 class="frontmatter-heading" style="margin-bottom: 8pt;">LIST OF TABLES</h1>
+${cfg.tablesTableHtml}
 
-${PAGE_BREAK}
+${SECTION_BREAK}
 
-<!-- 7. LIST OF FIGURES (Page 7 - vii) -->
-${cfg.listFiguresHtml}
+<!-- 8. LIST OF FIGURES (Page 9 - (vi)) -->
+<h1 class="frontmatter-heading" style="margin-bottom: 8pt;">LIST OF FIGURES</h1>
+${cfg.figuresTableHtml}
 
-${PAGE_BREAK}
+${SECTION_BREAK}
 
-<!-- 8. MAIN BODY CHAPTERS (Starting on Page 1) -->
+<!-- 9. MAIN BODY CHAPTERS (Starting on Page 1) -->
 ${bodyHtml}
 
 </body>
@@ -575,152 +776,279 @@ ${bodyHtml}
 // STUDENT 1: SURIYA E CONFIGURATION
 // ============================================================================
 const suriyaFiguresMap = {
-  // Fig 3.1
-  "Figure 3.1": {
+  // Fig 4.1 to 4.5 in Chapter 4 (Design)
+  "Figure 4.1": {
     image: "fig_arch_suriya.png",
-    num: "3.1",
-    caption: "FairWork End-to-End System Architecture (Blockchain & Backend Plane)",
+    num: "4.1",
+    caption: "Architecture of FairWork Decentralized Escrow Protocol",
     analysis: "The system architecture partitions operations into four decoupled tiers: Client Tier (React 19 + MetaMask), API Gateway Tier (Express + JWT + Gemini AI), Settlement Processor Tier (Lease Manager with generation fencing, Reorg Engine, Arbitrator Relay), and Storage / Blockchain Plane (Sepolia Smart Contracts: EscrowContract, DisputeContract, ReputationContract, and MongoDB Replica Cluster)."
   },
-  // Fig 3.2
-  "Figure 3.2": {
-    image: "fig_dfd_suriya.png",
-    num: "3.2",
-    caption: "Data Flow Diagram Level 0 (Context Level Architecture)",
+  "Figure 4.2": {
+    image: "fig_dfd_lvl0_suriya.png",
+    num: "4.2",
+    caption: "Data Flow Diagram — Level 0 (Context Level)",
     analysis: "The Context Level DFD depicts interaction boundaries between Human Users (Clients and Developers), the MetaMask Injected Signer, the Node.js Express API, and the Ethereum Sepolia smart contracts."
   },
-  // Fig 3.3
-  "Figure 3.3": {
-    image: "fig_dfd_suriya.png",
-    num: "3.3",
-    caption: "Data Flow Diagram Level 1 (Decentralized Settlement & Indexer Event Flow)",
-    analysis: "The Level 1 Data Flow Diagram traces fund movement and state transitions. When a client funds a project, USDC tokens are transferred to EscrowContract.sol. The contract emits an EscrowFunded event indexed by leaseManager.js. Upon milestone release, funds transfer directly to the freelancer address without platform commissions."
-  },
-  // Fig 3.4
-  "Figure 3.4": {
-    image: "fig_dfd_suriya.png",
-    num: "3.4",
-    caption: "Data Flow Diagram Level 2 (Reorg Engine & Lease Fencing Subsystem)",
-    analysis: "The Level 2 DFD outlines the internal indexing pipeline: reorgEngine.js queries canonical block hashes to roll back speculative database mutations whenever blockchain reorganizations exceed finality limits."
-  },
-  // Fig 3.5
-  "Figure 3.5": {
-    image: "fig_escrow_statemachine.png",
-    num: "3.5",
-    caption: "Smart Contract Escrow State Machine & Lifecycle Transitions",
-    analysis: "The EscrowContract state machine enforces sequential milestone transitions: CREATED &rarr; FUNDED &rarr; SUBMITTED &rarr; APPROVED &rarr; RELEASED. If disputes occur, funds are frozen on-chain pending AI-assisted consensus resolution. In the event of a client refund request, an invariant 48-hour challenge timelock is initiated to protect contractors against capital drain exploits."
-  },
-  // Fig 3.6
-  "Figure 3.6": {
-    image: "fig_escrow_statemachine.png",
-    num: "3.6",
-    caption: "Financial Entity Relationship & Escrow State Invariants",
-    analysis: "The relational mapping anchors on-chain Escrow deposits to project milestones, maintaining dual consistency between off-chain MongoDB documents and on-chain contract storage."
-  },
-  // Fig 4.1
-  "Figure 4.1": {
-    image: "screenshot_post_project_metamask.png",
-    num: "4.1",
-    caption: "Live Platform Telemetry: Web3 Client Wallet Connection & MetaMask Guardrail Banner",
-    analysis: "The live application detects Web3 wallet availability in real time. If a user attempts to create a project without an active wallet or with a pending MetaMask prompt, an interactive amber warning modal blocks unconfirmed actions and provides direct recovery links."
-  },
-  // Fig 4.2
-  "Figure 4.2": {
-    image: "screenshot_ask_ai_dispute_sepolia.jpg",
-    num: "4.2",
-    caption: "Live Application Telemetry: FairWork Ask AI Assistant Explaining DisputeContract on Sepolia",
-    analysis: "The embedded streaming AI assistant provides real-time technical clarity regarding on-chain contract addresses (DisputeContract.sol: 0x8ddbfe... on Sepolia testnet), explaining fund freezing mechanisms and arbitration rules directly within the application viewport."
-  },
-  // Fig 4.3
   "Figure 4.3": {
-    image: "screenshot_landing_blueprint.png",
+    image: "fig_dfd_lvl1_suriya.png",
     num: "4.3",
-    caption: "Automated 4-Stage Milestone Settlement Pipeline on Public Landing Studio",
-    analysis: "The public discovery studio visualizes the 4-stage settlement pipeline (01 Scope, 02 Deposit, 03 Verify, 04 Settle), presenting verified Sepolia contract source code and transaction verification telemetry."
+    caption: "Data Flow Diagram — Level 1 (Decentralized Settlement Flow)",
+    analysis: "The Level 1 Data Flow Diagram traces fund movement and state transitions. When a client funds a project, USDC tokens are transferred to EscrowContract.sol. The contract emits an EscrowFunded event indexed by reconciliationService.js. Upon milestone release, funds transfer directly to the freelancer address without platform commissions."
+  },
+  "Figure 4.4": {
+    image: "fig_dfd_lvl2_suriya.png",
+    num: "4.4",
+    caption: "Data Flow Diagram — Level 2 (Reorg Engine & Lease Fencing)",
+    analysis: "The Level 2 DFD outlines the internal indexing pipeline: reorgEngine.js queries canonical block hashes to roll back speculative database mutations whenever blockchain reorganizations exceed finality limits, while leaseManager.js enforces generation fencing."
+  },
+  "Figure 4.5": {
+    image: "fig_financial_er_model.png",
+    num: "4.5",
+    caption: "Complete Project Entity-Relationship (ER) Data Model",
+    analysis: "The complete project entity-relationship data model establishes relational schema integrity across on-chain Ethereum smart contracts and off-chain MongoDB collections. It defines Crow's Foot cardinality constraints across Users, Projects, Milestones, Deliverables with GitHub CI checks, Escrow Vaults, Disputes with AI arbitration, Settlement Events, and Generation-Fenced Sync Leases."
+  },
+
+  // Fig 8.1 to 8.6 in Chapter 8 (Appendix Screenshots - Live System Telemetry & Application UI)
+  "Figure 8.1": {
+    image: "screenshot_wallet_escrow.png",
+    num: "8.1",
+    caption: "Live Testnet Escrow Verification & Web3 Wallet Balances",
+    analysis: "Live network telemetry and Web3 wallet balance verification on Ethereum Sepolia, verifying zero balance leakage and MetaMask EIP-1193 signer integration."
+  },
+  "Figure 8.2": {
+    image: "screenshot_project_workspace.png",
+    num: "8.2",
+    caption: "Non-Custodial Smart Contract Milestone Escrow Vault",
+    analysis: "Multi-milestone escrow vault workspace managing non-custodial capital locking in EscrowContract.sol with automated reconciliation tracking."
+  },
+  "Figure 8.3": {
+    image: "screenshot_milestones_studio.png",
+    num: "8.3",
+    caption: "Milestone Deliverable Inspection & Automated Settlement Gates",
+    analysis: "Automated milestone deliverable inspection integrating GitHub Actions CI verification and non-reentrant token disbursement gates."
+  },
+  "Figure 8.4": {
+    image: "screenshot_ask_ai_chat.png",
+    num: "8.4",
+    caption: "AI Dispute Mediation Drawer & Arbitrator Execution Pipeline",
+    analysis: "AI-assisted dispute mediation interface synthesizing deliverable diffs via Gemini 1.5 Pro and executing arbitrator signatures on Ethereum Sepolia."
+  },
+  "Figure 8.5": {
+    image: "screenshot_projects_marketplace.png",
+    num: "8.5",
+    caption: "Decentralized Escrow Marketplace & Transactional Outbox Microservice",
+    analysis: "Decentralized escrow marketplace synchronized by the background transactional outbox worker microservice with generation-fenced lease protection."
+  },
+  "Figure 8.6": {
+    image: "screenshot_contracts_registry.png",
+    num: "8.6",
+    caption: "Sepolia Smart Contracts Deployment & Zero-Fee Settlement Ledger",
+    analysis: "Verified protocol deployment metrics, smart contract registry, and zero-fee settlement ledger on the Ethereum Sepolia testnet."
   }
 };
 
 const suriyaTocHtml = `
-<table class="academic-table" style="font-size: 10pt; line-height: 1.35; margin-bottom: 0;">
+<table class="toc-table">
   <thead>
-    <tr style="background-color: #e2e8f0;">
-      <th style="width: 16%; text-align: center; padding: 4pt 6pt;">CHAPTER</th>
-      <th style="width: 68%; padding: 4pt 8pt;">TITLE</th>
-      <th style="width: 16%; text-align: center; padding: 4pt 6pt;">PAGE NO.</th>
+    <tr>
+      <th style="width: 15%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">S.NO</th>
+      <th style="width: 70%; text-align: left; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">TITLE</th>
+      <th style="width: 15%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">PAGE NO</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="center"></td><td><strong>BONAFIDE CERTIFICATE</strong></td><td class="center">ii</td></tr>
-    <tr><td class="center"></td><td><strong>ACKNOWLEDGEMENT</strong></td><td class="center">iii</td></tr>
-    <tr><td class="center"></td><td><strong>ABSTRACT</strong></td><td class="center">iv</td></tr>
-    <tr><td class="center"></td><td><strong>LIST OF TABLES</strong></td><td class="center">vi</td></tr>
-    <tr><td class="center"></td><td><strong>LIST OF FIGURES</strong></td><td class="center">vii</td></tr>
-    <tr><td class="center"><strong>1</strong></td><td><strong>INTRODUCTION</strong></td><td class="center"><strong>1</strong></td></tr>
-    <tr><td class="center"><strong>2</strong></td><td><strong>MODULE DESCRIPTION & SYSTEM REQUIREMENTS</strong></td><td class="center"><strong>5</strong></td></tr>
-    <tr><td class="center"><strong>3</strong></td><td><strong>SYSTEM DESIGN & ARCHITECTURE</strong></td><td class="center"><strong>13</strong></td></tr>
-    <tr><td class="center"><strong>4</strong></td><td><strong>IMPLEMENTATION & CODE METHODOLOGY</strong></td><td class="center"><strong>21</strong></td></tr>
-    <tr><td class="center"><strong>5</strong></td><td><strong>TESTING AND VERIFICATION</strong></td><td class="center"><strong>39</strong></td></tr>
-    <tr><td class="center"><strong>6</strong></td><td><strong>CONCLUSION & FUTURE ENHANCEMENTS</strong></td><td class="center"><strong>47</strong></td></tr>
-    <tr><td class="center"></td><td><strong>APPENDIX: SMART CONTRACT ABIS & INTERFACES</strong></td><td class="center"><strong>49</strong></td></tr>
-    <tr><td class="center"></td><td><strong>REFERENCES</strong></td><td class="center"><strong>52</strong></td></tr>
+    <tr><td class="center">1</td><td><strong>BONAFIDE CERTIFICATE</strong></td><td class="center">I</td></tr>
+    <tr><td class="center">2</td><td><strong>DECLARATION</strong></td><td class="center">II</td></tr>
+    <tr><td class="center">3</td><td><strong>ACKNOWLEDGEMENT</strong></td><td class="center">III</td></tr>
+    <tr><td class="center">4</td><td><strong>ABSTRACT</strong></td><td class="center">IV</td></tr>
+    <tr><td class="center">5</td><td><strong>LIST OF TABLES</strong></td><td class="center">V</td></tr>
+    <tr><td class="center">6</td><td><strong>LIST OF FIGURES</strong></td><td class="center">VI</td></tr>
+    <tr>
+      <td class="center">7</td>
+      <td>
+        <strong>INTRODUCTION</strong><br/>
+        &nbsp;&nbsp;1.1 PROJECT INTRODUCTION<br/>
+        &nbsp;&nbsp;1.2 BACKGROUND AND MOTIVATION<br/>
+        &nbsp;&nbsp;1.3 PROBLEM STATEMENT<br/>
+        &nbsp;&nbsp;1.4 NEED FOR THE PROJECT
+      </td>
+      <td class="center">1</td>
+    </tr>
+    <tr>
+      <td class="center">8</td>
+      <td>
+        <strong>WORKING ENVIRONMENT</strong><br/>
+        &nbsp;&nbsp;2.1 HARDWARE REQUIREMENT<br/>
+        &nbsp;&nbsp;2.2 SOFTWARE REQUIREMENT<br/>
+        &nbsp;&nbsp;2.3 SYSTEM SOFTWARE<br/>
+        &nbsp;&nbsp;2.4 DEVELOPMENT ENVIRONMENT
+      </td>
+      <td class="center">3</td>
+    </tr>
+    <tr>
+      <td class="center">9</td>
+      <td>
+        <strong>SYSTEM ANALYSIS</strong><br/>
+        &nbsp;&nbsp;3.1 FEASIBILITY STUDY<br/>
+        &nbsp;&nbsp;3.2 EXISTING SYSTEM<br/>
+        &nbsp;&nbsp;3.3 DRAWBACKS OF EXISTING SYSTEM<br/>
+        &nbsp;&nbsp;3.4 PROPOSED SYSTEM<br/>
+        &nbsp;&nbsp;3.5 BENEFITS OF PROPOSED SYSTEM<br/>
+        &nbsp;&nbsp;3.6 SCOPE OF THE PROJECT
+      </td>
+      <td class="center">5</td>
+    </tr>
+    <tr>
+      <td class="center">10</td>
+      <td>
+        <strong>SYSTEM DESIGN</strong><br/>
+        &nbsp;&nbsp;4.1 ARCHITECTURE DESIGN<br/>
+        &nbsp;&nbsp;4.2 MODULE DESIGN<br/>
+        &nbsp;&nbsp;4.3 DATA FLOW DESIGN<br/>
+        &nbsp;&nbsp;4.4 DATA STORAGE DESIGN<br/>
+        &nbsp;&nbsp;4.5 INTERFACE DESIGN
+      </td>
+      <td class="center">7</td>
+    </tr>
+    <tr>
+      <td class="center">11</td>
+      <td>
+        <strong>PROJECT DESCRIPTION</strong><br/>
+        &nbsp;&nbsp;5.1 OBJECTIVE<br/>
+        &nbsp;&nbsp;5.2 MODULE DESCRIPTION<br/>
+        &nbsp;&nbsp;5.3 IMPLEMENTATION<br/>
+        &nbsp;&nbsp;5.4 MAINTENANCE
+      </td>
+      <td class="center">13</td>
+    </tr>
+    <tr>
+      <td class="center">12</td>
+      <td>
+        <strong>SYSTEM TESTING</strong><br/>
+        &nbsp;&nbsp;6.1 TESTING DEFINITION<br/>
+        &nbsp;&nbsp;6.2 TESTING OBJECTIVE<br/>
+        &nbsp;&nbsp;6.3 TYPES OF TESTING<br/>
+        &nbsp;&nbsp;6.4 TEST CASES
+      </td>
+      <td class="center">16</td>
+    </tr>
+    <tr>
+      <td class="center">13</td>
+      <td>
+        <strong>CONCLUSION</strong><br/>
+        &nbsp;&nbsp;7.1 SUMMARY<br/>
+        &nbsp;&nbsp;7.2 FUTURE ENHANCEMENT
+      </td>
+      <td class="center">18</td>
+    </tr>
+    <tr>
+      <td class="center">14</td>
+      <td>
+        <strong>APPENDIX</strong><br/>
+        &nbsp;&nbsp;8.1 SCREENSHOTS<br/>
+        &nbsp;&nbsp;8.2 CODING<br/>
+        &nbsp;&nbsp;8.3 DATA DICTIONARY<br/>
+        &nbsp;&nbsp;8.4 PROJECT SPECIFICATION AND CONSIDERATIONS
+      </td>
+      <td class="center">19</td>
+    </tr>
+    <tr>
+      <td class="center">15</td>
+      <td><strong>BIBLIOGRAPHY AND REFERENCES</strong></td>
+      <td class="center">29</td>
+    </tr>
   </tbody>
 </table>
 `;
 
-const suriyaListTablesHtml = `
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">vi</p>
-<h1 class="chapter-heading" style="margin-bottom: 12pt;">LIST OF TABLES</h1>
-<table class="academic-table" style="font-size: 10pt; line-height: 1.35;">
+const suriyaTablesTableHtml = `
+<table class="toc-table">
   <thead>
-    <tr style="background-color: #e2e8f0;">
-      <th style="width: 18%; text-align: center; padding: 4pt 6pt;">TABLE NO.</th>
-      <th style="width: 67%; padding: 4pt 8pt;">TABLE NAME</th>
-      <th style="width: 15%; text-align: center; padding: 4pt 6pt;">PAGE NO.</th>
+    <tr>
+      <th style="width: 16%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">TABLE NO.</th>
+      <th style="width: 70%; text-align: left; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">TABLE TITLE</th>
+      <th style="width: 14%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">PAGE NO.</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="center"><strong>2.1</strong></td><td>Sepolia Smart Contract Registry & Invariants</td><td class="center">6</td></tr>
-    <tr><td class="center"><strong>2.2</strong></td><td>Software & Technology Stack Dependency Matrix</td><td class="center">12</td></tr>
-    <tr><td class="center"><strong>5.1</strong></td><td>Smart Contract Automated Hardhat Test Results (12/12)</td><td class="center">40</td></tr>
-    <tr><td class="center"><strong>5.2</strong></td><td>Backend Settlement & Lease Fencing Test Suite (71/71)</td><td class="center">42</td></tr>
+    <tr><td class="center">2.1</td><td>Minimum and Recommended Hardware Requirements</td><td class="center">3</td></tr>
+    <tr><td class="center">2.2</td><td>Software Specifications and Development Dependencies</td><td class="center">3</td></tr>
+    <tr><td class="center">3.1</td><td>Comparative Matrix: Centralized Platforms vs. Proposed FairWork System</td><td class="center">6</td></tr>
+    <tr><td class="center">4.1</td><td>System Modular Breakdown and Constituent File Matrix</td><td class="center">8</td></tr>
+    <tr><td class="center">4.2</td><td>Database Collection &amp; Storage Schema</td><td class="center">12</td></tr>
+    <tr><td class="center">6.1</td><td>Comprehensive Verification Test Suite (TC01 - TC10)</td><td class="center">17</td></tr>
+    <tr><td class="center">8.1</td><td>Data Dictionary of Storage Entities and State Flags</td><td class="center">28</td></tr>
   </tbody>
 </table>
 `;
 
-const suriyaListFiguresHtml = `
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">vii</p>
-<h1 class="chapter-heading" style="margin-bottom: 12pt;">LIST OF FIGURES</h1>
-<table class="academic-table" style="font-size: 10pt; line-height: 1.35;">
+const suriyaFiguresTableHtml = `
+<table class="toc-table">
   <thead>
-    <tr style="background-color: #e2e8f0;">
-      <th style="width: 18%; text-align: center; padding: 4pt 6pt;">FIGURE NO.</th>
-      <th style="width: 67%; padding: 4pt 8pt;">FIGURE NAME</th>
-      <th style="width: 15%; text-align: center; padding: 4pt 6pt;">PAGE NO.</th>
+    <tr>
+      <th style="width: 16%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">FIGURE NO.</th>
+      <th style="width: 70%; text-align: left; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">FIGURE TITLE</th>
+      <th style="width: 14%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">PAGE NO.</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="center"><strong>3.1</strong></td><td>FairWork End-to-End System Architecture (Blockchain & Backend Plane)</td><td class="center">14</td></tr>
-    <tr><td class="center"><strong>3.2</strong></td><td>Data Flow Diagram Level 0 (Context Level Architecture)</td><td class="center">16</td></tr>
-    <tr><td class="center"><strong>3.3</strong></td><td>Data Flow Diagram Level 1 (Decentralized Settlement Flow)</td><td class="center">17</td></tr>
-    <tr><td class="center"><strong>3.4</strong></td><td>Data Flow Diagram Level 2 (Reorg Engine & Lease Fencing)</td><td class="center">18</td></tr>
-    <tr><td class="center"><strong>3.5</strong></td><td>Smart Contract Escrow State Machine & Lifecycle Transitions</td><td class="center">19</td></tr>
-    <tr><td class="center"><strong>3.6</strong></td><td>Financial Entity Relationship & Escrow State Invariants</td><td class="center">20</td></tr>
-    <tr><td class="center"><strong>4.1</strong></td><td>Live Platform Telemetry: Web3 Client Wallet Connection & MetaMask Guardrail</td><td class="center">35</td></tr>
-    <tr><td class="center"><strong>4.2</strong></td><td>Live Application Telemetry: FairWork Ask AI Explaining DisputeContract on Sepolia</td><td class="center">37</td></tr>
-    <tr><td class="center"><strong>4.3</strong></td><td>Automated 4-Stage Milestone Settlement Pipeline on Public Landing Studio</td><td class="center">38</td></tr>
+    <tr><td class="center">4.1</td><td>Architecture of FairWork Decentralized Escrow Protocol</td><td class="center">7</td></tr>
+    <tr><td class="center">4.2</td><td>Data Flow Diagram &mdash; Level 0 (Context Level)</td><td class="center">9</td></tr>
+    <tr><td class="center">4.3</td><td>Data Flow Diagram &mdash; Level 1 (Decentralized Settlement Flow)</td><td class="center">9</td></tr>
+    <tr><td class="center">4.4</td><td>Data Flow Diagram &mdash; Level 2 (Reorg Engine &amp; Lease Fencing)</td><td class="center">10</td></tr>
+    <tr><td class="center">4.5</td><td>Complete Project Entity-Relationship (ER) Data Model</td><td class="center">11</td></tr>
+    <tr><td class="center">8.1</td><td>Live Testnet Escrow Verification &amp; Web3 Wallet Balances</td><td class="center">19</td></tr>
+    <tr><td class="center">8.2</td><td>Non-Custodial Smart Contract Milestone Escrow Vault</td><td class="center">19</td></tr>
+    <tr><td class="center">8.3</td><td>Milestone Deliverable Inspection &amp; Automated Settlement Gates</td><td class="center">20</td></tr>
+    <tr><td class="center">8.4</td><td>AI Dispute Mediation Drawer &amp; Arbitrator Execution Pipeline</td><td class="center">20</td></tr>
+    <tr><td class="center">8.5</td><td>Decentralized Escrow Marketplace &amp; Transactional Outbox Microservice</td><td class="center">21</td></tr>
+    <tr><td class="center">8.6</td><td>Sepolia Smart Contracts Deployment &amp; Zero-Fee Settlement Ledger</td><td class="center">21</td></tr>
   </tbody>
 </table>
 `;
 
+const suriyaAcknowledgementHtml = `
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I express my deepest sense of gratitude and sincere thanks to the Management and Dean, Faculty of Liberal Arts and Business Studies, SRM Institute of Science and Technology, Vadapalani, for providing the necessary facilities, academic environment, and infrastructure throughout the course of this project.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I wish to express my profound gratitude and heartfelt thanks to the Head of the Department, <strong>Dr. J. ANITHA RUTH, M.C.A., M.Phil., M.S., Ph.D.</strong>, Department of Computer Applications (MCA), for her constant encouragement, administrative support, and valuable suggestions during the tenure of this work.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I convey my sincere indebtedness and heartfelt thanks to my project guide, <strong>Dr. M. SIVASAKTHI, M.Sc., M.Phil., Ph.D., NET</strong>, Department of Computer Applications (MCA), for her inspiring guidance, constructive criticisms, patient advice, and continuous motivation at every stage of the project.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I wish to place on record my heartfelt gratitude and sincere thanks to my Class Incharge, <strong>Dr. M. SIVASAKTHI, M.Sc., M.Phil., Ph.D., NET</strong>, Department of Computer Applications (MCA), for her continuous academic support, guidance, encouragement, and valuable advice throughout the duration of this project.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I also extend my sincere appreciation to all the faculty members and staff of the Department of Computer Applications for their cooperation and goodwill throughout the period of my study.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 18pt;">
+  Finally, I express my deep heartfelt gratitude to my family members and friends for their endless support.
+</p>
+
+<table class="borderless-table" style="width: 100%; margin-top: 12pt; margin-bottom: 8pt;">
+  <tr>
+    <td style="width: 50%;"></td>
+    <td style="width: 50%; text-align: right; font-size: 11pt; line-height: 1.4; vertical-align: top;">
+      <strong>Signature of the Candidate</strong><br /><br />
+      <strong>SURIYA E</strong><br />
+      <strong>REG NO: RA2532241040042</strong>
+    </td>
+  </tr>
+</table>
+`;
+
+// Professional, academic, deeply technical abstract for Suriya E
 const suriyaAbstractHtml = `
-<p style="text-indent: 30pt; line-height: 1.6;">
-  This project presents <strong>FairWork</strong>, a decentralized, non-custodial milestone-based freelance marketplace platform designed to establish provable financial trust between clients and independent contractors without relying on predatory centralized intermediaries. Traditional freelance marketplaces extract between 10% and 20% in platform commissions, delay fund clearing by up to 14 days, enforce opaque custodial escrow accounts, and resolve code disputes through subjective support representatives. This project documentation specifically details the <strong>Blockchain, Smart Contracts, Non-Custodial Escrow Financial Settlement, On-Chain Reputation, AI-Assisted Dispute Mediation Relay, and Backend Resiliency Engineering</strong> designed and implemented by <strong>SURIYA E (Reg. No: RA2532241040042)</strong>.
+<p class="abstract-p">
+  Contemporary freelance labor marketplaces remain encumbered by centralized corporate intermediaries that impose punitive commission rates ranging from 10% to 20%, enforce protracted two-week settlement delays, hold opaque custodial reserves, and adjudicate technical disputes through arbitrary administrative reviews. These systemic inefficiencies create substantial counterparty risk and financial friction for independent software engineers. To resolve these systemic vulnerabilities, this project presents <strong>FairWork</strong>, an enterprise-grade decentralized freelance protocol engineered on the Ethereum blockchain that establishes verifiable cryptographic trust, non-custodial collateral custody, and complete intermediary disintermediation.
 </p>
-<p style="text-indent: 30pt; line-height: 1.6;">
-  The on-chain core comprises four verified contracts deployed on the Ethereum Sepolia Testnet: <code>EscrowContract.sol</code> (<code>0xc0d1b74a30a82d6fb846e446758a8c2ff391376c</code>), <code>DisputeContract.sol</code> (<code>0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193</code>), <code>ReputationContract.sol</code> (<code>0xfa25823ccf7343fdfd7fa20a785d996331e66674</code>), and <code>MockUSDC.sol</code> (<code>0xf21bdf6737a3009359f9ec1fa515e6d74702f575</code>). <code>EscrowContract.sol</code> implements a non-reentrant multi-milestone vault utilizing OpenZeppelin 5.0 SafeERC20 with 6-decimal USDC. It guarantees 0% platform take-rate, direct peer-to-peer payout finality upon client signoff, and enforces an invariant 48-hour challenge timelock on client refund cancellations to prevent capital drain exploits. <code>DisputeContract.sol</code> isolates arbitration authority, freezes disputed balances, and settles funds based on binary allocation rules. <code>ReputationContract.sol</code> implements an $\\mathcal{O}(1)$ gas-complexity accumulator that records permanent, non-transferable counterparty ratings on-chain.
+<p class="abstract-p">
+  As Member 1 of this two-member development team, <strong>SURIYA E (Register No: RA2532241040042)</strong> was primarily responsible for the core blockchain smart contract architecture, non-custodial milestone escrow vaults, on-chain reputation engine, and fault-tolerant settlement infrastructure of FairWork. The protocol core comprises a gas-optimized suite of Solidity smart contracts deployed on Ethereum Sepolia (EscrowContract, DisputeContract, ReputationContract). Operating under non-reentrant guarantees with SafeERC20 primitives, the escrow vault facilitates direct peer-to-peer USD Coin disbursements with guaranteed zero platform rent extraction, instantaneous client milestone releases, and an inviolable 48-hour challenge timelock on refund requests to eliminate capital drain exploits.
 </p>
-<p style="text-indent: 30pt; line-height: 1.6;">
-  To bridge on-chain operations with off-chain applications securely, the backend architecture implements a 5-pillar settlement engine: generation-fenced distributed lease management (<code>leaseManager.js</code>) preventing split-brain writes across multi-pod clusters, a reorg rollback engine (<code>reorgEngine.js</code>) resolving deep block reorganizations back to common ancestors, transactional outbox delivery, fail-fast startup bytecode verification, and an automated arbitrator cryptographic relay executing mutual Gemini AI dispute agreements on-chain. The smart contract suite passes 12/12 comprehensive Hardhat tests, and the backend services pass 71/71 production tests, demonstrating mathematical security and enterprise readiness.
+<p class="abstract-p">
+  To bridge asynchronous blockchain finality with off-chain microservices, a resilient five-pillar backend settlement architecture was engineered. This infrastructure implements distributed lock orchestration with monotonic generation fencing to prevent split-brain anomalies, an automated reorganization rollback engine reconciling state mutations back to canonical common ancestors, and an autonomous arbitrator cryptographic relay executing bilateral Gemini AI mediation settlements on-chain. Empirical verification confirms 100% test passage across 12 Hardhat smart contract suites and 71 backend integration suites, establishing a mathematically secure foundation for decentralized freelance commerce.
 </p>
 `;
 
@@ -728,172 +1056,279 @@ const suriyaAbstractHtml = `
 // STUDENT 2: VIGNESH V CONFIGURATION
 // ============================================================================
 const vigneshFiguresMap = {
-  // Fig 3.1
-  "Figure 3.1": {
-    image: "fig_arch_vignesh.png",
-    num: "3.1",
-    caption: "React 19 Frontend Component Architecture & State Store Hierarchy",
-    analysis: "The frontend client architecture separates concerns across global application providers (AuthContext, ThemeProvider, ToastProvider), declarative React Router v7 routes, and high-conversion page controllers. Atomic design primitives in components/ui/ provide consistent UX, while projectsApi.ts and web3.ts interface with Express and Ethereum Sepolia."
-  },
-  // Fig 3.2
-  "Figure 3.2": {
-    image: "fig_user_workflows.png",
-    num: "3.2",
-    caption: "Client Milestone Escrow Lifecycle & Funding Flowchart",
-    analysis: "The client escrow workflow illustrates project posting, proposals evaluation, digital agreement signing, MetaMask USDC allowance approval, and client-gated milestone release payouts."
-  },
-  // Fig 3.3
-  "Figure 3.3": {
-    image: "fig_user_workflows.png",
-    num: "3.3",
-    caption: "Freelancer Work Submission & GitHub CI Telemetry Sequence",
-    analysis: "The developer delivery sequence maps code submission through pull requests, parsing CI test runs, displaying verified green badges, and receiving direct non-custodial payouts."
-  },
-  // Fig 3.4
-  "Figure 3.4": {
-    image: "fig_user_workflows.png",
-    num: "3.4",
-    caption: "AI Dispute Mediation Consensus & Bilateral Acceptance Workflow",
-    analysis: "The dispute workflow outlines vault freezing, automated Gemini AI technical evidence review, the 48-hour consensus countdown window, and arbitrator relay execution upon mutual consent."
-  },
-  // Fig 3.5
-  "Figure 3.5": {
-    image: "fig_dfd_suriya.png",
-    num: "3.5",
-    caption: "Frontend Level 1 Data Flow Diagram (State & Web3 Interaction)",
-    analysis: "The frontend Level 1 DFD traces user actions through UI components, REST API consumers, Viem contract callers, and reactive toast notifications."
-  },
-  // Fig 4.1
+  // Fig 4.1 to 4.5 in Chapter 4 (Design)
   "Figure 4.1": {
-    image: "screenshot_landing_page.png",
+    image: "fig_arch_vignesh.png",
     num: "4.1",
-    caption: "FairWork Public Discovery Studio & Interactive Milestone Escrow Simulator",
-    analysis: "The responsive landing page showcases the live protocol value proposition: universal search, real-time escrow balance simulation, zero take-rate fee calculator, and verified Sepolia smart contract links directly from Etherscan."
+    caption: "Component-Driven Reactive Client Architecture",
+    analysis: "The frontend client architecture separates concerns across global application providers (AuthContext, ThemeProvider, ToastProvider), declarative React Router routes, and high-conversion page controllers. Atomic design primitives provide consistent UX, while api.js and web3 services interface with Express and Ethereum Sepolia."
   },
-  // Fig 4.2
   "Figure 4.2": {
-    image: "screenshot_projects_marketplace.png",
+    image: "fig_frontend_dfd_lvl0.png",
     num: "4.2",
-    caption: "FairWork Projects Marketplace with Real-Time Filtering & Milestone Budgets",
-    analysis: "The discovery marketplace enables freelancers to filter freelance briefs by technical category, budget tier, and deadline urgency, with immediate visual indicators of escrow funding status."
+    caption: "Data Flow Diagram — Context Level 0",
+    analysis: "The frontend Context Diagram illustrates user inputs (client project specifications, freelancer bids, deliverable artifacts) flowing through UI boundaries to backend services and Ethereum smart contract events."
   },
-  // Fig 4.3
   "Figure 4.3": {
-    image: "screenshot_project_detail_mobile.jpg",
+    image: "fig_frontend_dfd_lvl1.png",
     num: "4.3",
-    caption: "Responsive Project Detail Hub with Multi-Tab Milestone & Contract Management",
-    analysis: "The mobile-optimized collaboration hub provides quick access to Overview, Contract, Milestones, Files, and Activity tabs, showing live milestone funding progress, deadline countdowns, and action buttons."
+    caption: "Data Flow Diagram — Functional Level 1",
+    analysis: "The Level 1 Frontend DFD highlights internal state transitions: Form validation engines feed into REST API handlers, which trigger Web3 transaction dispatchers and update local React contexts and toast notification buses upon blockchain confirmation."
   },
-  // Fig 4.4
   "Figure 4.4": {
-    image: "screenshot_wallet_required_banner.png",
+    image: "fig_client_escrow_flow.png",
     num: "4.4",
-    caption: "Project Creation Workspace with Web3 Client Wallet Connection Guardrail",
-    analysis: "When creating a project, the interface validates Web3 wallet availability. If an address is not connected, the prominent Web3 Client Wallet Required banner guides the user to connect MetaMask before allowing form submission."
+    caption: "Client-Side Escrow Interaction & State Machine Flow",
+    analysis: "The client escrow workflow illustrates project posting, proposals evaluation, digital agreement signing, MetaMask USDC allowance approval, deliverable inspection, and client-gated milestone release payouts followed by on-chain rating submission."
   },
-  // Fig 4.5
   "Figure 4.5": {
-    image: "screenshot_ask_ai_chat.jpg",
+    image: "fig_freelancer_ci_seq.png",
     num: "4.5",
-    caption: "FairWork Ask AI Streaming Assistant Interface",
-    analysis: "The interactive SSE streaming assistant dialog guides users through Web3 escrow payments, gas fees, milestone release steps, and dispute resolution policies."
+    caption: "Freelancer Automated CI/CD Verification Sequence",
+    analysis: "The developer delivery sequence maps code submission through GitHub pull requests, automated GitHub Actions CI check-runs verification, displaying verified green badges, and receiving direct non-custodial USDC payouts into the contractor wallet."
+  },
+
+  // Fig 8.1 to 8.6 in Chapter 8 (Appendix Screenshots - Live UI)
+  "Figure 8.1": {
+    image: "screenshot_landing_page.png",
+    num: "8.1",
+    caption: "FairWork Homepage & Responsive Project Discovery Portal",
+    analysis: "The responsive landing page showcases platform trust pillars: direct zero-fee escrow comparisons, automated GitHub verification badges, and live Sepolia smart contract deployment metrics."
+  },
+  "Figure 8.2": {
+    image: "screenshot_projects_marketplace.png",
+    num: "8.2",
+    caption: "Projects Marketplace & Active Escrow Directory",
+    analysis: "The project discovery feed enables category filtering, skill badge tagging, and real-time project card inspection with verified contractor earnings and milestone progress indicators."
+  },
+  "Figure 8.3": {
+    image: "screenshot_wallet_escrow.png",
+    num: "8.3",
+    caption: "Web3 Wallet Connection Modal & Network Switch Guard",
+    analysis: "The project posting interface enforces rigorous form validation and displays an intuitive amber banner when an active Web3 wallet is required before on-chain project creation."
+  },
+  "Figure 8.4": {
+    image: "screenshot_project_workspace.png",
+    num: "8.4",
+    caption: "Mobile Responsive Milestone Workspace & Escrow Inspector",
+    analysis: "The responsive mobile workspace view unifies project overview metrics, multi-milestone release actions, and deliverable submission dialogs optimized for touch-driven mobile viewports."
+  },
+  "Figure 8.5": {
+    image: "screenshot_ask_ai_chat.png",
+    num: "8.5",
+    caption: "AI Negotiation Assistant & Interactive Chat Interface",
+    analysis: "The integrated mobile chat assistant provides instant procedural guidance regarding milestone approval gates, dispute arbitration rules, and MetaMask wallet allowance configurations."
+  },
+  "Figure 8.6": {
+    image: "screenshot_milestones_studio.png",
+    num: "8.6",
+    caption: "Interactive Milestone Escrow Studio & Deliverable Verification Workspace",
+    analysis: "The interactive milestone studio interface unifies milestone progress tracking, GitHub PR deliverable submission with passing CI verification badges, and non-custodial milestone approval triggers."
   }
 };
 
 const vigneshTocHtml = `
-<table class="academic-table" style="font-size: 10pt; line-height: 1.35; margin-bottom: 0;">
+<table class="toc-table">
   <thead>
-    <tr style="background-color: #e2e8f0;">
-      <th style="width: 16%; text-align: center; padding: 4pt 6pt;">CHAPTER</th>
-      <th style="width: 68%; padding: 4pt 8pt;">TITLE</th>
-      <th style="width: 16%; text-align: center; padding: 4pt 6pt;">PAGE NO.</th>
+    <tr>
+      <th style="width: 15%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">S.NO</th>
+      <th style="width: 70%; text-align: left; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">TITLE</th>
+      <th style="width: 15%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">PAGE NO</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="center"></td><td><strong>BONAFIDE CERTIFICATE</strong></td><td class="center">ii</td></tr>
-    <tr><td class="center"></td><td><strong>ACKNOWLEDGEMENT</strong></td><td class="center">iii</td></tr>
-    <tr><td class="center"></td><td><strong>ABSTRACT</strong></td><td class="center">iv</td></tr>
-    <tr><td class="center"></td><td><strong>LIST OF TABLES</strong></td><td class="center">vi</td></tr>
-    <tr><td class="center"></td><td><strong>LIST OF FIGURES</strong></td><td class="center">vii</td></tr>
-    <tr><td class="center"><strong>1</strong></td><td><strong>INTRODUCTION</strong></td><td class="center"><strong>1</strong></td></tr>
-    <tr><td class="center"><strong>2</strong></td><td><strong>MODULE DESCRIPTION & SYSTEM REQUIREMENTS</strong></td><td class="center"><strong>5</strong></td></tr>
-    <tr><td class="center"><strong>3</strong></td><td><strong>SYSTEM DESIGN & UI/UX ARCHITECTURE</strong></td><td class="center"><strong>14</strong></td></tr>
-    <tr><td class="center"><strong>4</strong></td><td><strong>IMPLEMENTATION & CODE METHODOLOGY</strong></td><td class="center"><strong>22</strong></td></tr>
-    <tr><td class="center"><strong>5</strong></td><td><strong>TESTING, USABILITY & PERFORMANCE VERIFICATION</strong></td><td class="center"><strong>40</strong></td></tr>
-    <tr><td class="center"><strong>6</strong></td><td><strong>CONCLUSION & FUTURE ENHANCEMENTS</strong></td><td class="center"><strong>48</strong></td></tr>
-    <tr><td class="center"></td><td><strong>APPENDIX: ROUTE MAP & API TYPINGS</strong></td><td class="center"><strong>50</strong></td></tr>
-    <tr><td class="center"></td><td><strong>REFERENCES</strong></td><td class="center"><strong>53</strong></td></tr>
+    <tr><td class="center">1</td><td><strong>BONAFIDE CERTIFICATE</strong></td><td class="center">I</td></tr>
+    <tr><td class="center">2</td><td><strong>DECLARATION</strong></td><td class="center">II</td></tr>
+    <tr><td class="center">3</td><td><strong>ACKNOWLEDGEMENT</strong></td><td class="center">III</td></tr>
+    <tr><td class="center">4</td><td><strong>ABSTRACT</strong></td><td class="center">IV</td></tr>
+    <tr><td class="center">5</td><td><strong>LIST OF TABLES</strong></td><td class="center">V</td></tr>
+    <tr><td class="center">6</td><td><strong>LIST OF FIGURES</strong></td><td class="center">VI</td></tr>
+    <tr>
+      <td class="center">7</td>
+      <td>
+        <strong>INTRODUCTION</strong><br/>
+        &nbsp;&nbsp;1.1 PROJECT INTRODUCTION<br/>
+        &nbsp;&nbsp;1.2 BACKGROUND AND MOTIVATION<br/>
+        &nbsp;&nbsp;1.3 PROBLEM STATEMENT<br/>
+        &nbsp;&nbsp;1.4 NEED FOR THE PROJECT
+      </td>
+      <td class="center">1</td>
+    </tr>
+    <tr>
+      <td class="center">8</td>
+      <td>
+        <strong>WORKING ENVIRONMENT</strong><br/>
+        &nbsp;&nbsp;2.1 HARDWARE REQUIREMENT<br/>
+        &nbsp;&nbsp;2.2 SOFTWARE REQUIREMENT<br/>
+        &nbsp;&nbsp;2.3 SYSTEM SOFTWARE<br/>
+        &nbsp;&nbsp;2.4 DEVELOPMENT ENVIRONMENT
+      </td>
+      <td class="center">3</td>
+    </tr>
+    <tr>
+      <td class="center">9</td>
+      <td>
+        <strong>SYSTEM ANALYSIS</strong><br/>
+        &nbsp;&nbsp;3.1 FEASIBILITY STUDY<br/>
+        &nbsp;&nbsp;3.2 EXISTING SYSTEM<br/>
+        &nbsp;&nbsp;3.3 DRAWBACKS OF EXISTING SYSTEM<br/>
+        &nbsp;&nbsp;3.4 PROPOSED SYSTEM<br/>
+        &nbsp;&nbsp;3.5 BENEFITS OF PROPOSED SYSTEM<br/>
+        &nbsp;&nbsp;3.6 SCOPE OF THE PROJECT
+      </td>
+      <td class="center">5</td>
+    </tr>
+    <tr>
+      <td class="center">10</td>
+      <td>
+        <strong>SYSTEM DESIGN</strong><br/>
+        &nbsp;&nbsp;4.1 ARCHITECTURE DESIGN<br/>
+        &nbsp;&nbsp;4.2 MODULE DESIGN<br/>
+        &nbsp;&nbsp;4.3 DATA FLOW DESIGN<br/>
+        &nbsp;&nbsp;4.4 DATA STORAGE DESIGN<br/>
+        &nbsp;&nbsp;4.5 INTERFACE DESIGN
+      </td>
+      <td class="center">7</td>
+    </tr>
+    <tr>
+      <td class="center">11</td>
+      <td>
+        <strong>PROJECT DESCRIPTION</strong><br/>
+        &nbsp;&nbsp;5.1 OBJECTIVE<br/>
+        &nbsp;&nbsp;5.2 MODULE DESCRIPTION<br/>
+        &nbsp;&nbsp;5.3 IMPLEMENTATION<br/>
+        &nbsp;&nbsp;5.4 MAINTENANCE
+      </td>
+      <td class="center">12</td>
+    </tr>
+    <tr>
+      <td class="center">12</td>
+      <td>
+        <strong>SYSTEM TESTING</strong><br/>
+        &nbsp;&nbsp;6.1 TESTING DEFINITION<br/>
+        &nbsp;&nbsp;6.2 TESTING OBJECTIVE<br/>
+        &nbsp;&nbsp;6.3 TYPES OF TESTING<br/>
+        &nbsp;&nbsp;6.4 TEST CASES
+      </td>
+      <td class="center">15</td>
+    </tr>
+    <tr>
+      <td class="center">13</td>
+      <td>
+        <strong>CONCLUSION</strong><br/>
+        &nbsp;&nbsp;7.1 SUMMARY<br/>
+        &nbsp;&nbsp;7.2 FUTURE ENHANCEMENT
+      </td>
+      <td class="center">17</td>
+    </tr>
+    <tr>
+      <td class="center">14</td>
+      <td>
+        <strong>APPENDIX</strong><br/>
+        &nbsp;&nbsp;8.1 SCREENSHOTS<br/>
+        &nbsp;&nbsp;8.2 CODING<br/>
+        &nbsp;&nbsp;8.3 DATA DICTIONARY<br/>
+        &nbsp;&nbsp;8.4 PROJECT SPECIFICATION AND CONSIDERATIONS
+      </td>
+      <td class="center">18</td>
+    </tr>
+    <tr>
+      <td class="center">15</td>
+      <td><strong>BIBLIOGRAPHY AND REFERENCES</strong></td>
+      <td class="center">28</td>
+    </tr>
   </tbody>
 </table>
 `;
 
-const vigneshListTablesHtml = `
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">vi</p>
-<h1 class="chapter-heading" style="margin-bottom: 12pt;">LIST OF TABLES</h1>
-<table class="academic-table" style="font-size: 10pt; line-height: 1.35;">
+const vigneshTablesTableHtml = `
+<table class="toc-table">
   <thead>
-    <tr style="background-color: #e2e8f0;">
-      <th style="width: 18%; text-align: center; padding: 4pt 6pt;">TABLE NO.</th>
-      <th style="width: 67%; padding: 4pt 8pt;">TABLE NAME</th>
-      <th style="width: 15%; text-align: center; padding: 4pt 6pt;">PAGE NO.</th>
+    <tr>
+      <th style="width: 16%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">TABLE NO.</th>
+      <th style="width: 70%; text-align: left; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">TABLE TITLE</th>
+      <th style="width: 14%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">PAGE NO.</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="center"><strong>2.1</strong></td><td>Reusable Design System Component Specification</td><td class="center">7</td></tr>
-    <tr><td class="center"><strong>2.2</strong></td><td>Frontend Software Stack & Dependency Matrix</td><td class="center">13</td></tr>
-    <tr><td class="center"><strong>3.1</strong></td><td>Application Route Mapping & Access Authority</td><td class="center">21</td></tr>
-    <tr><td class="center"><strong>5.1</strong></td><td>Client Form Validation & Security Test Matrix</td><td class="center">43</td></tr>
-    <tr><td class="center"><strong>5.2</strong></td><td>Web3 Transaction Error Recovery & Fallback Matrix</td><td class="center">44</td></tr>
-    <tr><td class="center"><strong>5.3</strong></td><td>Google Lighthouse Performance & Accessibility Scores</td><td class="center">46</td></tr>
+    <tr><td class="center">2.1</td><td>Minimum and Recommended Hardware Requirements</td><td class="center">3</td></tr>
+    <tr><td class="center">2.2</td><td>Software Specifications and Development Dependencies</td><td class="center">3</td></tr>
+    <tr><td class="center">3.1</td><td>Comparative Matrix: Legacy Web2 Portals vs. Proposed FairWork Interface</td><td class="center">6</td></tr>
+    <tr><td class="center">4.1</td><td>Frontend Modular Breakdown and Component Architecture Matrix</td><td class="center">7</td></tr>
+    <tr><td class="center">4.2</td><td>Client State Management &amp; Cache Schema</td><td class="center">11</td></tr>
+    <tr><td class="center">6.1</td><td>Comprehensive Verification Test Suite (TC01 - TC10)</td><td class="center">16</td></tr>
+    <tr><td class="center">8.1</td><td>Data Dictionary of Client State Entities and Route Flags</td><td class="center">27</td></tr>
   </tbody>
 </table>
 `;
 
-const vigneshListFiguresHtml = `
-<p class="right" style="font-size: 10pt; color: #64748b; margin-bottom: 2pt;">vii</p>
-<h1 class="chapter-heading" style="margin-bottom: 12pt;">LIST OF FIGURES</h1>
-<table class="academic-table" style="font-size: 10pt; line-height: 1.35;">
+const vigneshFiguresTableHtml = `
+<table class="toc-table">
   <thead>
-    <tr style="background-color: #e2e8f0;">
-      <th style="width: 18%; text-align: center; padding: 4pt 6pt;">FIGURE NO.</th>
-      <th style="width: 67%; padding: 4pt 8pt;">FIGURE NAME</th>
-      <th style="width: 15%; text-align: center; padding: 4pt 6pt;">PAGE NO.</th>
+    <tr>
+      <th style="width: 16%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">FIGURE NO.</th>
+      <th style="width: 70%; text-align: left; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">FIGURE TITLE</th>
+      <th style="width: 14%; text-align: center; border: 1px solid #000000; font-weight: bold; font-size: 12pt;">PAGE NO.</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td class="center"><strong>3.1</strong></td><td>React 19 Frontend Component Architecture & State Store Hierarchy</td><td class="center">15</td></tr>
-    <tr><td class="center"><strong>3.2</strong></td><td>Client Milestone Escrow Lifecycle & Funding Flowchart</td><td class="center">17</td></tr>
-    <tr><td class="center"><strong>3.3</strong></td><td>Freelancer Work Submission & GitHub CI Telemetry Sequence</td><td class="center">18</td></tr>
-    <tr><td class="center"><strong>3.4</strong></td><td>AI Dispute Mediation Consensus & Bilateral Acceptance Workflow</td><td class="center">19</td></tr>
-    <tr><td class="center"><strong>3.5</strong></td><td>Frontend Level 1 Data Flow Diagram (State & Web3 Interaction)</td><td class="center">20</td></tr>
-    <tr><td class="center"><strong>4.1</strong></td><td>FairWork Public Discovery Studio & Interactive Milestone Escrow Simulator</td><td class="center">35</td></tr>
-    <tr><td class="center"><strong>4.2</strong></td><td>FairWork Projects Marketplace with Real-Time Filtering & Milestone Budgets</td><td class="center">36</td></tr>
-    <tr><td class="center"><strong>4.3</strong></td><td>Responsive Project Detail Hub with Multi-Tab Milestone & Contract Management</td><td class="center">37</td></tr>
-    <tr><td class="center"><strong>4.4</strong></td><td>Project Creation Workspace with Web3 Client Wallet Connection Guardrail</td><td class="center">38</td></tr>
-    <tr><td class="center"><strong>4.5</strong></td><td>FairWork Ask AI Streaming Assistant Interface</td><td class="center">39</td></tr>
+    <tr><td class="center">4.1</td><td>Component-Driven Reactive Client Architecture</td><td class="center">9</td></tr>
+    <tr><td class="center">4.2</td><td>Data Flow Diagram &mdash; Context Level 0</td><td class="center">10</td></tr>
+    <tr><td class="center">4.3</td><td>Data Flow Diagram &mdash; Functional Level 1</td><td class="center">10</td></tr>
+    <tr><td class="center">4.4</td><td>Client-Side Escrow Interaction &amp; State Machine Flow</td><td class="center">10</td></tr>
+    <tr><td class="center">4.5</td><td>Freelancer Automated CI/CD Verification Sequence</td><td class="center">11</td></tr>
+    <tr><td class="center">8.1</td><td>FairWork Homepage &amp; Responsive Project Discovery Portal</td><td class="center">18</td></tr>
+    <tr><td class="center">8.2</td><td>Projects Marketplace &amp; Active Escrow Directory</td><td class="center">18</td></tr>
+    <tr><td class="center">8.3</td><td>Web3 Wallet Connection Modal &amp; Network Switch Guard</td><td class="center">19</td></tr>
+    <tr><td class="center">8.4</td><td>Mobile Responsive Milestone Workspace &amp; Escrow Inspector</td><td class="center">19</td></tr>
+    <tr><td class="center">8.5</td><td>AI Negotiation Assistant &amp; Interactive Chat Interface</td><td class="center">20</td></tr>
+    <tr><td class="center">8.6</td><td>Interactive Milestone Escrow Studio &amp; Deliverable Verification Workspace</td><td class="center">20</td></tr>
   </tbody>
 </table>
 `;
 
+const vigneshAcknowledgementHtml = `
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I express my deepest sense of gratitude and sincere thanks to the Management and Dean, Faculty of Liberal Arts and Business Studies, SRM Institute of Science and Technology, Vadapalani, for providing the necessary facilities, academic environment, and infrastructure throughout the course of this project.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I wish to express my profound gratitude and heartfelt thanks to the Head of the Department, <strong>Dr. J. ANITHA RUTH, M.C.A., M.Phil., M.S., Ph.D.</strong>, Department of Computer Applications (MCA), for her constant encouragement, administrative support, and valuable suggestions during the tenure of this work.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I convey my sincere indebtedness and heartfelt thanks to my project guide, <strong>Dr. M. SIVASAKTHI, M.Sc., M.Phil., Ph.D., NET</strong>, Department of Computer Applications (MCA), for her inspiring guidance, constructive criticisms, patient advice, and continuous motivation at every stage of the project.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I wish to place on record my heartfelt gratitude and sincere thanks to my Class Incharge, <strong>Dr. M. SIVASAKTHI, M.Sc., M.Phil., Ph.D., NET</strong>, Department of Computer Applications (MCA), for her continuous academic support, guidance, encouragement, and valuable advice throughout the duration of this project.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 8pt;">
+  I also extend my sincere appreciation to all the faculty members and staff of the Department of Computer Applications for their cooperation and goodwill throughout the period of my study.
+</p>
+<p style="text-align: justify; text-justify: inter-word; line-height: 1.5; font-size: 12pt; margin-bottom: 18pt;">
+  Finally, I express my deep heartfelt gratitude to my family members and friends for their endless support.
+</p>
+
+<table class="borderless-table" style="width: 100%; margin-top: 12pt; margin-bottom: 8pt;">
+  <tr>
+    <td style="width: 50%;"></td>
+    <td style="width: 50%; text-align: right; font-size: 11pt; line-height: 1.4; vertical-align: top;">
+      <strong>Signature of the Candidate</strong><br /><br />
+      <strong>VIGNESH V</strong><br />
+      <strong>REG NO: RA2532241040045</strong>
+    </td>
+  </tr>
+</table>
+`;
+
+// Professional, academic, deeply technical abstract for Vignesh V
 const vigneshAbstractHtml = `
-<p style="text-indent: 30pt; line-height: 1.6;">
-  Decentralized Web3 applications frequently fail to achieve mainstream adoption due to fragmented, confusing user experiences, cryptic blockchain error messages, complex wallet interaction dialogs, and clunky interfaces. For a freelance escrow platform to succeed, it must deliver the visual precision, accessibility, and frictionless responsiveness of modern enterprise consumer software while seamlessly interacting with decentralized smart contracts and backend REST APIs.
+<p class="abstract-p">
+  Decentralized Web3 applications frequently encounter substantial user adoption friction due to fragmented interfaces, intimidating cryptographic wallet interactions, unpredictable transaction latency, and a lack of responsive ergonomic layouts. These interaction deficiencies create severe barriers for mainstream clients and independent contractors accustomed to frictionless consumer software standards. To bridge this critical usability divide, this project introduces <strong>FairWork</strong>, an enterprise-grade decentralized freelancing application that unifies non-custodial smart contract escrow with an intuitive, component-driven client architecture designed for seamless workflow automation and consumer-grade responsiveness.
 </p>
-<p style="text-indent: 30pt; line-height: 1.6;">
-  This project documentation details the <strong>Frontend Engineering, UI/UX Architecture, React/Vite Client Implementation, Tailwind CSS Design System, Multi-Role User Workflows, and REST/Web3 API Integrations</strong> designed and implemented by <strong>VIGNESH V (Reg. No: RA2532241040045)</strong>.
+<p class="abstract-p">
+  As Member 2 of this two-member development team, <strong>VIGNESH V (Register No: RA2532241040045)</strong> was primarily responsible for the responsive Web3 client architecture, atomic design system, React 19 single-page interface, multi-role user workflows, continuous integration telemetry badging, and browser wallet integration layers of FairWork. Engineered using React 19, TypeScript, and Vite 6 with Tailwind CSS, the client provides high-conversion marketplace discovery feeds, an interactive milestone budget estimator with real-time zero-commission fee comparisons, and an on-chain transparency registry linking directly to deployed Sepolia smart contract addresses on Etherscan.
 </p>
-<p style="text-indent: 30pt; line-height: 1.6;">
-  The frontend application is constructed using a high-performance <strong>React 19, TypeScript, and Vite 6</strong> technical stack styled via a custom <strong>Tailwind CSS</strong> variable token system. Key subsystems engineered include:
-</p>
-<ol style="margin-left: 20pt; line-height: 1.6;">
-  <li><strong>Public Landing Page & Discovery Studio:</strong> Engineered a modular, authentic landing experience featuring HeroSection (universal search and interactive escrow simulator), EscrowFlowBlueprint (4-stage visual settlement pipeline), PlatformFeatures (core architectural safeguards), ProjectCalculator (interactive budget and milestone estimator), and VerifiedProtocolShowcase (live Sepolia smart contract registry with real Etherscan links).</li>
-  <li><strong>Project Detail Hub & Multi-Tab Workspace:</strong> Engineered a collaborative workspace consolidating project overview, proposal evaluation, AI-generated legal contract signing, milestone submission with drag-and-drop file attachments, on-demand GitHub PR CI/CD status inspection (✓ CI Green, ✗ Failing, ⏳ In Progress), on-chain escrow funding triggers, and milestone release transactions.</li>
-  <li><strong>AI Dispute Mediation Interface:</strong> Designed an intuitive dispute resolution portal displaying Gemini AI's objective recommendations, neutral rationale breakdowns, a live 48-hour mutual consensus window countdown, and one-click bilateral acceptance controls.</li>
-  <li><strong>On-Chain Reputation Modal & Freelancer Showcase:</strong> Implemented an accessible post-completion rating dialog that writes immutable 1–5 star scores to the Sepolia ReputationContract accumulator with real-time MetaMask transaction feedback.</li>
-  <li><strong>Robust API Client & State Layer:</strong> Developed type-safe REST consumers (projectsApi.ts, disputesApi.ts, contractsApi.ts) with normalized error handling, session token management, and Viem/MetaMask Web3 interaction wrappers (web3.ts).</li>
-</ol>
-<p style="text-indent: 30pt; line-height: 1.6;">
-  The application compiles with <strong>zero TypeScript errors (<code>tsc -b && vite build</code>)</strong>, satisfies strict linting rules, and exhibits exceptional performance across mobile, tablet, and desktop viewports, demonstrating how decentralized freelance commerce can be delivered with enterprise-grade usability.
+<p class="abstract-p">
+  To streamline collaboration between clients and contractors, feature-rich project workspaces unify multi-tab milestone management, secure deliverable submissions, and an automated GitHub Pull Request CI interface rendering live test pipeline verification badges directly within the delivery stream. Essential safety guardrails include a Web3 wallet connection enforcement preventing unconfirmed state modifications, interactive on-chain reputation feedback dialogues, and an intuitive AI dispute mediation portal presenting Gemini AI rationale syntheses alongside an active 48-hour consensus countdown clock. Usability testing confirms zero TypeScript build errors, flawless cross-device viewport responsiveness, and sub-second interaction latencies.
 </p>
 `;
 
@@ -908,20 +1343,230 @@ $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $word = New-Object -ComObject Word.Application
 $word.Visible = $false
 $word.DisplayAlerts = 0
+$word.Options.BackgroundSave = $false
+$word.Options.SaveInterval = 0
+$word.Options.DoNotPromptForConvert = $true
 
 Write-Output "Opening HTML: ${htmlPath.replace(/\\/g, '\\\\')}"
 $doc = $word.Documents.Open("${htmlPath.replace(/\\/g, '\\\\')}")
+$word.ActiveWindow.View.Type = 3 # wdPrintView
+try {
+    $word.Options.DoNotCompressPictures = $true
+    $doc.DoNotCompressPictures = $true
+} catch {}
 Write-Output "Opened in $($sw.ElapsedMilliseconds) ms"
 
-Write-Output "Saving DOCX: ${docxPath.replace(/\\/g, '\\\\')}"
-$sw.Restart()
-$doc.SaveAs2("${docxPath.replace(/\\/g, '\\\\')}", 16)
-Write-Output "Saved DOCX in $($sw.ElapsedMilliseconds) ms"
+# 1. PROCESS AND RESIZE ALL INLINESHAPES (PREVENT OVERFLOW, CENTER, PERMANENTLY EMBED)
+Add-Type -AssemblyName System.Drawing
+Write-Output "Processing $($doc.InlineShapes.Count) inline shapes..."
 
-Write-Output "Saving PDF: ${pdfPath.replace(/\\/g, '\\\\')}"
-$sw.Restart()
-$doc.SaveAs2("${pdfPath.replace(/\\/g, '\\\\')}", 17)
-Write-Output "Saved PDF in $($sw.ElapsedMilliseconds) ms"
+for ($i = 1; $i -le $doc.InlineShapes.Count; $i++) {
+    $shape = $doc.InlineShapes.Item($i)
+    $shape.Range.ParagraphFormat.Alignment = 1 # Center
+
+    # Check if shape is the SRM logo
+    $isLogo = $false
+    try {
+        if ($shape.Range.ParagraphFormat.SpaceAfter -le 12 -and $shape.Range.Information(3) -le 2) {
+            $isLogo = $true
+        }
+    } catch {}
+
+    if ($isLogo) {
+        # Logo sizing: crisp, proportional
+        if ($shape.Range.Information(3) -eq 1) {
+            $shape.Width = [single]150.0
+            $shape.Height = [single]50.8
+        } else {
+            $shape.Width = [single]130.0
+            $shape.Height = [single]44.0
+        }
+    } else {
+        # Diagram and screenshot sizing: large, crisp, filling page width
+        $w = [double]$shape.Width
+        $h = [double]$shape.Height
+        $ratio = if ($h -gt 0) { $w / $h } else { 1.6 }
+
+        if ($ratio -ge 1.8) {
+            # Wide diagram (DFD Level 0, sequence, state machines)
+            $targetW = 415.0
+            $targetH = [Math]::Round($targetW / $ratio)
+        } elseif ($ratio -ge 1.62) {
+            # Architecture diagrams (ratio 1.667)
+            $targetW = 415.0
+            $targetH = [Math]::Round($targetW / $ratio)
+        } elseif ($ratio -ge 1.45) {
+            # Application screenshots (ratio 1.600)
+            # 395 pt width (height 247 pt). Fits two figures cleanly on one page (~610pt < 698pt usable height)
+            $targetW = 395.0
+            $targetH = [Math]::Round($targetW / $ratio)
+        } else {
+            # ER diagrams (ratio 1.302)
+            $targetW = 390.0
+            $targetH = [Math]::Round($targetW / $ratio)
+        }
+        $shape.Width = [single]$targetW
+        $shape.Height = [single]$targetH
+
+        # Set single line spacing and tight space around shape paragraph to prevent Word 1.5 line expansion
+        try {
+            $shape.Range.ParagraphFormat.Alignment = 1 # Center
+            $shape.Range.ParagraphFormat.LineSpacingRule = 0 # Single
+            $shape.Range.ParagraphFormat.SpaceBefore = 0
+            $shape.Range.ParagraphFormat.SpaceAfter = 2
+            $shape.Range.ParagraphFormat.KeepWithNext = -1
+        } catch {}
+    }
+
+    # Embed permanently
+    try {
+        if ($shape.LinkFormat) {
+            $shape.LinkFormat.SavePictureWithDocument = $true
+            $shape.LinkFormat.BreakLink()
+        }
+    } catch {}
+}
+
+# 2. OPTIMIZE AND BIND ALL TABLES (BORDERS, PADDING, SHADING, PREVENT ORPHANS)
+Write-Output "Processing $($doc.Tables.Count) tables..."
+foreach ($table in $doc.Tables) {
+    # Detect signature and candidate layout tables (bonafide, declaration, acknowledgement)
+    $isSig = $false
+    try {
+        $fullText = $table.Range.Text
+        if ($fullText -match "Signature" -or $fullText -match "EXAMINER" -or $fullText -match "Place:" -or $fullText -match "REG NO:" -or $fullText -match "Associate Professor" -or $fullText -match "Head of the Department" -or $fullText -match "SURIYA E" -or $fullText -match "VIGNESH V") {
+            $isSig = $true
+        }
+    } catch {}
+
+    if ($isSig) {
+        try {
+            $table.Borders.Enable = 0
+            $table.Borders.InsideLineStyle = 0
+            $table.Borders.OutsideLineStyle = 0
+            $table.Shading.BackgroundPatternColor = -16777216
+        } catch {}
+        continue
+    }
+
+    try {
+        $table.Rows.AllowBreakAcrossPages = 0
+        $table.Rows.Item(1).HeadingFormat = -1
+        $table.Rows.Item(1).Range.ParagraphFormat.KeepWithNext = -1
+
+        # Center table and auto-fit to window margins
+        $table.Rows.Alignment = 1 # wdAlignRowCenter
+        $table.AutoFitBehavior(1) # wdAutoFitWindow
+
+        # Enforce clean 0.5pt black grid borders on ALL cells (matching official reference format)
+        $table.Borders.InsideLineStyle = 1 # wdLineStyleSingle
+        $table.Borders.InsideLineWidth = 4 # 0.5 pt
+        $table.Borders.InsideColor = 0 # Black
+        $table.Borders.OutsideLineStyle = 1 # wdLineStyleSingle
+        $table.Borders.OutsideLineWidth = 4 # 0.5 pt
+        $table.Borders.OutsideColor = 0 # Black
+
+        # Header and cells background: pure white / no gray pattern (matching reference format)
+        $table.Shading.BackgroundPatternColor = 16777215 # White
+        $table.Rows.Item(1).Shading.BackgroundPatternColor = 16777215 # White
+        $table.Rows.Item(1).Range.Bold = $true
+
+        # Proper cell padding: TOC tables (12pt font) get 2.5pt top/bottom, content tables get 3.5pt top/bottom
+        if ($fullText -match "S\.NO" -or $fullText -match "TABLE NO" -or $fullText -match "FIGURE NO") {
+            $table.TopPadding = 2.5
+            $table.BottomPadding = 2.5
+            $table.LeftPadding = 5.0
+            $table.RightPadding = 5.0
+        } else {
+            $table.TopPadding = 3.5
+            $table.BottomPadding = 3.5
+            $table.LeftPadding = 6.0
+            $table.RightPadding = 6.0
+        }
+    } catch {}
+}
+
+# KeepWithNext for table captions, figure captions, and headings
+Write-Output "Binding captions and headings with KeepWithNext..."
+for ($p = 1; $p -le $doc.Paragraphs.Count; $p++) {
+    $para = $doc.Paragraphs.Item($p)
+    $txt = $para.Range.Text.Trim()
+    if ($txt -match "^Table \d+\.\d+" -or $txt -match "^\*?Table \d+\.\d+" -or $txt -match "^Figure \d+\.\d+" -or $txt -match "^\*?Figure \d+\.\d+") {
+        $para.Format.KeepWithNext = -1
+        $para.Format.KeepTogether = -1
+    }
+    if ($txt -match "^CHAPTER \d+" -or $txt -match "^[1-9]\.\d+" -or $txt -match "^APPENDIX" -or $txt -match "^REFERENCES" -or $txt -match "^BIBLIOGRAPHY") {
+        $para.Format.KeepWithNext = -1
+        $para.Format.KeepTogether = -1
+    }
+}
+
+# 3. CONFIGURE PAGE NUMBERING IN FOOTERS MATCHING OFFICIAL SRM REFERENCE FORMAT
+Write-Output "Configuring Page Numbering in Footers across $($doc.Sections.Count) sections..."
+for ($s = 1; $s -le $doc.Sections.Count; $s++) {
+    $sec = $doc.Sections.Item($s)
+    $sec.PageSetup.SectionStart = 2 # wdSectionNewPage
+    $sec.Borders.Enable = 0
+
+    $footer = $sec.Footers.Item(1) # wdHeaderFooterPrimary
+    $footer.LinkToPrevious = $false
+
+    if ($s -le 3) {
+        # Sections 1, 2, 3: Title/Cover page, Bonafide, Declaration -> No footer page number
+        $footer.Range.Text = ""
+    } elseif ($s -ge 4 -and $s -le 8) {
+        # Sections 4-8: Front matter (Abstract, Ack, TOC, List of Tables, List of Figures) -> Lowercase Roman: (i), (ii), (iii), (iv), (v), (vi)
+        $footer.PageNumbers.NumberStyle = 2 # wdPageNumberStyleLowercaseRoman
+        if ($s -eq 4) {
+            $footer.PageNumbers.RestartNumberingAtSection = $true
+            $footer.PageNumbers.StartingNumber = 1 # Starts at (i) on Abstract
+        } else {
+            $footer.PageNumbers.RestartNumberingAtSection = $false
+        }
+        $footer.Range.Text = ""
+        $footer.Range.ParagraphFormat.Alignment = 1 # Center
+        $range = $footer.Range
+        $range.Collapse(0) # wdCollapseEnd
+        $doc.Fields.Add($range, 33) | Out-Null # wdFieldPage
+    } else {
+        # Section 9+: Main Body Chapters -> Arabic numerals (1, 2, 3...)
+        $footer.PageNumbers.NumberStyle = 0 # wdPageNumberStyleArabic
+        if ($s -eq 9) {
+            $footer.PageNumbers.RestartNumberingAtSection = $true
+            $footer.PageNumbers.StartingNumber = 1 # Starts at 1 on Chapter 1
+        } else {
+            $footer.PageNumbers.RestartNumberingAtSection = $false
+        }
+        $footer.Range.Text = ""
+        $footer.Range.ParagraphFormat.Alignment = 1 # Center
+        $range = $footer.Range
+        $range.Collapse(0)
+        $doc.Fields.Add($range, 33) | Out-Null # wdFieldPage
+    }
+}
+
+# 4. RE-PAGINATE AND SAVE TO DOCX AND PDF
+$doc.Repaginate()
+
+Write-Output "--- DOCUMENT TELEMETRY ---"
+Write-Output "Total Document Pages: $($doc.ComputeStatistics(2))"
+for ($s = 1; $s -le $doc.Sections.Count; $s++) {
+    $pCount = $doc.Sections.Item($s).Range.ComputeStatistics(2)
+    Write-Output "Section $($s): $pCount page(s)"
+}
+
+Write-Output "Saving DOCX: ${docxPath.replace(/\\/g, '\\\\')}"
+$tDocx = [System.Diagnostics.Stopwatch]::StartNew()
+$docxStr = [string]"${docxPath.replace(/\\/g, '\\\\')}"
+$pdfStr = [string]"${pdfPath.replace(/\\/g, '\\\\')}"
+$doc.SaveAs2($docxStr, 16) # wdFormatDocumentDefault (DOCX)
+Write-Output "Saved DOCX in $($tDocx.ElapsedMilliseconds) ms"
+
+Write-Output "Saving High-Resolution Print-Quality PDF: ${pdfPath.replace(/\\/g, '\\\\')}"
+$tPdf = [System.Diagnostics.Stopwatch]::StartNew()
+# OptimizeFor = 0 (wdExportOptimizeForPrint) ensures 300 DPI+ lossless images, eliminating all blurriness
+$doc.ExportAsFixedFormat($pdfStr, 17, $false, 0, 0, 0, 0, 0, $true, $true, 1, $true, $true, $false)
+Write-Output "Saved High-Resolution PDF in $($tPdf.ElapsedMilliseconds) ms"
 
 $doc.Close($false)
 $word.Quit()
@@ -959,65 +1604,63 @@ function processStudent(studentKey, mdFileName, outDocxName, outPdfName, cfg, fi
   const pdfPath = path.join(docsDir, outPdfName);
 
   convertHtmlToWordAndPdf(htmlPath, docxPath, pdfPath);
-  fs.unlinkSync(htmlPath);
-
-  const docxStats = fs.statSync(docxPath);
-  const pdfStats = fs.statSync(pdfPath);
-  console.log(`✓ GENERATED DOCX: ${outDocxName} (${(docxStats.size / 1024).toFixed(1)} KB)`);
-  console.log(`✓ GENERATED PDF:  ${outPdfName} (${(pdfStats.size / 1024).toFixed(1)} KB)`);
 }
 
-// Student 1: Suriya E
-const suriyaConfig = {
-  title: "FAIRWORK: A DECENTRALIZED FREELANCE MARKETPLACE WITH SMART CONTRACT ESCROW AND DISPUTE RESOLUTION",
-  studentName: "SURIYA E",
-  regNo: "RA2532241040042",
-  guide: "Dr. M. Sivasakthi, M.Sc., M.Phil., Ph.D., NET",
-  guideRole: "Associate Professor, Department of Computer Applications",
-  hod: "Dr. J. Anitha Ruth, M.S., Ph.D.",
-  tocHtml: suriyaTocHtml,
-  listTablesHtml: suriyaListTablesHtml,
-  listFiguresHtml: suriyaListFiguresHtml,
-  abstractHtml: suriyaAbstractHtml
-};
+function main() {
+  console.log("================================================================================");
+  console.log("FAIRWORK - ACADEMIC PROJECT REPORT GENERATOR (OFFICIAL SRM REFERENCE FORMAT)");
+  console.log("================================================================================");
 
-// Student 2: Vignesh V
-const vigneshConfig = {
-  title: "FAIRWORK: A DECENTRALIZED FREELANCE MARKETPLACE WITH SMART CONTRACT ESCROW AND DISPUTE RESOLUTION",
-  studentName: "VIGNESH V",
-  regNo: "RA2532241040045",
-  guide: "Dr. M. Sivasakthi, M.Sc., M.Phil., Ph.D., NET",
-  guideRole: "Associate Professor, Department of Computer Applications",
-  hod: "Dr. J. Anitha Ruth, M.S., Ph.D.",
-  tocHtml: vigneshTocHtml,
-  listTablesHtml: vigneshListTablesHtml,
-  listFiguresHtml: vigneshListFiguresHtml,
-  abstractHtml: vigneshAbstractHtml
-};
+  // Stop any lingering Word instances
+  try {
+    execSync('powershell -Command "Stop-Process -Name WINWORD -Force -ErrorAction SilentlyContinue"');
+  } catch {}
 
-try {
+  // 1. Suriya E (Blockchain & Backend)
   processStudent(
     'suriya',
     'MCA_Project_Report_SURIYA_E_Blockchain_Backend.md',
     'Suriya_E_RA2532241040042_MCA_Project_Report.docx',
     'Suriya_E_RA2532241040042_MCA_Project_Report.pdf',
-    suriyaConfig,
+    {
+      studentName: 'SURIYA E',
+      regNo: 'RA2532241040042',
+      title: 'FAIRWORK: NON-CUSTODIAL SMART CONTRACT ESCROW AND REORG-RESILIENT BACKEND SETTLEMENT SYSTEM',
+      guide: 'Dr. M. SIVASAKTHI, M.Sc., M.Phil., Ph.D., NET',
+      hod: 'Dr. J. ANITHA RUTH, M.C.A., M.Phil., M.S., Ph.D.',
+      abstractHtml: suriyaAbstractHtml,
+      acknowledgementHtml: suriyaAcknowledgementHtml,
+      tocHtml: suriyaTocHtml,
+      tablesTableHtml: suriyaTablesTableHtml,
+      figuresTableHtml: suriyaFiguresTableHtml
+    },
     suriyaFiguresMap
   );
 
+  // 2. Vignesh V (Frontend UI/UX)
   processStudent(
     'vignesh',
     'MCA_Project_Report_VIGNESH_V_Frontend_UIUX.md',
     'Vignesh_V_RA2532241040045_MCA_Project_Report.docx',
     'Vignesh_V_RA2532241040045_MCA_Project_Report.pdf',
-    vigneshConfig,
+    {
+      studentName: 'VIGNESH V',
+      regNo: 'RA2532241040045',
+      title: 'FAIRWORK: WEB3-ENABLED RESPONSIVE CLIENT INTERFACE AND MILESTONE WORKSPACE SYSTEM',
+      guide: 'Dr. M. SIVASAKTHI, M.Sc., M.Phil., Ph.D., NET',
+      hod: 'Dr. J. ANITHA RUTH, M.C.A., M.Phil., M.S., Ph.D.',
+      abstractHtml: vigneshAbstractHtml,
+      acknowledgementHtml: vigneshAcknowledgementHtml,
+      tocHtml: vigneshTocHtml,
+      tablesTableHtml: vigneshTablesTableHtml,
+      figuresTableHtml: vigneshFiguresTableHtml
+    },
     vigneshFiguresMap
   );
 
-  console.log(`\n============================================================`);
-  console.log(`ALL PROFESSIONAL REPORTS GENERATED WITH REAL PROJECT IMAGES!`);
-  console.log(`============================================================\n`);
-} catch (err) {
-  console.error("Build failed:", err);
-  process.exit(1);
+  console.log("\n================================================================================");
+  console.log("ALL ACADEMIC REPORTS REGENERATED WITH OFFICIAL SRM REFERENCE FORMAT & FAIRWORK BRANDING!");
+  console.log("================================================================================");
 }
+
+main();

@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Project = require("../models/Project");
 const Review = require("../models/Review");
@@ -39,6 +40,9 @@ function validateSocialUrl(urlStr, allowedHost) {
 exports.getPublicProfile = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!id || !mongoose.isValidObjectId(id)) {
+      return res.status(404).json({ message: "User profile not found." });
+    }
     const user = await User.findById(id).select(
       "firstName lastName role walletAddress bio tagline hourlyRate availability skills avatarUrl bannerUrl githubUrl linkedinUrl portfolio portfolioItems stats reputationScore totalReviews githubIdentity createdAt"
     );

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Review = require("../models/Review");
 const User = require("../models/User");
 const Project = require("../models/Project");
@@ -8,6 +9,10 @@ exports.submitReview = async (req, res) => {
 
     if (!projectId || !revieweeId || rating === undefined) {
       return res.status(400).json({ message: "projectId, revieweeId, and rating are required." });
+    }
+
+    if (!mongoose.isValidObjectId(projectId) || !mongoose.isValidObjectId(revieweeId)) {
+      return res.status(400).json({ message: "Invalid projectId or revieweeId." });
     }
 
     const numRating = Number(rating);
@@ -71,6 +76,9 @@ exports.submitReview = async (req, res) => {
 
 exports.getReviews = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.userId)) {
+      return res.json([]);
+    }
     const reviews = await Review.find({ revieweeId: req.params.userId })
       .populate("reviewerId", "firstName lastName avatarUrl");
     res.json(reviews);
@@ -83,6 +91,9 @@ exports.getReviews = async (req, res) => {
 exports.getProjectReview = async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!mongoose.isValidObjectId(projectId)) {
+      return res.json({ hasReviewed: false, review: null });
+    }
     const existing = await Review.findOne({ projectId, reviewerId: req.user.id });
     res.json({
       hasReviewed: Boolean(existing),

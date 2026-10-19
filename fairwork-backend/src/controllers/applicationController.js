@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Application = require("../models/Application");
 const Project = require("../models/Project");
 const User = require("../models/User");
@@ -14,6 +15,10 @@ exports.createApplication = async (req, res) => {
     const { projectId, proposalText, proposedAmount, estimatedDelivery } = req.body;
     if (!projectId || !proposalText || proposedAmount === undefined || !estimatedDelivery) {
       return res.status(400).json({ message: "Missing required application fields" });
+    }
+
+    if (!mongoose.isValidObjectId(projectId)) {
+      return res.status(404).json({ message: "Project not found" });
     }
 
     const numericAmount = Number(proposedAmount);
@@ -84,6 +89,9 @@ exports.createApplication = async (req, res) => {
 
     res.status(201).json(populated);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Project not found" });
+    }
     if (err.code === 11000) {
       return res.status(409).json({ message: "You have already submitted an application for this project" });
     }
@@ -114,6 +122,9 @@ exports.getMyApplications = async (req, res) => {
 exports.getProjectApplications = async (req, res) => {
   try {
     const { projectId } = req.params;
+    if (!projectId || !mongoose.isValidObjectId(projectId)) {
+      return res.status(404).json({ message: "Project not found" });
+    }
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
@@ -129,6 +140,9 @@ exports.getProjectApplications = async (req, res) => {
 
     res.json(applications);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Project not found" });
+    }
     console.error("[ApplicationController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -137,6 +151,9 @@ exports.getProjectApplications = async (req, res) => {
 // Client hires a freelancer by accepting their application (Canonical Hiring Operation)
 exports.acceptApplication = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Application not found" });
+    }
     const application = await Application.findById(req.params.id);
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
@@ -247,6 +264,9 @@ Either party may initiate dispute resolution or contract termination through the
 
     res.json({ application: populated, project: updatedProject });
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Application not found" });
+    }
     console.error("[ApplicationController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -255,6 +275,9 @@ Either party may initiate dispute resolution or contract termination through the
 // Client rejects an application
 exports.rejectApplication = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Application not found" });
+    }
     const application = await Application.findById(req.params.id);
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
@@ -289,6 +312,9 @@ exports.rejectApplication = async (req, res) => {
 
     res.json(application);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Application not found" });
+    }
     console.error("[ApplicationController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -297,6 +323,9 @@ exports.rejectApplication = async (req, res) => {
 // Freelancer withdraws their pending application
 exports.withdrawApplication = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: "Application not found" });
+    }
     const application = await Application.findById(req.params.id);
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
@@ -315,6 +344,9 @@ exports.withdrawApplication = async (req, res) => {
 
     res.json(application);
   } catch (err) {
+    if (err.name === "CastError") {
+      return res.status(404).json({ message: "Application not found" });
+    }
     console.error("[ApplicationController] error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
