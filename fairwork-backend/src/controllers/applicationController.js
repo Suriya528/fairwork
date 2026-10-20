@@ -4,6 +4,7 @@ const Project = require("../models/Project");
 const User = require("../models/User");
 const Contract = require("../models/Contract");
 const { recordActivitySafely } = require("../services/activityService");
+const { notifyProjectUpdate } = require("../utils/socketNotifier");
 
 // Freelancer submits an application/proposal for an open project
 exports.createApplication = async (req, res) => {
@@ -256,6 +257,19 @@ Either party may initiate dispute resolution or contract termination through the
       message: `Congratulations! Your proposal for “${updatedProject.title}” was accepted. You are hired!`,
       projectId: updatedProject._id,
     });
+
+    // Instant real-time project synchronization for hire / contract creation
+    notifyProjectUpdate(
+      req,
+      updatedProject._id,
+      {
+        type: "FREELANCER_HIRED",
+        freelancerId: application.freelancerId,
+        applicationId: application._id,
+        project: updatedProject,
+      },
+      [project.clientId, application.freelancerId]
+    );
 
     const populated = await application.populate([
       { path: "projectId", select: "title budget status category clientId freelancerId contractId" },

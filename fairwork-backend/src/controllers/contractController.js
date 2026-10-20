@@ -3,6 +3,7 @@ const Contract = require("../models/Contract");
 const Project = require("../models/Project");
 const User = require("../models/User");
 const { GoogleGenAI } = require("@google/genai");
+const { notifyProjectUpdate } = require("../utils/socketNotifier");
 
 // Initialize Google Gemini AI client using GEMINI_API_KEY
 const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -131,6 +132,18 @@ Either party may initiate dispute resolution or contract termination through the
 
     const contract = await populateContractQuery(Contract.findById(created._id));
 
+    // Instant real-time project update to all connected parties
+    notifyProjectUpdate(
+      req,
+      projectId,
+      {
+        type: "CONTRACT_GENERATED",
+        contractId: created._id,
+        freelancerId,
+      },
+      [clientUserId, freelancerId]
+    );
+
     res.status(201).json(contract);
   } catch (err) {
     console.error("[ContractController] generateContract error:", err);
@@ -213,6 +226,19 @@ exports.signContract = async (req, res) => {
       const io = req.app.get("io");
       const { recordActivitySafely } = require("../services/activityService");
       const isBothSigned = Boolean(updated.signedByClient && updated.signedByFreelancer);
+
+      // Instant real-time synchronization to project room and user channels
+      notifyProjectUpdate(
+        req,
+        existing.projectId,
+        {
+          type: "CONTRACT_SIGNED",
+          contract: updated,
+          isBothSigned,
+          signedBy: isClient ? "client" : "freelancer",
+        },
+        [clientUserId, freelancerUserId]
+      );
 
       if (isBothSigned) {
         if (io) {

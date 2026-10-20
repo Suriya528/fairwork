@@ -243,6 +243,16 @@ function createServerApp(config = {}) {
       }
     });
 
+    socket.on("leave_project", (projectId) => {
+      try {
+        if (projectId) {
+          socket.leave(`project:${projectId}`);
+        }
+      } catch {
+        // Ignore leave errors
+      }
+    });
+
     socket.on("send_message", async (data) => {
       try {
         if (!data?.projectId || !mongoose.isValidObjectId(data.projectId)) {

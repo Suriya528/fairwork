@@ -30,6 +30,7 @@ import {
   signContract,
   type ApiContract,
 } from "@/services/contractsApi"
+import { connectChat } from "@/services/chatApi"
 
 type ContractFilter = "all" | "needs_action" | "pending_partner" | "executed"
 
@@ -107,7 +108,31 @@ export function ContractsPage() {
 
   useEffect(() => {
     void load()
-  }, [token])
+
+    if (!token || user?.role === "admin") return
+
+    // Real-time synchronization for contract signatures across browsers
+    const socket = connectChat(token)
+    const handleUpdate = () => {
+      void load()
+    }
+
+    socket.on("project_updated", handleUpdate)
+    socket.on("notification", handleUpdate)
+
+    // Visibility-aware background polling fallback
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void load()
+      }
+    }, 4000)
+
+    return () => {
+      socket.off("project_updated", handleUpdate)
+      socket.off("notification", handleUpdate)
+      clearInterval(interval)
+    }
+  }, [token, user?.role])
 
   const toggleExpand = (id: string) => {
     setExpandedMap((prev) => ({

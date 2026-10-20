@@ -5,6 +5,7 @@ const { recordActivitySafely } = require("../services/activityService");
 const { uploadToCloudinary } = require("../services/cloudinaryUpload");
 const { canAccessProject } = require("../services/projectAccess");
 const { sendErrorResponse } = require("../utils/errorResponse");
+const { notifyProjectUpdate } = require("../utils/socketNotifier");
 
 async function projectForParty(projectId, userId) {
   if (!mongoose.isValidObjectId(projectId)) return { error: { status: 404, message: "Project not found" } };
@@ -397,6 +398,17 @@ exports.uploadProjectDeliverable = async (req, res) => {
       projectId: project._id,
     });
 
+    // Instant real-time project synchronization for deliverable upload
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "DELIVERABLE_UPLOADED",
+        filename: req.file.originalname,
+      },
+      [project.clientId, project.freelancerId]
+    );
+
     res.status(201).json(project.deliverables[project.deliverables.length - 1]);
   } catch (err) {
     console.error("[ProjectController] error:", err);
@@ -485,6 +497,17 @@ exports.submitMilestone = async (req, res) => {
       projectId: project._id,
     });
 
+    // Instant real-time project synchronization for milestone submission
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "MILESTONE_SUBMITTED",
+        milestoneId: req.params.milestoneId,
+      },
+      [project.clientId, project.freelancerId]
+    );
+
     res.json(project);
   } catch (err) {
     console.error("[ProjectController] error:", err);
@@ -532,6 +555,17 @@ exports.requestMilestoneRevision = async (req, res) => {
       projectId: project._id,
     });
 
+    // Instant real-time project synchronization for revision request
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "REVISION_REQUESTED",
+        milestoneId: req.params.milestoneId,
+      },
+      [project.clientId, project.freelancerId]
+    );
+
     res.json(project);
   } catch (err) {
     console.error("[ProjectController] error:", err);
@@ -575,6 +609,17 @@ exports.approveMilestone = async (req, res) => {
       message: `Client approved milestone “${milestone.title}”. Payment has been released!`,
       projectId: project._id,
     });
+
+    // Instant real-time project synchronization for milestone approval
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "MILESTONE_APPROVED",
+        milestoneId: req.params.milestoneId,
+      },
+      [project.clientId, project.freelancerId]
+    );
 
     res.json(project);
   } catch (err) {

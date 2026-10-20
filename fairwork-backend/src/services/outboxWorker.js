@@ -94,6 +94,11 @@ async function processOutboxEntry(entry, io = null) {
         content: entry.content,
         projectId: entry.projectId.toString(),
       });
+      io.to(`project:${entry.projectId}`).emit("project_updated", {
+        type: "SETTLEMENT_EVENT",
+        projectId: entry.projectId.toString(),
+        systemEventKey: entry.sourceEventKey,
+      });
     }
 
     return "PROCESSED";

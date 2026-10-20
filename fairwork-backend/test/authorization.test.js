@@ -733,9 +733,13 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       statusCode = 200;
       payload = null;
       let emittedNotification = null;
+      let emittedProjectUpdate = null;
       const mockIo = {
         to: (room) => ({
-          emit: (event, data) => { emittedNotification = { room, event, data }; },
+          emit: (event, data) => {
+            if (event === "notification") emittedNotification = { room, event, data };
+            if (event === "project_updated") emittedProjectUpdate = { room, event, data };
+          },
         }),
       };
 
@@ -753,8 +757,11 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       assert.equal(payload.success, true);
       assert.ok(payload.releaseTxHash, "Platform relayer must generate and return releaseTxHash");
       assert.equal(mockMilestone.paymentReleased, true, "Milestone paymentReleased flag must be set");
+      assert.ok(emittedNotification, "Notification must be emitted to freelancer");
       assert.equal(emittedNotification.event, "notification");
       assert.equal(emittedNotification.data.type, "PAYMENT_RELEASED");
+      assert.ok(emittedProjectUpdate, "Project update must be broadcasted in real time");
+      assert.equal(emittedProjectUpdate.event, "project_updated");
     } finally {
       Project.findById = origProjectFindById;
       Project.findOne = origProjectFindOne;

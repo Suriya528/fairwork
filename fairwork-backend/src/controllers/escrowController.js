@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { reconcileEscrowFunding, reconcileMilestoneRelease } = require("../services/reconciliationService");
+const { notifyProjectUpdate } = require("../utils/socketNotifier");
 
 /**
  * REST Endpoint for Client Escrow Deposit Reconciliation Request.
@@ -73,6 +74,19 @@ exports.depositEscrow = async (req, res) => {
       console.warn("[EscrowController] Activity log skipped:", actErr.message);
     }
 
+    // Instant real-time project synchronization for client and freelancer
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "ESCROW_FUNDED",
+        escrowFunded: true,
+        txnHash,
+        project,
+      },
+      [project.clientId, freelancerId]
+    );
+
     res.json({ message: "Escrow recorded successfully", project });
   } catch (err) {
     const status = err.status || (err.message && /^[A-Z_]+/.test(err.message) ? 400 : 500);
@@ -97,6 +111,20 @@ exports.releaseEscrow = async (req, res) => {
     if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 
     const project = await reconcileMilestoneRelease(projectId, Number(milestoneIndex), txnHash, req.user.id);
+
+    // Instant real-time project synchronization for release
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "ESCROW_RELEASED",
+        milestoneIndex: Number(milestoneIndex),
+        txnHash,
+        project,
+      },
+      [project.clientId, project.freelancerId]
+    );
+
     res.json({ message: "Escrow payment released successfully", project });
   } catch (err) {
     const status = err.status || (err.message && /^[A-Z_]+/.test(err.message) ? 400 : 500);

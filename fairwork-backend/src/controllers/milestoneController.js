@@ -4,6 +4,7 @@ const User = require("../models/User");
 const { recordActivitySafely } = require("../services/activityService");
 const reconciliationService = require("../services/reconciliationService");
 const { verifyPullRequestCI } = require("../services/githubService");
+const { notifyProjectUpdate } = require("../utils/socketNotifier");
 
 /**
  * POST /api/projects/:id/milestones/:milestoneId/approve-and-release
@@ -240,6 +241,19 @@ exports.approveAndReleaseMilestone = async (req, res) => {
         projectId: project._id,
       });
     }
+
+    // Instant real-time project synchronization for milestone payment release
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "PAYMENT_RELEASED",
+        milestoneIndex,
+        releaseTxHash: finalReleaseTxHash,
+        project: updatedProject,
+      },
+      [project.clientId, freelancerId]
+    );
 
     return res.json({
       success: true,

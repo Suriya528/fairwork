@@ -90,6 +90,7 @@ import { depositEscrow } from "@/services/escrowApi"
 import { raiseDispute } from "@/services/disputesApi"
 import { getReleasedAmount, getUnreleasedAmount } from "@/lib/financial"
 import { checkProjectReview, type ApiProjectReviewResponse } from "@/services/reviewApi"
+import { connectChat } from "@/services/chatApi"
 
 type TabValue = "overview" | "applications" | "proposals" | "contract" | "milestones" | "files" | "disputes" | "activity"
 
@@ -787,9 +788,29 @@ export function ProjectDetailPage() {
 
   const [selectedProfileFreelancerId, setSelectedProfileFreelancerId] = useState<string | null>(null)
 
-  const loadContract = useCallback(async () => {
+  const loadProject = useCallback(async (showSpinner = false) => {
+    if (!id || !token) return null
+    if (showSpinner) {
+      setLoading(true)
+      setError(null)
+      setNotFound(false)
+    }
+    try {
+      const data = await getProjectById(id, token)
+      setProject(data)
+      return data
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) setNotFound(true)
+      else if (showSpinner) setError(err instanceof Error ? err.message : "Couldn't load project.")
+      return null
+    } finally {
+      if (showSpinner) setLoading(false)
+    }
+  }, [id, token])
+
+  const loadContract = useCallback(async (showSpinner = false) => {
     if (!id || !token) return
-    setContractLoading(true)
+    if (showSpinner) setContractLoading(true)
     try {
       let c: ApiContract | null = null
       if (project?.contractId) {
@@ -802,42 +823,16 @@ export function ProjectDetailPage() {
     } catch {
       setContract(null)
     } finally {
-      setContractLoading(false)
+      if (showSpinner) setContractLoading(false)
     }
   }, [id, token, project?.contractId])
 
   useEffect(() => {
     if (id && token) {
-      void loadContract()
+      void loadProject(true)
+      void loadContract(true)
     }
-  }, [id, token, loadContract])
-
-  useEffect(() => {
-    if (!id || !token) return
-    let active = true
-
-    async function init() {
-      setLoading(true)
-      setError(null)
-      setNotFound(false)
-      try {
-        const data = await getProjectById(id!, token!)
-        if (active) setProject(data)
-      } catch (err) {
-        if (active) {
-          if (err instanceof ApiError && err.status === 404) setNotFound(true)
-          else setError(err instanceof Error ? err.message : "Couldn't load project.")
-        }
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-
-    void init()
-    return () => {
-      active = false
-    }
-  }, [id, token])
+  }, [id, token, loadProject, loadContract])
 
   useEffect(() => {
     if (!id || !token) return
@@ -888,19 +883,6 @@ export function ProjectDetailPage() {
       setContractBusy(false)
     }
   }
-
-  const loadProject = useCallback(async () => {
-    if (!id || !token) return
-    try {
-      const data = await getProjectById(id, token)
-      setProject(data)
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 404) setNotFound(true)
-      else setError(err instanceof Error ? err.message : "Couldn't load project.")
-    }
-  }, [id, token])
-
-
 
   // Load project applications if client, or load freelancer's application if freelancer
   const loadApplications = useCallback(async () => {
@@ -965,6 +947,44 @@ export function ProjectDetailPage() {
       void loadReferenceFiles()
     }
   }, [tab, loadDeliverables, loadReferenceFiles])
+
+  // Real-time bi-directional browser synchronization (WebSockets + active tab polling fallback)
+  useEffect(() => {
+    if (!id || !token) return
+
+    const socket = connectChat(token)
+    socket.emit("join_project", id)
+
+    const handleRealtimeUpdate = (evt?: any) => {
+      if (!evt?.projectId || String(evt.projectId) === String(id)) {
+        void loadProject(false)
+        void loadContract(false)
+        void loadDeliverables()
+        void loadApplications()
+        void loadReferenceFiles()
+      }
+    }
+
+    socket.on("project_updated", handleRealtimeUpdate)
+    socket.on("notification", handleRealtimeUpdate)
+    socket.on("receive_message", handleRealtimeUpdate)
+
+    // Polling fallback every 3.5s when tab is active (ensures 100% sync even through reconnects)
+    const pollInterval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void loadProject(false)
+        void loadContract(false)
+      }
+    }, 3500)
+
+    return () => {
+      socket.emit("leave_project", id)
+      socket.off("project_updated", handleRealtimeUpdate)
+      socket.off("notification", handleRealtimeUpdate)
+      socket.off("receive_message", handleRealtimeUpdate)
+      clearInterval(pollInterval)
+    }
+  }, [id, token, loadProject, loadContract, loadDeliverables, loadApplications, loadReferenceFiles])
 
   const handleReject = async (applicationId: string) => {
     if (!token) return
