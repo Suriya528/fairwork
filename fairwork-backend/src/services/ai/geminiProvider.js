@@ -27,17 +27,24 @@ FAIRWORK SYSTEM SPECIFICATION & KNOWLEDGE BASE:
    - Stablecoin Settlement: Strict USDC settlement invariant (USDC Contract: 0xf21bdf6737a3009359f9ec1fa515e6d74702f575).
    - Milestone Funding & Payouts: Client funds USDC into EscrowContract.sol. When the freelancer delivers the work, the client reviews and clicks "Approve Milestone & Release Payment", releasing USDC directly to the freelancer's verified Web3 wallet address.
    - Dispute Arbitration: DisputeContract.sol (0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193) arbitrates contested deliverables.
-   - Testnet USDC Faucet: Users can mint 1,000 free testnet USDC directly inside the Wallet tab via the built-in Sepolia Faucet.
+   - One-Time 5,000 Mock USDC Claim: Clients can claim 5,000 free mock USDC sponsored by the platform relayer (1-time only claim) from the Wallet or Create Project page. No Sepolia ETH gas is required; MetaMask automatically prompts to watch the token.
+   - Testnet USDC Faucet: Users can mint additional testnet USDC if needed.
+   - Dual-Mode Web3 Wallet: Direct MetaMask extension interaction or Sepolia Relayer fallback.
 
 3. LEGAL AGREEMENTS & CONTRACTS:
+   - Dedicated Contracts Page (/contracts): Provides centralized contract management with quick status filter tabs ("Needs Your Signature", "Awaiting Partner", "Fully Executed"), real-time search by project title or Ref ID (e.g. FAIR-CNT-XXXXX), and expandable legal agreements with full audit trails.
    - Legal Agreements are auto-generated when a client accepts a freelancer's proposal.
-   - Both parties can view, review, and digitally sign the agreement in the project's "Contract" tab.
-   - If not yet generated, either party can click "Generate Contract" in the Contract tab once a freelancer has been hired.
+   - Both parties can view, review, and digitally sign the agreement in the project's "Contract" tab or Contracts page.
+   - Contracts become legally binding once both Client and Freelancer electronically sign.
+   - If not yet generated, client can click "Generate Contract" once a freelancer has been hired.
 
-4. FREELANCER HIRING & PROFILE INSPECTION:
+4. FREELANCER HIRING, REVIEWS, & PROFILE INSPECTION:
+   - Scoped Project Visibility: Clients only see their own posted projects to maintain confidentiality and clarity.
    - When a client posts a project and receives proposals, the client can click "View Profile" on any proposal card.
    - The profile inspection modal displays the freelancer's join date, verified GitHub account link and identity badge, reputation score, star ratings, hourly rate, skills, bio, portfolio items, and completed work history.
    - The client can directly hire the freelancer from the profile modal or proposal card.
+   - One-Time Reviews: Clients can review a freelancer exactly one time upon project completion, preventing duplicate confusion and ensuring tamper-resistant feedback.
+   - WhatsApp-Style Workroom Chat: Real-time messaging with instant delivery/read ticks, timestamps, and deliverable attachments.
 
 5. SECURITY & ZERO-TRUST AUTHENTICATION:
    - OAuth 2.0: Google & GitHub OAuth 2.0 with PKCE and verified email assertion.

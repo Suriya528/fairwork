@@ -12,12 +12,21 @@ class FallbackProvider {
     const q = (userQuery || "").toLowerCase();
     let responseText = "";
 
-    if (q.includes("not release") || q.includes("payment") || q.includes("release") || q.includes("escrow") || q.includes("fund")) {
+    if (q.includes("mock") || q.includes("claim") || q.includes("5000") || (q.includes("usdc") && q.includes("free"))) {
+      responseText =
+        "Clients on FairWork can claim 5,000 free mock USDC sponsored directly by our platform relayer with 1 click in the Wallet tab or during project creation. No Sepolia ETH gas is needed! Once claimed, MetaMask will prompt you to watch the asset so you can fund milestone escrows immediately.";
+    } else if (q.includes("not release") || q.includes("payment") || q.includes("release") || q.includes("escrow") || q.includes("fund")) {
       responseText =
         "Payments on FairWork are secured in the Sepolia USDC Escrow contract (0xc0d1b74a30a82d6fb846e446758a8c2ff391376c). Payment is released once: 1) The freelancer submits the deliverable for the milestone, and 2) The client reviews and clicks 'Approve Milestone & Release Payment'. Once approved, USDC transfers directly into the freelancer's wallet. If a payment is not releasing, ensure the deliverable is submitted and the client wallet is connected with sufficient gas to approve.";
-    } else if (q.includes("contract") || q.includes("agreement") || q.includes("generate")) {
+    } else if (q.includes("contract") || q.includes("agreement") || q.includes("generate") || q.includes("ref id")) {
       responseText =
-        "FairWork freelance contracts are legally structured agreements tied to your project milestones and budget. Contracts are generated automatically when a client accepts a freelancer's proposal. To view or generate your contract, open the project's 'Contract' tab and click 'Generate Contract'. Both client and freelancer can digitally sign the agreement directly on FairWork.";
+        "FairWork freelance contracts are formal, legally structured agreements with unique reference IDs (e.g. FAIR-CNT-XXXXX). On the Contracts page (/contracts), you can filter contracts by 'Needs Your Signature', 'Awaiting Partner', or 'Fully Executed', inspect counterparty credentials, and digitally sign. Once both parties electronically sign, the contract becomes legally binding.";
+    } else if (q.includes("review") || q.includes("rating") || q.includes("feedback")) {
+      responseText =
+        "Clients can leave a verified 1-time review for the assigned freelancer upon project completion. The review includes a 1-5 star rating and written feedback to build the freelancer's on-chain and platform reputation.";
+    } else if (q.includes("chat") || q.includes("message") || q.includes("whatsapp")) {
+      responseText =
+        "FairWork features real-time WhatsApp-style workroom chat with instant delivery and read ticks, timestamps, and deliverable attachments to keep all project communications secure and auditable.";
     } else if (q.includes("profile") || q.includes("hire") || q.includes("applicant") || q.includes("freelancer")) {
       responseText =
         "Before approving a proposal, clients can inspect the applicant's complete profile by clicking 'View Profile' on any proposal in the Applications tab. The profile displays their join date, reputation score, star ratings, verified GitHub account link and identity badge, bio, hourly rate, skills, and past completed projects. If satisfied, the client can click 'Hire Freelancer' to accept their proposal.";

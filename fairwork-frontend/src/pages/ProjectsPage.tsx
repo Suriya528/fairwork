@@ -195,10 +195,10 @@ export function ProjectsPage() {
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <PageHeader
-        title={isClient ? "My Posted Projects" : "Projects"}
+        title="Projects"
         description={
           isClient
-            ? "Manage and track all the projects you have commissioned."
+            ? "My Posted Projects — Manage and track all the projects you have commissioned."
             : "Browse open projects classified by discipline and secured by blockchain escrow."
         }
         actions={
