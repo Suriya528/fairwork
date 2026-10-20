@@ -30,9 +30,9 @@ All smart contracts have been compiled with Solidity `0.8.28` (optimizer runs: `
 
 | Contract | Address | Explorer Link | Source Verification |
 | :--- | :--- | :--- | :---: |
-| **EscrowContract** | `0xc0d1b74a30a82d6fb846e446758a8c2ff391376c` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c) |
-| **ReputationContract** | `0xfa25823ccf7343fdfd7fa20a785d996331e66674` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xfa25823ccf7343fdfd7fa20a785d996331e66674) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0xfa25823ccf7343fdfd7fa20a785d996331e66674) |
-| **DisputeContract** | `0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193) |
+| **EscrowContract** | `0x03d58fd596f31d69774d33c66706954443259db2` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x03d58fd596f31d69774d33c66706954443259db2) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0x03d58fd596f31d69774d33c66706954443259db2) |
+| **ReputationContract** | `0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b) |
+| **DisputeContract** | `0xbac634c79860c235853e342e2a874e55ef1d9057` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xbac634c79860c235853e342e2a874e55ef1d9057) | [Sourcify Verified](https://sourcify.dev/server/repo-ui/11155111/0xbac634c79860c235853e342e2a874e55ef1d9057) |
 | **Mock USDC (mUSDC)** | `0xf21bdf6737a3009359f9ec1fa515e6d74702f575` | [View on Sepolia Etherscan](https://sepolia.etherscan.io/address/0xf21bdf6737a3009359f9ec1fa515e6d74702f575) | Active (6 decimals) |
 
 ---
@@ -376,22 +376,22 @@ BACKEND_URL=https://fairwork.onrender.com
 CHAIN_ID=11155111
 START_BLOCK=11808800
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
-ESCROW_CONTRACT_ADDRESS=0xc0d1b74a30a82d6fb846e446758a8c2ff391376c
-CANONICAL_ESCROW_ADDRESS=0xc0d1b74a30a82d6fb846e446758a8c2ff391376c
+ESCROW_CONTRACT_ADDRESS=0x03d58fd596f31d69774d33c66706954443259db2
+CANONICAL_ESCROW_ADDRESS=0x03d58fd596f31d69774d33c66706954443259db2
 USDC_CONTRACT_ADDRESS=0xf21bdf6737a3009359f9ec1fa515e6d74702f575
-REPUTATION_CONTRACT_ADDRESS=0xfa25823ccf7343fdfd7fa20a785d996331e66674
-DISPUTE_CONTRACT_ADDRESS=0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193
-EXPECTED_ESCROW_BYTECODE_HASH=5e8141742fa5c5a42d897b88e6c08c3038ebc42ea65dec2a556df152ffb490ad
+REPUTATION_CONTRACT_ADDRESS=0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b
+DISPUTE_CONTRACT_ADDRESS=0xbac634c79860c235853e342e2a874e55ef1d9057
+EXPECTED_ESCROW_BYTECODE_HASH=b33f303d7fa805b420f1899ac0b04c9e6e6de71f8174a59cb4a9077b5c49e843
 ```
 
 #### Frontend (`fairwork-frontend/.env`)
 ```env
 VITE_API_URL=https://fairwork.onrender.com/api
 VITE_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-api-key
-VITE_ESCROW_CONTRACT_ADDRESS=0xc0d1b74a30a82d6fb846e446758a8c2ff391376c
-VITE_DISPUTE_CONTRACT_ADDRESS=0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193
+VITE_ESCROW_CONTRACT_ADDRESS=0x03d58fd596f31d69774d33c66706954443259db2
+VITE_DISPUTE_CONTRACT_ADDRESS=0xbac634c79860c235853e342e2a874e55ef1d9057
 VITE_USDC_ADDRESS=0xf21bdf6737a3009359f9ec1fa515e6d74702f575
-VITE_REPUTATION_ADDRESS=0xfa25823ccf7343fdfd7fa20a785d996331e66674
+VITE_REPUTATION_ADDRESS=0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b
 ```
 
 ### 3. Launch Development Servers

@@ -319,30 +319,30 @@ export function HeroSection() {
                 <div className="flex items-center justify-between">
                   <span className="text-subtle">Escrow Contract:</span>
                   <a
-                    href="https://sepolia.etherscan.io/address/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c"
+                    href="https://sepolia.etherscan.io/address/0x03d58fd596f31d69774d33c66706954443259db2"
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary hover:underline flex items-center gap-1"
                   >
-                    <span>0xc0d1...376c</span>
+                    <span>0x03d5...9db2</span>
                     <FiExternalLink className="h-2.5 w-2.5" />
                   </a>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-subtle">Dispute Arbiter:</span>
                   <a
-                    href="https://sepolia.etherscan.io/address/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193"
+                    href="https://sepolia.etherscan.io/address/0xbac634c79860c235853e342e2a874e55ef1d9057"
                     target="_blank"
                     rel="noreferrer"
                     className="text-foreground hover:underline flex items-center gap-1"
                   >
-                    <span>AI Relay (0x0423...7193)</span>
+                    <span>AI Relay (0xbac6...9057)</span>
                     <FiExternalLink className="h-2.5 w-2.5 text-subtle" />
                   </a>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-subtle">Release Trigger:</span>
-                  <span className="text-foreground font-medium">Client Wallet Sig</span>
+                  <span className="text-foreground font-medium">Auto-Relayer / Client</span>
                 </div>
                 <div className="pt-2 border-t border-border/60">
                   <Link

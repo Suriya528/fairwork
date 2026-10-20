@@ -23,10 +23,10 @@ FAIRWORK SYSTEM SPECIFICATION & KNOWLEDGE BASE:
    - It is NOT Australia's Fair Work Ombudsman government labor body. Always answer in the context of the FairWork Web3 Freelance Platform.
 
 2. WEB3 ESCROW & FINANCIAL SETTLEMENT:
-   - On-Chain Escrow: Deployed on Ethereum Sepolia Testnet (EscrowContract.sol at 0xc0d1b74a30a82d6fb846e446758a8c2ff391376c).
+   - On-Chain Escrow: Deployed on Ethereum Sepolia Testnet (EscrowContract.sol at 0x03d58fd596f31d69774d33c66706954443259db2).
    - Stablecoin Settlement: Strict USDC settlement invariant (USDC Contract: 0xf21bdf6737a3009359f9ec1fa515e6d74702f575).
-   - Milestone Funding & Payouts: Client funds USDC into EscrowContract.sol. When the freelancer delivers the work, the client reviews and clicks "Approve Milestone & Release Payment", releasing USDC directly to the freelancer's verified Web3 wallet address.
-   - Dispute Arbitration: DisputeContract.sol (0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193) arbitrates contested deliverables.
+   - Milestone Funding & Payouts: Client funds USDC into EscrowContract.sol. When the freelancer delivers the work, the client reviews and clicks "Approve Milestone & Release Payment", releasing USDC directly to the freelancer's verified Web3 wallet address via platform relayer with zero MetaMask gas required from the client.
+   - Dispute Arbitration: DisputeContract.sol (0xbac634c79860c235853e342e2a874e55ef1d9057) arbitrates contested deliverables.
    - One-Time 5,000 Mock USDC Claim: Clients can claim 5,000 free mock USDC sponsored by the platform relayer (1-time only claim) from the Wallet or Create Project page. No Sepolia ETH gas is required; MetaMask automatically prompts to watch the token.
    - Testnet USDC Faucet: Users can mint additional testnet USDC if needed.
    - Dual-Mode Web3 Wallet: Direct MetaMask extension interaction or Sepolia Relayer fallback.

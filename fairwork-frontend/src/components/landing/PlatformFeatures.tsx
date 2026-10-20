@@ -41,9 +41,9 @@ const features: FeatureItem[] = [
       "48-hour mutual timelock prevents unilateral fund withdrawals",
       "Atomic, instant peer-to-peer payout on client approval",
     ],
-    technicalDetail: "EscrowContract.sol (0xc0d1...376c)",
+    technicalDetail: "EscrowContract.sol (0x03d5...9db2)",
     icon: FiLock,
-    externalLink: "https://sepolia.etherscan.io/address/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c",
+    externalLink: "https://sepolia.etherscan.io/address/0x03d58fd596f31d69774d33c66706954443259db2",
   },
   {
     id: "ai-mediation",
@@ -57,9 +57,9 @@ const features: FeatureItem[] = [
       "48-hour mutual consensus window for client and freelancer",
       "Dual-consent backend arbitrator relay signs on-chain settlement",
     ],
-    technicalDetail: "DisputeContract.sol (0x0423...7193)",
+    technicalDetail: "DisputeContract.sol (0xbac6...9057)",
     icon: FiCpu,
-    externalLink: "https://sepolia.etherscan.io/address/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193",
+    externalLink: "https://sepolia.etherscan.io/address/0xbac634c79860c235853e342e2a874e55ef1d9057",
   },
   {
     id: "on-chain-reputation",

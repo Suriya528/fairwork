@@ -24,7 +24,7 @@ function getFallbackResponse(query: string): string {
     return "Clients can claim 5,000 free mock USDC sponsored directly by the FairWork platform relayer with 1 click in the Wallet tab or during project creation. No Sepolia ETH gas is needed! Once claimed, MetaMask automatically prompts you to watch the asset so you can fund milestone escrows immediately."
   }
   if (q.includes("not release") || q.includes("payment") || q.includes("release") || q.includes("escrow") || q.includes("fund")) {
-    return "Payments on FairWork are secured in the Sepolia USDC Escrow contract (0xc0d1b74a30a82d6fb846e446758a8c2ff391376c). Payment is released once: 1) The freelancer submits the deliverable for the milestone, and 2) The client reviews and clicks 'Approve Milestone & Release Payment'. Once approved, USDC transfers directly into the freelancer's wallet. If a payment is not releasing, ensure the deliverable is submitted and the client wallet is connected with sufficient gas to approve."
+    return "Payments on FairWork are secured in the Sepolia USDC Escrow contract (0x03d58fd596f31d69774d33c66706954443259db2). Payment is released once: 1) The freelancer submits the deliverable for the milestone, and 2) The client reviews and clicks 'Approve Milestone & Release Payment'. Once approved, the smart contract automatically transfers USDC directly into the freelancer's wallet via platform relayer with zero MetaMask gas required from the client."
   }
   if (q.includes("contract") || q.includes("agreement") || q.includes("generate") || q.includes("sign") || q.includes("ref id")) {
     return "FairWork freelance contracts are formal, legally structured agreements with unique reference IDs (e.g. FAIR-CNT-XXXXX). On the Contracts page (/contracts), you can filter contracts by 'Needs Your Signature', 'Awaiting Partner', or 'Fully Executed', inspect party details, and digitally sign. Once both parties electronically sign, the contract becomes legally binding."
@@ -45,7 +45,7 @@ function getFallbackResponse(query: string): string {
     return "FairWork operates on Ethereum Sepolia Testnet settling in USDC. Small amounts of Sepolia ETH are required for transaction gas when funding escrows or releasing milestone payments. Sepolia ETH can be obtained from free public testnet faucets."
   }
   if (q.includes("dispute") || q.includes("refund") || q.includes("arbitrat")) {
-    return "If a deliverable disagreement occurs, either party can open a dispute. The dispute is arbitrated on-chain via DisputeContract.sol (0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193), ensuring fair resolution based on submitted evidence."
+    return "If a deliverable disagreement occurs, either party can open a dispute. The dispute is arbitrated on-chain via DisputeContract.sol (0xbac634c79860c235853e342e2a874e55ef1d9057), ensuring fair resolution based on submitted evidence."
   }
   if (q.includes("oauth") || q.includes("verify") || q.includes("email") || q.includes("login")) {
     return "FairWork enforces Google & GitHub OAuth 2.0 with PKCE security and verified email assertion. Real-world email signups are automatically verified, giving you full access to create projects, submit proposals, fund escrows, and chat in the workroom."

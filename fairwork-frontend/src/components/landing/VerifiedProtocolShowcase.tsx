@@ -14,20 +14,20 @@ const verifiedContracts: VerifiedContract[] = [
   {
     id: "escrow",
     name: "Milestone Escrow Contract",
-    address: "0xc0d1b74a30a82d6fb846e446758a8c2ff391376c",
+    address: "0x03d58fd596f31d69774d33c66706954443259db2",
     network: "Ethereum Sepolia (11155111)",
     role: "Non-custodial multi-milestone lockbox with reentrancy protection and 48-hour refund timelock.",
     features: [
       "createEscrow & fund in ERC-20 USDC",
-      "Client-gated atomic releaseMilestone",
+      "Client-gated & automated relayer releaseMilestone",
       "requestRefund with 48h timelock safety",
     ],
-    etherscanUrl: "https://sepolia.etherscan.io/address/0xc0d1b74a30a82d6fb846e446758a8c2ff391376c",
+    etherscanUrl: "https://sepolia.etherscan.io/address/0x03d58fd596f31d69774d33c66706954443259db2",
   },
   {
     id: "dispute",
     name: "Dispute Resolution Contract",
-    address: "0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193",
+    address: "0xbac634c79860c235853e342e2a874e55ef1d9057",
     network: "Ethereum Sepolia (11155111)",
     role: "Freezes escrow balances on dispute and resolves winner via arbitrator cryptographic relay.",
     features: [
@@ -35,12 +35,12 @@ const verifiedContracts: VerifiedContract[] = [
       "resolveByArbitrator executes on-chain",
       "Mutual AI-consensus settlement relay",
     ],
-    etherscanUrl: "https://sepolia.etherscan.io/address/0x0423025a6a8c4bbbe1f9ecf0cb5d4542ac5b7193",
+    etherscanUrl: "https://sepolia.etherscan.io/address/0xbac634c79860c235853e342e2a874e55ef1d9057",
   },
   {
     id: "reputation",
     name: "Reputation Accumulator",
-    address: "0xfa25823ccf7343fdfd7fa20a785d996331e66674",
+    address: "0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b",
     network: "Ethereum Sepolia (11155111)",
     role: "O(1) accumulator recording permanent on-chain participant scores for completed projects.",
     features: [
@@ -48,7 +48,7 @@ const verifiedContracts: VerifiedContract[] = [
       "totalScore & ratingCount accumulator",
       "Immutable permanent proof of performance",
     ],
-    etherscanUrl: "https://sepolia.etherscan.io/address/0xfa25823ccf7343fdfd7fa20a785d996331e66674",
+    etherscanUrl: "https://sepolia.etherscan.io/address/0x45d12a466dff6c4f4c66786a57bf217e04e1eb3b",
   },
 ]
 

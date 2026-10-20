@@ -8,7 +8,7 @@ async function main() {
   const publicClient = await viem.getPublicClient();
 
   const tokenAddress = "0xf21bdf6737a3009359f9ec1fa515e6d74702f575";
-  const escrowAddress = (process.env.CANONICAL_ESCROW_ADDRESS || "0xc0d1b74a30a82d6fb846e446758a8c2ff391376c") as `0x${string}`;
+  const escrowAddress = (process.env.CANONICAL_ESCROW_ADDRESS || "0x03d58fd596f31d69774d33c66706954443259db2") as `0x${string}`;
   const testProjectId = "rehearsal_" + Date.now();
   const freelancerWallet = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
   const milestoneAmounts = [100n * 10n ** 6n, 200n * 10n ** 6n]; // $100 and $200 (6 decimals)

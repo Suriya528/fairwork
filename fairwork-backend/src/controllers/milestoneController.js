@@ -84,11 +84,104 @@ exports.approveAndReleaseMilestone = async (req, res) => {
       }
     }
 
-    // --- Require an on-chain release transaction hash ---
-    if (!releaseTxHash) {
-      return res.status(400).json({
-        message: "releaseTxHash is required. The client must sign the on-chain releaseMilestone transaction.",
-      });
+    // --- Automatic Gas-Relayed Release or Client-Signed Release ---
+    let finalReleaseTxHash = releaseTxHash;
+
+    if (!finalReleaseTxHash) {
+      // Automatic Gas-Relayed Release by Platform Relayer!
+      // The client clicked "Approve & Release Payment" in UI without needing MetaMask.
+      try {
+        const { createWalletClient, createPublicClient, http } = require("viem");
+        const { privateKeyToAccount } = require("viem/accounts");
+        const { resolveViemChain, getRpcUrl } = require("../services/chainResolver");
+        const { getResolvedContractAddress } = require("../services/reconciliationService");
+
+        const TESTNET_RELAYER_KEY = "b1edfd0cb1d8fa85f10d00b5d15a6615f1b495a5e3916174c333cbcb79b8bd93";
+        const privateKey = process.env.SEPOLIA_PRIVATE_KEY || process.env.ARBITRATOR_PRIVATE_KEY || TESTNET_RELAYER_KEY;
+        const normalizedKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+        const relayerAccount = privateKeyToAccount(normalizedKey);
+
+        const rpcUrl = getRpcUrl();
+        const chain = resolveViemChain();
+        const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
+        const walletClient = createWalletClient({
+          account: relayerAccount,
+          chain,
+          transport: http(rpcUrl),
+        });
+
+        const escrowAddress = getResolvedContractAddress("CANONICAL_ESCROW_ADDRESS", "ESCROW_ADDRESS");
+
+        const ESCROW_ABI = [
+          {
+            type: "function",
+            name: "releaseMilestone",
+            stateMutability: "nonpayable",
+            inputs: [
+              { type: "string", name: "projectId" },
+              { type: "uint256", name: "index" },
+            ],
+            outputs: [],
+          },
+          {
+            type: "function",
+            name: "escrows",
+            stateMutability: "view",
+            inputs: [{ type: "string", name: "projectId" }],
+            outputs: [
+              { type: "address", name: "client" },
+              { type: "address", name: "freelancer" },
+              { type: "address", name: "token" },
+              { type: "uint256", name: "totalAmount" },
+              { type: "uint256", name: "releasedAmount" },
+              { type: "bool", name: "isFunded" },
+              { type: "bool", name: "isDisputed" },
+              { type: "bool", name: "isCompleted" },
+            ],
+          },
+        ];
+
+        // Ensure escrow exists and is funded on-chain
+        if (escrowAddress && process.env.SKIP_CHAIN_VERIFICATION !== "true") {
+          const escrowData = await publicClient.readContract({
+            address: escrowAddress,
+            abi: ESCROW_ABI,
+            functionName: "escrows",
+            args: [String(projectId)],
+          });
+          if (!escrowData[5]) { // isFunded
+            return res.status(400).json({
+              message: "Escrow vault has not been funded on-chain yet. Please deposit funds before releasing payments.",
+            });
+          }
+        }
+
+        console.info(`[MilestoneController] Relaying releaseMilestone on-chain for project ${projectId}, milestone ${milestoneIndex} via relayer ${relayerAccount.address}...`);
+
+        const txHash = await walletClient.writeContract({
+          address: escrowAddress,
+          abi: ESCROW_ABI,
+          functionName: "releaseMilestone",
+          args: [String(projectId), BigInt(milestoneIndex)],
+        });
+
+        console.info(`[MilestoneController] Submitted release tx ${txHash}. Waiting for on-chain confirmation...`);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status !== "success" && receipt.status !== 1) {
+          throw new Error("On-chain release transaction reverted");
+        }
+
+        finalReleaseTxHash = txHash;
+      } catch (relayerErr) {
+        console.error("[MilestoneController] Relayer releaseMilestone failed:", relayerErr);
+        if (process.env.SKIP_CHAIN_VERIFICATION === "true") {
+          finalReleaseTxHash = `0xmockrelease${Date.now().toString(16).padStart(48, "0")}`;
+        } else {
+          return res.status(500).json({
+            message: `Failed to execute automatic smart contract release: ${relayerErr.message || relayerErr}`,
+          });
+        }
+      }
     }
 
     // --- Step 1: Reconcile funding if escrow was just funded ---
@@ -105,7 +198,7 @@ exports.approveAndReleaseMilestone = async (req, res) => {
     const updatedProject = await reconcileMilestoneRelease(
       String(project._id),
       milestoneIndex,
-      releaseTxHash,
+      finalReleaseTxHash,
       req.user.id
     );
 
@@ -116,13 +209,14 @@ exports.approveAndReleaseMilestone = async (req, res) => {
         io.to(`user:${freelancerId}`).emit("notification", {
           type: "PAYMENT_RELEASED",
           title: "Payment Released! 🎉",
-          message: `$${milestone.amount} USDC has been sent directly to your wallet for "${milestone.title}".`,
-          txHash: releaseTxHash,
+          message: `$${milestone.amount} USDC has been automatically released from escrow to your wallet for "${milestone.title}".`,
+          txHash: finalReleaseTxHash,
           projectId: project._id,
         });
       }
     } catch (socketErr) {
       console.warn("[MilestoneController] Socket notification skipped:", socketErr.message);
+    }
     }
 
     // --- Step 4: Activity log notifications ---

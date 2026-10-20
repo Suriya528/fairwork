@@ -72,6 +72,31 @@ describe("FairWork ERC-20 milestone escrow", async () => {
     assert.deepEqual(parties.slice(2), [true, false, true]);
   });
 
+  it("allows platformRelayer to release milestone on client behalf and lets owner configure relayer", async () => {
+    const { owner, client, freelancer, outsider, token, escrow } = await fundedFixture();
+    // Default platformRelayer is owner
+    assert.equal((await escrow.read.platformRelayer()).toLowerCase(), owner.account.address.toLowerCase());
+
+    // Owner / platformRelayer can release milestone
+    await escrow.write.releaseMilestone(["project-1", 1n], { account: owner.account });
+    assert.equal(await token.read.balanceOf([freelancer.account.address]), 200n);
+
+    // Outsider cannot set platformRelayer
+    await viem.assertions.revertWithCustomError(
+      escrow.write.setPlatformRelayer([outsider.account.address], { account: outsider.account }),
+      escrow,
+      "OwnableUnauthorizedAccount"
+    );
+
+    // Owner sets outsider as new relayer
+    await escrow.write.setPlatformRelayer([outsider.account.address], { account: owner.account });
+    assert.equal((await escrow.read.platformRelayer()).toLowerCase(), outsider.account.address.toLowerCase());
+
+    // New relayer can now release milestone 0
+    await escrow.write.releaseMilestone(["project-1", 0n], { account: outsider.account });
+    assert.equal(await token.read.balanceOf([freelancer.account.address]), 300n);
+  });
+
   it("enforces a 48-hour timelock on refunds and returns remaining balance to 0", async () => {
     const { client, freelancer, outsider, token, escrow } = await fundedFixture();
     const testClient = await viem.getTestClient();

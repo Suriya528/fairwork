@@ -79,7 +79,6 @@ import {
   type ApiContract,
 } from "@/services/contractsApi"
 import {
-  fundAndReleaseMilestone,
   fundEscrow,
   raiseEscrowDispute,
   requestEscrowRefund,
@@ -394,7 +393,7 @@ function ApproveReleaseModal({
               <h3 id="approve-modal-title" className="text-base font-bold text-foreground">
                 Approve &amp; Release Payout
               </h3>
-              <p className="text-xs text-muted">Smart Contract Vault Payout Authorization</p>
+              <p className="text-xs text-muted">Automatic Smart Contract Vault Release</p>
             </div>
           </div>
           <button
@@ -437,10 +436,10 @@ function ApproveReleaseModal({
               <span>Funds Already Secured in Escrow Vault</span>
             </div>
             <p className="text-muted leading-relaxed">
-              The {formatAmount(milestone.amount)} payment was already deposited into the smart contract escrow vault when the contract was activated.
+              The {formatAmount(milestone.amount)} payment is securely locked in the on-chain escrow vault.
             </p>
             <p className="text-muted leading-relaxed">
-              Confirming in MetaMask triggers the smart contract (<code className="font-mono text-primary text-[11px] px-1 bg-elevated rounded">releaseMilestone</code>) to disburse the funds directly to the freelancer. <strong className="text-foreground">No additional USDC is deducted from your wallet</strong> (only standard network gas).
+              Clicking <strong className="text-foreground">Confirm &amp; Release Payment</strong> automatically triggers the smart contract to transfer the milestone payout directly into the freelancer&apos;s wallet. <strong className="text-foreground">No MetaMask signature or gas fee is required from you</strong>—FairWork&apos;s automated platform relayer executes and sponsors the on-chain release transaction.
             </p>
           </div>
         </div>
@@ -457,7 +456,7 @@ function ApproveReleaseModal({
             leftIcon={<FiCheckCircle className="h-4 w-4" />}
             onClick={onConfirm}
           >
-            {releasing ? "Authorizing Release..." : "Confirm & Trigger Smart Contract Release"}
+            {releasing ? "Authorizing Release..." : "Confirm & Release Payment"}
           </Button>
         </div>
       </div>
@@ -1110,28 +1109,16 @@ export function ProjectDetailPage() {
     }
 
     try {
-      setActionState("Starting on-chain payment release...")
+      setActionState("Triggering smart contract release on-chain via platform relayer...")
 
-      const { fundTxHash, releaseTxHash } = await fundAndReleaseMilestone(
-        project.id,
-        milestoneIndex,
-        freelancerWallet as `0x${string}`,
-        (project.milestones || []).map((m) => String(m.amount)),
-        user.walletAddress,
-        (stage) => setActionState(stage),
-      )
-
-      setActionState("Syncing payment with server...")
       const updated = await approveAndReleaseMilestone(
         project.id,
         milestoneId,
         token,
-        releaseTxHash,
-        fundTxHash ?? undefined,
       )
       setProject(updated)
       setPendingApproveMilestone(null)
-      setActionState("✅ Payment released to freelancer wallet!")
+      setActionState("✅ Payment automatically released to freelancer wallet!")
       setTimeout(() => setActionState(""), 4000)
 
       if (updated.status === "completed" && !hasReviewed) {

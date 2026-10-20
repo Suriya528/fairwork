@@ -17,6 +17,7 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
     }
     mapping(string => Escrow) public escrows;
     address public disputeContract;
+    address public platformRelayer;
     uint256 public constant REFUND_DELAY = 48 hours;
     mapping(string => uint256) public refundRequestedAt;
 
@@ -28,10 +29,19 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
     event RefundCancelled(string projectId);
     event EscrowDisputed(string projectId);
     event DisputeResolved(string projectId, address indexed winner, uint256 amount);
+    event RelayerUpdated(address indexed newRelayer);
 
     // OpenZeppelin 5 is pinned by this repository; it requires an explicit owner.
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(msg.sender) {
+        platformRelayer = msg.sender;
+    }
     modifier onlyDisputeContract() { require(msg.sender == disputeContract, "Only dispute contract"); _; }
+
+    function setPlatformRelayer(address _relayer) external onlyOwner {
+        require(_relayer != address(0), "Invalid relayer");
+        platformRelayer = _relayer;
+        emit RelayerUpdated(_relayer);
+    }
 
     function createEscrow(string calldata projectId, address freelancer, address token, uint256[] calldata milestoneAmounts) external whenNotPaused {
         require(bytes(projectId).length > 0, "Project ID required");
@@ -56,7 +66,15 @@ contract EscrowContract is Ownable, Pausable, ReentrancyGuard {
     }
     function releaseMilestone(string calldata projectId, uint256 index) external nonReentrant whenNotPaused {
         Escrow storage e = escrows[projectId];
-        require(e.client != address(0), "Escrow missing"); require(msg.sender == e.client, "Only client"); require(e.isFunded, "Not funded"); require(!e.isDisputed && !e.isCompleted, "Escrow unavailable");
+        require(e.client != address(0), "Escrow missing");
+        require(
+            msg.sender == e.client ||
+            (platformRelayer != address(0) && msg.sender == platformRelayer) ||
+            msg.sender == owner(),
+            "Only client"
+        );
+        require(e.isFunded, "Not funded");
+        require(!e.isDisputed && !e.isCompleted, "Escrow unavailable");
         require(index < e.milestones.length && !e.milestones[index].released, "Invalid milestone");
         refundRequestedAt[projectId] = 0;
         Milestone storage m = e.milestones[index]; m.released = true; e.releasedAmount += m.amount; if (e.releasedAmount == e.totalAmount) e.isCompleted = true;
