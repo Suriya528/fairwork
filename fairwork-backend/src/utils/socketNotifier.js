@@ -5,12 +5,23 @@
  * requiring a manual browser refresh.
  */
 
+function toIdString(val) {
+  if (!val) return null;
+  if (typeof val === "string") return val;
+  if (typeof val === "object") {
+    if (val._id) return String(val._id);
+    if (val.id) return String(val.id);
+  }
+  const s = String(val);
+  return s !== "[object Object]" ? s : null;
+}
+
 function notifyProjectUpdate(req, projectId, payload = {}, targetUserIds = []) {
   try {
-    const io = req?.app?.get?.("io");
+    const io = req?.app?.get?.("io") || (req && typeof req.to === "function" ? req : null);
     if (!io) return;
 
-    const normalizedProjectId = projectId ? String(projectId) : null;
+    const normalizedProjectId = toIdString(projectId);
     const eventData = {
       projectId: normalizedProjectId,
       timestamp: new Date().toISOString(),
@@ -28,8 +39,9 @@ function notifyProjectUpdate(req, projectId, payload = {}, targetUserIds = []) {
       : [];
 
     userIds.forEach((uId) => {
-      if (uId) {
-        io.to(`user:${String(uId)}`).emit("project_updated", eventData);
+      const userStr = toIdString(uId);
+      if (userStr) {
+        io.to(`user:${userStr}`).emit("project_updated", eventData);
       }
     });
   } catch (err) {

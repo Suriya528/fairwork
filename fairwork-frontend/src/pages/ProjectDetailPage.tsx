@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import {
   FiAlertTriangle,
@@ -819,9 +819,12 @@ export function ProjectDetailPage() {
       if (!c) {
         c = await getContractByProjectId(id, token).catch(() => null)
       }
-      setContract(c)
-    } catch {
-      setContract(null)
+      if (c) {
+        setContract(c)
+        setProject((prev) => (prev && !prev.contractId && c?.id ? { ...prev, contractId: c.id } : prev))
+      } else {
+        setContract(null)
+      }
     } finally {
       if (showSpinner) setContractLoading(false)
     }
@@ -948,6 +951,16 @@ export function ProjectDetailPage() {
     }
   }, [tab, loadDeliverables, loadReferenceFiles])
 
+  // Keep refresh callbacks always up-to-date without re-binding socket listeners
+  const refreshAllRef = useRef<() => void>(() => {})
+  refreshAllRef.current = () => {
+    void loadProject(false)
+    void loadContract(false)
+    void loadDeliverables()
+    void loadApplications()
+    void loadReferenceFiles()
+  }
+
   // Real-time bi-directional browser synchronization (WebSockets + active tab polling fallback)
   useEffect(() => {
     if (!id || !token) return
@@ -957,11 +970,7 @@ export function ProjectDetailPage() {
 
     const handleRealtimeUpdate = (evt?: any) => {
       if (!evt?.projectId || String(evt.projectId) === String(id)) {
-        void loadProject(false)
-        void loadContract(false)
-        void loadDeliverables()
-        void loadApplications()
-        void loadReferenceFiles()
+        refreshAllRef.current()
       }
     }
 
@@ -984,7 +993,7 @@ export function ProjectDetailPage() {
       socket.off("receive_message", handleRealtimeUpdate)
       clearInterval(pollInterval)
     }
-  }, [id, token, loadProject, loadContract, loadDeliverables, loadApplications, loadReferenceFiles])
+  }, [id, token, loadProject, loadContract])
 
   const handleReject = async (applicationId: string) => {
     if (!token) return
