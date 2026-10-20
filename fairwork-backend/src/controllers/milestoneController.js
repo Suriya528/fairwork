@@ -170,7 +170,7 @@ exports.approveAndReleaseMilestone = async (req, res) => {
           });
 
           console.info(`[MilestoneController] Submitted release tx ${txHash}. Waiting for on-chain confirmation...`);
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, confirmations: 1 });
           if (receipt.status !== "success" && receipt.status !== 1) {
             throw new Error("On-chain release transaction reverted");
           }

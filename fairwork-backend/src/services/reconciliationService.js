@@ -436,7 +436,7 @@ async function reconcileVerifiedBlockchainEvent({
 // Backward-compatible export helper
 function getResolvedContractAddress(canonicalKey, legacyAliasKey) {
   const canonical = process.env[canonicalKey];
-  const alias = process.env[legacyAliasKey];
+  const alias = process.env[legacyAliasKey] || (canonicalKey.includes('ESCROW') ? process.env.ESCROW_CONTRACT_ADDRESS : undefined) || (canonicalKey.includes('TOKEN') ? process.env.USDC_CONTRACT_ADDRESS : undefined);
   if (canonical && alias && canonical.trim().toLowerCase() !== alias.trim().toLowerCase()) {
     throw new Error(`Blockchain configuration conflict: ${canonicalKey} and ${legacyAliasKey} conflict.`);
   }
@@ -509,7 +509,7 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     // Enforce minimum confirmation depth for finality
     const currentBlock = await publicClient.getBlockNumber();
     const confirmations = currentBlock >= receipt.blockNumber ? (currentBlock - receipt.blockNumber + 1n) : 0n;
-    const minConfirmations = BigInt(process.env.MIN_CONFIRMATIONS || (process.env.NODE_ENV === 'production' ? 6 : 1));
+    const minConfirmations = BigInt(process.env.MIN_CONFIRMATIONS || (chainId === 11155111 ? 1 : (process.env.NODE_ENV === 'production' ? 6 : 1)));
     if (confirmations < minConfirmations) {
       const err = new Error(`TRANSACTION_AWAITING_FINALITY: Current confirmations (${confirmations}) below minimum required (${minConfirmations})`);
       err.status = 202;
@@ -728,7 +728,7 @@ async function reconcileMilestoneRelease(projectId, milestoneIndex, txnHash, cal
     // Enforce minimum confirmation depth for finality
     const currentBlock = await publicClient.getBlockNumber();
     const confirmations = currentBlock >= receipt.blockNumber ? (currentBlock - receipt.blockNumber + 1n) : 0n;
-    const minConfirmations = BigInt(process.env.MIN_CONFIRMATIONS || (process.env.NODE_ENV === 'production' ? 6 : 1));
+    const minConfirmations = BigInt(process.env.MIN_CONFIRMATIONS || (chainId === 11155111 ? 1 : (process.env.NODE_ENV === 'production' ? 6 : 1)));
     if (confirmations < minConfirmations) {
       const err = new Error(`TRANSACTION_AWAITING_FINALITY: Current confirmations (${confirmations}) below minimum required (${minConfirmations})`);
       err.status = 202;

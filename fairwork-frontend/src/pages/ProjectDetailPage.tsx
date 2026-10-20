@@ -1080,11 +1080,6 @@ export function ProjectDetailPage() {
     if (!token || !project) return
     setActionError("")
 
-    if (!user?.walletAddress) {
-      setActionError("Client wallet required: Please connect and verify your Web3 wallet in Settings → Wallet before approving milestones.")
-      return
-    }
-
     if (!user?.isEmailVerified) {
       setVerificationActionName("approve and release milestone payment")
       setVerificationModalOpen(true)
@@ -1131,6 +1126,9 @@ export function ProjectDetailPage() {
       } catch (relayerErr: any) {
         // Fallback if backend deployment is syncing or requires direct signature
         if (relayerErr?.message && relayerErr.message.toLowerCase().includes("releasetxhash is required")) {
+          if (!user?.walletAddress) {
+            throw new Error("Client wallet required: Please connect and verify your Web3 wallet in Settings → Wallet to authorize release on-chain.")
+          }
           setActionState("Connecting to MetaMask to release milestone funds on-chain...")
           const releaseTxHash = await releaseEscrowMilestone(
             project.id,
