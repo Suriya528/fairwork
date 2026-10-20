@@ -783,6 +783,7 @@ export function ProjectDetailPage() {
   const isParty = isClient || isAssignedFreelancer
   const escrowActive = Boolean(project?.escrowFunded)
   const hasFreelancer = Boolean(projectFreelancerId)
+  const isContractFullySigned = Boolean(contract?.signedByClient && contract?.signedByFreelancer)
 
   const [selectedProfileFreelancerId, setSelectedProfileFreelancerId] = useState<string | null>(null)
 
@@ -1172,6 +1173,18 @@ export function ProjectDetailPage() {
       setActionError("Email verification required. Please update and verify your email address in Settings before funding escrow.")
       return
     }
+
+    if (!isContractFullySigned) {
+      if (!contract) {
+        setActionError("Please generate and sign the contract agreement under the Contract tab before depositing funds into escrow.")
+      } else if (!contract.signedByClient) {
+        setActionError("Please electronically sign the contract agreement under the Contract tab before depositing funds into escrow.")
+      } else if (!contract.signedByFreelancer) {
+        setActionError("Waiting for the hired freelancer to sign the contract agreement. Escrow can only be funded after both parties sign.")
+      }
+      return
+    }
+
     setActionState("Funding escrow...")
     try {
       if (!user?.walletAddress) {
@@ -1819,31 +1832,47 @@ export function ProjectDetailPage() {
                       </div>
 
                       {/* Step 2: Escrow Funding Callout & Mutual Authenticity Status */}
-                      {contract.signedByClient && !project.escrowFunded && isClient && (
-                        <div className="rounded-xl border border-primary/40 bg-primary/10 p-5 mt-4 shadow-sm">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
-                                <h5 className="font-bold text-foreground text-sm">Step 2: Deposit Escrow Funds ({formatAmount(project.budget)})</h5>
+                      {isClient && !project.escrowFunded && (
+                        <>
+                          {isContractFullySigned ? (
+                            <div className="rounded-xl border border-primary/40 bg-primary/10 p-5 mt-4 shadow-sm">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                                    <h5 className="font-bold text-foreground text-sm">Step 2: Deposit Escrow Funds ({formatAmount(project.budget)})</h5>
+                                  </div>
+                                  <p className="text-xs text-muted max-w-xl">
+                                    Contract agreement fully signed by both parties! To authorize the freelancer to begin work and submit deliverables, deposit the project budget into the smart contract escrow vault. Funds are locked securely on-chain until you review and approve completed work.
+                                  </p>
+                                </div>
+                                <Button
+                                  size="md"
+                                  variant="primary"
+                                  onClick={fund}
+                                  loading={Boolean(actionState)}
+                                  disabled={Boolean(actionState) || (!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress)}
+                                  leftIcon={<FiLock className="h-4 w-4" />}
+                                  className="shrink-0 font-semibold"
+                                >
+                                  Fund Escrow Vault
+                                </Button>
                               </div>
-                              <p className="text-xs text-muted max-w-xl">
-                                Contract agreement signed! To authorize the freelancer to begin work and submit deliverables, deposit the project budget into the smart contract escrow vault. Funds are locked securely on-chain until you review and approve completed work.
-                              </p>
                             </div>
-                            <Button
-                              size="md"
-                              variant="primary"
-                              onClick={fund}
-                              loading={Boolean(actionState)}
-                              disabled={Boolean(actionState)}
-                              leftIcon={<FiLock className="h-4 w-4" />}
-                              className="shrink-0 font-semibold"
-                            >
-                              Fund Escrow Vault
-                            </Button>
-                          </div>
-                        </div>
+                          ) : contract?.signedByClient && !contract?.signedByFreelancer ? (
+                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 mt-4 text-xs">
+                              <div className="flex items-start gap-3">
+                                <FiShield className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" />
+                                <div>
+                                  <p className="font-semibold text-foreground">Awaiting Freelancer Signature</p>
+                                  <p className="mt-1 text-muted">
+                                    You have electronically signed the agreement. Escrow deposit will unlock automatically once the freelancer signs the contract agreement.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
                       )}
                       {contract.signedByFreelancer && !project.escrowFunded && isAssignedFreelancer && (
                         <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 mt-4 text-xs">
@@ -1903,13 +1932,21 @@ export function ProjectDetailPage() {
                     <div className="flex items-start gap-3">
                       <FiLock className="h-5 w-5 shrink-0 text-primary mt-0.5" />
                       <div>
-                        <p className="font-bold text-sm text-foreground">Smart Contract Escrow Funding Required</p>
+                        <p className="font-bold text-sm text-foreground">
+                          {isContractFullySigned ? "Smart Contract Escrow Funding Required" : "Contract Agreement Signatures Required"}
+                        </p>
                         <p className="mt-1 text-muted">
-                          Deposit the project budget ({formatAmount(project.budget)}) into the smart contract escrow vault to activate the project. Freelancer deliverable submissions remain locked until funds are deposited into escrow.
+                          {isContractFullySigned
+                            ? `Both parties have signed! Deposit the project budget (${formatAmount(project.budget)}) into the smart contract escrow vault to activate the project.`
+                            : "Both client and freelancer must electronically sign the contract agreement before escrow funds can be deposited."}
                         </p>
                       </div>
                     </div>
-                    {(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) ? (
+                    {!isContractFullySigned ? (
+                      <Button size="sm" variant="outline" onClick={() => setTab("contract")} leftIcon={<FiFileText className="h-3.5 w-3.5" />}>
+                        View Contract
+                      </Button>
+                    ) : (!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) ? (
                       <span className="shrink-0 text-xs text-warning font-medium">⚠️ Freelancer Web3 wallet pending</span>
                     ) : (
                       <Button size="sm" variant="primary" onClick={fund} loading={Boolean(actionState)} disabled={Boolean(actionState)} leftIcon={<FiLock className="h-3.5 w-3.5" />}>
@@ -2193,7 +2230,7 @@ export function ProjectDetailPage() {
                 {isClient && (
                   <div className="flex flex-col gap-1.5">
                     <Button
-                      disabled={(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) || project.escrowFunded || Boolean(actionState)}
+                      disabled={!isContractFullySigned || (!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) || project.escrowFunded || Boolean(actionState)}
                       loading={Boolean(actionState)}
                       onClick={fund}
                       leftIcon={<FiLock className="h-4 w-4" />}
@@ -2202,7 +2239,9 @@ export function ProjectDetailPage() {
                     </Button>
                     {!project.escrowFunded && (
                       <p className="text-[11px] text-muted">
-                        {(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress)
+                        {!isContractFullySigned
+                          ? "Both client and freelancer must electronically sign the contract before escrow can be funded."
+                          : (!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress)
                           ? "Waiting for hired freelancer to connect a verified wallet address before escrow can be funded."
                           : "Locks project funds into the smart contract vault so payments transfer directly to freelancer upon milestone approval."}
                       </p>

@@ -208,6 +208,51 @@ exports.signContract = async (req, res) => {
     await Contract.findByIdAndUpdate(req.params.id, update, { returnDocument: "after" });
     const updated = await populateContractQuery(Contract.findById(req.params.id));
 
+    // Mutual notifications when contract is signed
+    try {
+      const io = req.app.get("io");
+      const { recordActivitySafely } = require("../services/activityService");
+      const isBothSigned = Boolean(updated.signedByClient && updated.signedByFreelancer);
+
+      if (isBothSigned) {
+        if (io) {
+          io.to(`user:${clientUserId}`).emit("notification", {
+            type: "CONTRACT_FULLY_SIGNED",
+            title: "Contract Fully Signed! ✍️",
+            message: "Both parties have electronically signed the agreement. You can now securely deposit funds into the escrow vault.",
+            projectId: existing.projectId,
+          });
+          io.to(`user:${freelancerUserId}`).emit("notification", {
+            type: "CONTRACT_FULLY_SIGNED",
+            title: "Contract Fully Signed! ✍️",
+            message: "Both parties have signed the agreement. Awaiting client escrow deposit.",
+            projectId: existing.projectId,
+          });
+        }
+        recordActivitySafely({
+          userIds: [clientUserId, freelancerUserId],
+          eventKey: `contract-executed:${existing._id}`,
+          actorId: req.user.id,
+          type: "contract_signed",
+          title: "Contract Fully Executed",
+          message: "Both parties electronically signed the contract agreement. Escrow deposit is now unlocked.",
+          projectId: existing.projectId,
+        });
+      } else {
+        const otherPartyId = isClient ? freelancerUserId : clientUserId;
+        if (io) {
+          io.to(`user:${otherPartyId}`).emit("notification", {
+            type: "CONTRACT_SIGNED",
+            title: "Contract Signed ✍️",
+            message: `${isClient ? "Client" : "Freelancer"} has signed the agreement. Awaiting your signature.`,
+            projectId: existing.projectId,
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.warn("[ContractController] Notification warning:", notifErr.message);
+    }
+
     res.json(updated);
   } catch (err) {
     if (err.name === "CastError") {

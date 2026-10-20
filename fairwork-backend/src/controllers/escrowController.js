@@ -15,6 +15,15 @@ exports.depositEscrow = async (req, res) => {
     if (!projectId || !mongoose.isValidObjectId(projectId)) return res.status(400).json({ message: "Valid projectId is required" });
     if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 
+    // Enforce mutual contract signature before escrow deposit reconciliation
+    const Contract = require("../models/Contract");
+    const contract = await Contract.findOne({ projectId });
+    if (!contract || !contract.signedByClient || !contract.signedByFreelancer) {
+      return res.status(400).json({
+        message: "Both client and freelancer must digitally sign the contract agreement before escrow funds can be deposited.",
+      });
+    }
+
     const project = await reconcileEscrowFunding(projectId, txnHash, req.user.id);
 
     // Real-time notification to assigned freelancer confirming escrow deposit

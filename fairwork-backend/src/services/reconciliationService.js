@@ -460,6 +460,15 @@ async function reconcileEscrowFunding(projectId, txnHash, callerUserId = null) {
     throw err;
   }
 
+  // Enforce contract signatures if contract exists
+  const Contract = require('../models/Contract');
+  const contract = await Contract.findOne({ projectId });
+  if (contract && (!contract.signedByClient || !contract.signedByFreelancer)) {
+    const err = new Error('CONTRACT_SIGNATURES_REQUIRED: Both client and freelancer must sign the contract before escrow can be funded.');
+    err.status = 400;
+    throw err;
+  }
+
   // Idempotent early return
   if (project.escrowFunded && project.escrowTxnHash === txnHash) {
     return project;

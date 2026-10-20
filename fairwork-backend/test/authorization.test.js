@@ -761,5 +761,112 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       reconciliationService.reconcileMilestoneRelease = origReconcile;
     }
   });
+
+  await t.test("Scenario 44: Client escrow funding gated until both client and freelancer have signed the contract", async () => {
+    const { depositEscrow } = require("../src/controllers/escrowController");
+    const Contract = require("../src/models/Contract");
+    const Project = require("../src/models/Project");
+
+    const origContractFindOne = Contract.findOne;
+    const origProjectFindById = Project.findById;
+
+    try {
+      const dummyProjectId = new mongoose.Types.ObjectId();
+      const dummyClientId = new mongoose.Types.ObjectId();
+      const dummyTxHash = "0x" + "a".repeat(64);
+
+      let mockContract = null;
+      Contract.findOne = async () => mockContract;
+
+      let statusCode = 200;
+      let payload = null;
+      const res = {
+        status: (code) => { statusCode = code; return res; },
+        json: (data) => { payload = data; return res; },
+      };
+
+      // Case 1: No contract exists -> 400
+      await depositEscrow(
+        {
+          body: { projectId: dummyProjectId.toString(), txnHash: dummyTxHash },
+          user: { id: dummyClientId.toString() },
+          app: { get: () => null },
+        },
+        res
+      );
+      assert.equal(statusCode, 400);
+      assert.match(payload.message, /Both client and freelancer must digitally sign the contract/i);
+
+      // Case 2: Only client signed -> 400
+      mockContract = {
+        signedByClient: true,
+        signedByFreelancer: false,
+      };
+      statusCode = 200;
+      payload = null;
+
+      await depositEscrow(
+        {
+          body: { projectId: dummyProjectId.toString(), txnHash: dummyTxHash },
+          user: { id: dummyClientId.toString() },
+          app: { get: () => null },
+        },
+        res
+      );
+      assert.equal(statusCode, 400);
+      assert.match(payload.message, /Both client and freelancer must digitally sign the contract/i);
+
+      // Case 3: Only freelancer signed -> 400
+      mockContract = {
+        signedByClient: false,
+        signedByFreelancer: true,
+      };
+      statusCode = 200;
+      payload = null;
+
+      await depositEscrow(
+        {
+          body: { projectId: dummyProjectId.toString(), txnHash: dummyTxHash },
+          user: { id: dummyClientId.toString() },
+          app: { get: () => null },
+        },
+        res
+      );
+      assert.equal(statusCode, 400);
+      assert.match(payload.message, /Both client and freelancer must digitally sign the contract/i);
+
+      // Case 4: Both parties signed -> passes contract gate
+      mockContract = {
+        signedByClient: true,
+        signedByFreelancer: true,
+      };
+      statusCode = 200;
+      payload = null;
+
+      // Mock Project for reconciliationService (early return idempotent)
+      const mockProject = {
+        _id: dummyProjectId,
+        clientId: dummyClientId,
+        title: "Signed Project",
+        escrowFunded: true,
+        escrowTxnHash: dummyTxHash,
+      };
+      Project.findById = async () => mockProject;
+
+      await depositEscrow(
+        {
+          body: { projectId: dummyProjectId.toString(), txnHash: dummyTxHash },
+          user: { id: dummyClientId.toString() },
+          app: { get: () => null },
+        },
+        res
+      );
+      assert.equal(statusCode, 200, "Should succeed once both parties have signed the contract");
+      assert.equal(payload.message, "Escrow recorded successfully");
+    } finally {
+      Contract.findOne = origContractFindOne;
+      Project.findById = origProjectFindById;
+    }
+  });
 });
 
