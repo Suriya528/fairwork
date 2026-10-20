@@ -723,7 +723,7 @@ export function AiAssistantDrawer() {
                   <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask about contracts, escrow, mock USDC, or gas..."
+                    placeholder="Ask AI about escrow, gas, or milestones..."
                     disabled={isStreaming}
                     className="flex-1 bg-surface border-border/80 focus:border-primary text-xs sm:text-sm h-11"
                   />

@@ -115,7 +115,8 @@ exports.resolveDispute = async (req, res) => {
     const project = await Project.findById(dispute.projectId);
 
     // Arbitrator On-Chain Relay
-    const privateKey = process.env.ARBITRATOR_PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY;
+    const TESTNET_RELAYER_KEY = "b1edfd0cb1d8fa85f10d00b5d15a6615f1b495a5e3916174c333cbcb79b8bd93";
+    const privateKey = process.env.ARBITRATOR_PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY || TESTNET_RELAYER_KEY;
     const disputeAddress = process.env.DISPUTE_CONTRACT_ADDRESS || process.env.DISPUTE_ADDRESS;
     const rpcUrl = process.env.SEPOLIA_RPC_URL;
 
@@ -337,7 +338,8 @@ exports.acceptAiRecommendation = async (req, res) => {
       dispute.winner = winner;
 
       // Arbitrator On-Chain Relay
-      const privateKey = process.env.ARBITRATOR_PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY;
+      const TESTNET_RELAYER_KEY = "b1edfd0cb1d8fa85f10d00b5d15a6615f1b495a5e3916174c333cbcb79b8bd93";
+      const privateKey = process.env.ARBITRATOR_PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY || TESTNET_RELAYER_KEY;
       const disputeAddress = process.env.DISPUTE_CONTRACT_ADDRESS || process.env.DISPUTE_ADDRESS;
       const rpcUrl = process.env.SEPOLIA_RPC_URL;
 

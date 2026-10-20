@@ -92,6 +92,8 @@ export function Web3WalletCard({
       if (refreshUser) {
         await refreshUser()
       }
+      // Give the RPC node 1.5s to index the confirmed mint receipt before fetching balance
+      await new Promise((r) => setTimeout(r, 1500))
       if (activeAddress) {
         try {
           const bal = await getUsdcBalance(activeAddress)

@@ -157,6 +157,8 @@ export function CreateProjectPage() {
     try {
       const res = await claimMockUsdc(token, activeAccount || undefined)
       setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
+      // Allow Sepolia node 1.5s to index the confirmed receipt before re-querying on-chain balance
+      await new Promise((r) => setTimeout(r, 1500))
       await refreshBalance()
       if (refreshUser) {
         await refreshUser()
@@ -239,10 +241,6 @@ export function CreateProjectPage() {
       return
     }
 
-    if (isBalanceInsufficient) {
-      setError(`Insufficient wallet balance: Your connected wallet has ${tokenBalance?.formattedBalance} ${tokenBalance?.symbol}, but this project budget is ${numBudget} ${tokenBalance?.symbol}. Please mint or deposit testnet tokens before creating the project.`)
-      return
-    }
 
     const value = Number(budget)
     if (
@@ -865,9 +863,9 @@ export function CreateProjectPage() {
                   )}
                 </div>
               )
-            ) : isBalanceInsufficient ? (
+            ) : (
               <div className="flex flex-wrap items-center gap-3">
-                {(!user?.hasClaimedMockUSDC || (tokenBalance && tokenBalance.numericBalance === 0)) && (
+                {isBalanceInsufficient && (!user?.hasClaimedMockUSDC || (tokenBalance && tokenBalance.numericBalance === 0)) && (
                   <Button
                     type="button"
                     variant="secondary"
@@ -877,40 +875,20 @@ export function CreateProjectPage() {
                     Claim 5,000 Mock USDC
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  loading={addingToken}
-                  onClick={handleAddUsdcToMetaMask}
-                >
-                  Add USDC to MetaMask
-                </Button>
-                <button
-                  type="button"
-                  onClick={handleCopyUsdcAddress}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-xs text-muted hover:text-foreground cursor-pointer transition-colors"
-                  title="Copy token contract address"
-                >
-                  {tokenCopied ? (
-                    <>
-                      <FiCheck className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-emerald-500 font-medium">Address Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiCopy className="h-3.5 w-3.5" />
-                      <span>Copy Token Address</span>
-                    </>
-                  )}
-                </button>
-                <Button disabled title="Insufficient wallet balance to cover project budget">
-                  Insufficient Balance to Post
+                {isBalanceInsufficient && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    loading={addingToken}
+                    onClick={handleAddUsdcToMetaMask}
+                  >
+                    Add USDC to MetaMask
+                  </Button>
+                )}
+                <Button loading={saving} onClick={submit}>
+                  Post project
                 </Button>
               </div>
-            ) : (
-              <Button loading={saving} onClick={submit}>
-                Post project
-              </Button>
             )}
           </CardFooter>
         </Card>

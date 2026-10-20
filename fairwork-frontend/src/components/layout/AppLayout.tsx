@@ -5,6 +5,7 @@ import { Topbar } from "./Topbar"
 import { MobileNav } from "./MobileNav"
 import { DisputeSummaryProvider } from "@/context/DisputeSummaryContext"
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner"
+import { AiAssistantDrawer } from "@/components/ai/AiAssistantDrawer"
 
 /**
  * Root application shell: fixed sidebar (desktop), sticky topbar,
@@ -25,6 +26,7 @@ export function AppLayout({ children }: { children?: React.ReactNode } = {}) {
           <main className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
             {children || <Outlet />}
           </main>
+          <AiAssistantDrawer />
         </div>
       </div>
     </DisputeSummaryProvider>

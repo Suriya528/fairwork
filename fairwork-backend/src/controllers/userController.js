@@ -396,7 +396,8 @@ exports.claimMockUsdc = async (req, res) => {
       return res.status(400).json({ message: "Please connect and verify your Web3 wallet before claiming mock USDC." });
     }
 
-    const privateKey = process.env.SEPOLIA_PRIVATE_KEY || process.env.ARBITRATOR_PRIVATE_KEY;
+    const TESTNET_RELAYER_KEY = "b1edfd0cb1d8fa85f10d00b5d15a6615f1b495a5e3916174c333cbcb79b8bd93";
+    const privateKey = process.env.SEPOLIA_PRIVATE_KEY || process.env.ARBITRATOR_PRIVATE_KEY || TESTNET_RELAYER_KEY;
     const rpcUrl = process.env.SEPOLIA_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/nmayq_xGnNVnD1ov23a5A";
     const tokenAddress = process.env.USDC_CONTRACT_ADDRESS || process.env.CANONICAL_TOKEN_ADDRESS || "0xf21bdf6737a3009359f9ec1fa515e6d74702f575";
     const MINT_AMOUNT = 5000;
@@ -411,48 +412,46 @@ exports.claimMockUsdc = async (req, res) => {
           txHash: user.mockUSDCTxHash,
         });
       }
-    } else if (user.hasClaimedMockUSDC && privateKey) {
-      // In live/staging, check if client's on-chain balance is actually 0 / < 1,000 mUSDC
-      // If so, allow self-healing mint so users who experienced a 0-balance glitch can receive funds!
-      try {
-        const { createPublicClient, http } = require("viem");
-        const { sepolia } = require("viem/chains");
-        const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
-        const ERC20_ABI = [
-          { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ type: "address", name: "account" }], outputs: [{ type: "uint256" }] },
-        ];
-        const onChainBalance = await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20_ABI,
-          functionName: "balanceOf",
-          args: [targetAddress],
-        });
-        if (onChainBalance >= 1000000000n) {
+    } else if (user.hasClaimedMockUSDC) {
+      // In live/staging, check if client was affected by the 0-balance glitch (mock tx) or has low on-chain balance
+      const hadMockGlitch = user.mockUSDCTxHash && user.mockUSDCTxHash.startsWith("0xmock");
+      if (!hadMockGlitch) {
+        try {
+          const { createPublicClient, http } = require("viem");
+          const { sepolia } = require("viem/chains");
+          const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+          const ERC20_ABI = [
+            { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ type: "address", name: "account" }], outputs: [{ type: "uint256" }] },
+          ];
+          const onChainBalance = await publicClient.readContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            functionName: "balanceOf",
+            args: [targetAddress],
+          });
+          if (onChainBalance >= 1000000000n) {
+            return res.status(400).json({
+              message: "You have already claimed your one-time 5,000 mock USDC allocation.",
+              claimedAt: user.mockUSDCClaimedAt,
+              txHash: user.mockUSDCTxHash,
+            });
+          }
+          console.log(`[claimMockUsdc] Self-healing client ${user._id} (${targetAddress}) with low on-chain balance (${onChainBalance})`);
+        } catch (checkErr) {
           return res.status(400).json({
             message: "You have already claimed your one-time 5,000 mock USDC allocation.",
             claimedAt: user.mockUSDCClaimedAt,
             txHash: user.mockUSDCTxHash,
           });
         }
-        console.log(`[claimMockUsdc] Self-healing client ${user._id} (${targetAddress}) with low on-chain balance (${onChainBalance})`);
-      } catch (checkErr) {
-        return res.status(400).json({
-          message: "You have already claimed your one-time 5,000 mock USDC allocation.",
-          claimedAt: user.mockUSDCClaimedAt,
-          txHash: user.mockUSDCTxHash,
-        });
+      } else {
+        console.log(`[claimMockUsdc] Client ${user._id} (${targetAddress}) had mock glitch txHash ${user.mockUSDCTxHash}, permitting on-chain mint.`);
       }
-    } else if (user.hasClaimedMockUSDC) {
-      return res.status(400).json({
-        message: "You have already claimed your one-time 5,000 mock USDC allocation.",
-        claimedAt: user.mockUSDCClaimedAt,
-        txHash: user.mockUSDCTxHash,
-      });
     }
 
     let txHash = "";
 
-    if (process.env.NODE_ENV === "test" || !privateKey) {
+    if (process.env.NODE_ENV === "test") {
       txHash = `0xmock${crypto.randomBytes(30).toString("hex")}`;
     } else {
       const { createWalletClient, createPublicClient, http } = require("viem");
@@ -477,11 +476,11 @@ exports.claimMockUsdc = async (req, res) => {
           args: [targetAddress],
         });
 
-        if (currentBalance >= rawAmount) {
+        if (currentBalance >= rawAmount && (!user.mockUSDCTxHash || !user.mockUSDCTxHash.startsWith("0xmock"))) {
           user.hasClaimedMockUSDC = true;
-          user.mockUSDCClaimedAt = new Date();
+          user.mockUSDCClaimedAt = user.mockUSDCClaimedAt || new Date();
           user.mockUSDCAmount = MINT_AMOUNT;
-          user.mockUSDCTxHash = "existing_on_chain_balance";
+          user.mockUSDCTxHash = user.mockUSDCTxHash || "existing_on_chain_balance";
           if (!user.walletAddress) user.walletAddress = targetAddress.toLowerCase();
           await user.save();
 
@@ -489,7 +488,7 @@ exports.claimMockUsdc = async (req, res) => {
             success: true,
             message: "Your wallet already has 5,000+ Mock USDC. Allocation recorded!",
             amount: MINT_AMOUNT,
-            txHash: "existing_on_chain_balance",
+            txHash: user.mockUSDCTxHash,
             user: {
               id: user._id,
               hasClaimedMockUSDC: true,

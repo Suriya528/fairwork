@@ -459,7 +459,7 @@ function MilestoneRow({
                   disabled={releasing}
                   loading={releasing}
                 >
-                  Release Payment to Freelancer
+                  Release Escrow Payout
                 </Button>
               </div>
             ) : (
