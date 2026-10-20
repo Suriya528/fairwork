@@ -217,10 +217,11 @@ export interface ClaimMockUsdcResponse {
   }
 }
 
-export async function claimMockUsdc(token: string): Promise<ClaimMockUsdcResponse> {
+export async function claimMockUsdc(token: string, walletAddress?: string): Promise<ClaimMockUsdcResponse> {
   return apiFetch<ClaimMockUsdcResponse>("/users/claim-mock-usdc", {
     method: "POST",
     token,
+    body: walletAddress ? { walletAddress } : undefined,
   })
 }
 

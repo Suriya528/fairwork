@@ -53,8 +53,13 @@ export function DisputesPage() {
 
     setSubmitError("")
     try {
-      if (user?.walletAddress) {
-        await raiseEscrowDispute(projectId, reason[projectId], user.walletAddress)
+      const targetProj = projects.find((p) => p.id === projectId)
+      if (user?.walletAddress && targetProj?.escrowFunded) {
+        try {
+          await raiseEscrowDispute(projectId, reason[projectId], user.walletAddress)
+        } catch (chainErr) {
+          console.warn("[Dispute] On-chain dispute warning:", chainErr)
+        }
       }
       await raiseDispute(projectId, reason[projectId], token)
       setReason((value) => ({ ...value, [projectId]: "" }))
@@ -113,8 +118,8 @@ export function DisputesPage() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <MetricCard label="Open Disputes" value={String(openDisputeCount)} icon={FiAlertTriangle} />
-          <MetricCard label="Resolved Disputes" value={String(disputes.filter((d) => d.status === "resolved").length)} icon={FiFile} />
+          <MetricCard label="Open" value={String(openDisputeCount)} icon={FiAlertTriangle} />
+          <MetricCard label="Resolved" value={String(disputes.filter((d) => d.status === "resolved").length)} icon={FiFile} />
         </div>
 
         {actionMsg && (

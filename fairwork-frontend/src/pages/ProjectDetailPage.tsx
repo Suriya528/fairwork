@@ -1069,8 +1069,12 @@ export function ProjectDetailPage() {
     }
     setActionState("Raising dispute...")
     try {
-      if (user?.walletAddress) {
-        await raiseEscrowDispute(project.id, "Dispute raised from project page", user.walletAddress)
+      if (user?.walletAddress && project.escrowFunded) {
+        try {
+          await raiseEscrowDispute(project.id, "Dispute raised from project page", user.walletAddress)
+        } catch (chainErr) {
+          console.warn("[Dispute] On-chain dispute warning:", chainErr)
+        }
       }
       await raiseDispute(project.id, "Dispute raised from project page", token)
       setProject((prev) => (prev ? { ...prev, escrowDisputed: true, status: "disputed" } : prev))

@@ -94,3 +94,16 @@ export async function acceptAiRecommendation(disputeId: string, token: string): 
     settled: res.settled,
   }
 }
+
+export async function resolveDispute(
+  disputeId: string,
+  winner: "client" | "freelancer",
+  token: string
+): Promise<ApiDispute> {
+  const data = await apiFetch<BackendDispute>(`/disputes/${disputeId}/resolve`, {
+    method: "PUT",
+    token,
+    body: { winner },
+  })
+  return toApiDispute(data)
+}

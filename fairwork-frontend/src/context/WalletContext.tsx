@@ -941,7 +941,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               type: "ERC20",
               options: {
                 address: checksumAddress,
-                symbol: "USDC",
+                symbol: "mUSDC",
                 decimals: 6,
                 image: imageUri,
               },
@@ -983,7 +983,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               type: "ERC20",
               options: {
                 address: checksumAddress,
-                symbol: "USDC",
+                symbol: "mUSDC",
                 decimals: 6,
               },
             },
@@ -998,7 +998,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                   type: "ERC20",
                   options: {
                     address: checksumAddress,
-                    symbol: "USDC",
+                    symbol: "mUSDC",
                     decimals: 6,
                   },
                 },

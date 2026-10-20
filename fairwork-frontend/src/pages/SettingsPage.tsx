@@ -953,11 +953,7 @@ export function SettingsPage() {
         {/* Web3 Wallet Security Card (Clients & Freelancers only - Admins do not hold user escrow funds) */}
         {!isAdmin && (
           <Web3WalletCard
-            title={
-              isClient
-                ? "Connected Web3 Funding Wallet & Escrow Verification"
-                : "Connected Web3 Payout Wallet & EIP-712 Ownership Verification"
-            }
+            title="Connected Web3 Wallet & EIP-712 Ownership Verification"
             description={
               isClient
                 ? "Connect your browser wallet (MetaMask / Coinbase / WalletConnect) and sign an EIP-712 verification challenge to fund milestone escrows on-chain."

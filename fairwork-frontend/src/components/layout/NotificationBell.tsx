@@ -34,13 +34,22 @@ export function NotificationBell() {
     if (!token) return
     let cancelled = false
     void getActivities(token, 1, MAX_PREVIEW).then((data) => {
-      if (!cancelled) setItems(data.activities)
+      if (!cancelled) {
+        if (data && Array.isArray(data.activities)) {
+          setItems(data.activities)
+        } else if (Array.isArray(data)) {
+          setItems(data)
+        } else {
+          setItems([])
+        }
+      }
     }).catch(() => {})
     return () => { cancelled = true }
   }, [token])
 
-  const unreadCount = items.filter((n) => !n.read).length
-  const preview = items.slice(0, MAX_PREVIEW)
+  const safeItems = Array.isArray(items) ? items : []
+  const unreadCount = safeItems.filter((n) => !n.read).length
+  const preview = safeItems.slice(0, MAX_PREVIEW)
 
   const handleOpenNotification = (item: ApiActivity) => {
     if (!item.read && token) {
@@ -52,7 +61,7 @@ export function NotificationBell() {
 
   const markAllRead = () => {
     if (!token || unreadCount === 0) return
-    const unreadIds = items.filter((n) => !n.read).map((n) => n.id)
+    const unreadIds = safeItems.filter((n) => !n.read).map((n) => n.id)
     void markActivitiesRead(unreadIds, token)
     setItems((prev) => prev.map((n) => ({ ...n, read: true })))
   }

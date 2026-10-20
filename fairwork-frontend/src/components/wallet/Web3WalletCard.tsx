@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { getAddress } from "viem"
 import {
   FiAlertTriangle,
@@ -21,6 +21,7 @@ import { WalletAddress } from "@/components/common/WalletAddress"
 import { useWallet, OFFICIAL_METAMASK_INSTALL_URL } from "@/context/WalletContext"
 import { useAuth } from "@/context/AuthContext"
 import { claimMockUsdc } from "@/services/userApi"
+import { getUsdcBalance } from "@/services/web3"
 
 export function Web3WalletCard({
   title = "Web3 Wallet Ownership & Connection",
@@ -56,6 +57,29 @@ export function Web3WalletCard({
   const [mintingToken, setMintingToken] = useState(false)
   const [mintSuccess, setMintSuccess] = useState("")
   const [mintError, setMintError] = useState("")
+  const [balance, setBalance] = useState<{ formattedBalance: string; numericBalance: number; symbol: string } | null>(null)
+
+  const activeAddress = connectedAccount || verifiedWalletAddress
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadBalance() {
+      if (!activeAddress) {
+        setBalance(null)
+        return
+      }
+      try {
+        const bal = await getUsdcBalance(activeAddress)
+        if (!cancelled) setBalance(bal)
+      } catch {
+        // ignore balance fetch error
+      }
+    }
+    void loadBalance()
+    return () => {
+      cancelled = true
+    }
+  }, [activeAddress])
 
   const handleClaimMockUsdc = async () => {
     if (!token) return
@@ -63,10 +87,16 @@ export function Web3WalletCard({
     setMintSuccess("")
     setMintError("")
     try {
-      const res = await claimMockUsdc(token)
+      const res = await claimMockUsdc(token, activeAddress || undefined)
       setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
       if (refreshUser) {
         await refreshUser()
+      }
+      if (activeAddress) {
+        try {
+          const bal = await getUsdcBalance(activeAddress)
+          setBalance(bal)
+        } catch {}
       }
       try {
         await addUsdcToWallet()
@@ -125,8 +155,6 @@ export function Web3WalletCard({
       setAddingToken(false)
     }
   }
-
-  const activeAddress = connectedAccount || verifiedWalletAddress
 
   return (
     <Card className="border border-border bg-surface shadow-md transition-all">
@@ -388,10 +416,15 @@ export function Web3WalletCard({
                 $
               </div>
               <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold text-foreground">FairWork Escrow Token (USDC)</span>
                   <Badge tone="info" className="text-[10px] py-0 px-1.5 font-mono">Sepolia Testnet</Badge>
                   <Badge tone="neutral" className="text-[10px] py-0 px-1.5">6 Decimals</Badge>
+                  {balance && (
+                    <Badge tone={balance.numericBalance > 0 ? "success" : "neutral"} className="text-[10px] py-0 px-1.5 font-mono">
+                      Balance: {balance.formattedBalance} {balance.symbol}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-[11px] text-muted">
                   Required for project escrow funding, milestone deposits, and payout balances.
@@ -400,7 +433,7 @@ export function Web3WalletCard({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {user?.role === "client" && !user?.hasClaimedMockUSDC ? (
+              {user?.role === "client" && (!user?.hasClaimedMockUSDC || (balance && balance.numericBalance === 0)) ? (
                 <Button
                   type="button"
                   size="sm"
@@ -414,11 +447,6 @@ export function Web3WalletCard({
                 >
                   Claim 5,000 Mock USDC
                 </Button>
-              ) : user?.role === "client" && user?.hasClaimedMockUSDC ? (
-                <Badge tone="success" className="text-xs py-1 px-2.5 font-medium flex items-center gap-1.5">
-                  <FiCheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                  Mock USDC Claimed (5,000 mUSDC ✓)
-                </Badge>
               ) : null}
               <Button
                 type="button"

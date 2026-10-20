@@ -101,37 +101,77 @@ exports.resolveDispute = async (req, res) => {
       return res.status(403).json({ message: "Only administrators can resolve disputes" });
     }
 
+    if (!["client", "freelancer"].includes(winner)) {
+      return res.status(400).json({ message: "Winner must be either 'client' or 'freelancer'." });
+    }
+
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(404).json({ message: "Dispute not found" });
     }
 
-    const dispute = await Dispute.findByIdAndUpdate(
-      req.params.id,
-      { status: "resolved", winner },
-      { returnDocument: "after" }
-    );
-    if (dispute) {
-      const resolvedStatus = winner === "client" ? "refunded" : "completed";
-      const project = await Project.findByIdAndUpdate(
-        dispute.projectId,
-        { status: resolvedStatus, escrowDisputed: false, escrowCompleted: true },
-        { returnDocument: "after" }
-      );
-      if (project) {
-        recordActivitySafely({
-          userIds: [project.clientId, project.freelancerId],
-          eventKey: `dispute-resolved:${dispute._id}`,
-          actorId: req.user.id,
-          type: "dispute_resolved",
-          title: "Dispute resolved",
-          message: `A dispute was resolved on “${project.title}”.`,
-          projectId: project._id,
-          disputeId: dispute._id,
+    const dispute = await Dispute.findById(req.params.id);
+    if (!dispute) return res.status(404).json({ message: "Dispute not found" });
+
+    const project = await Project.findById(dispute.projectId);
+
+    // Arbitrator On-Chain Relay
+    const privateKey = process.env.ARBITRATOR_PRIVATE_KEY || process.env.SEPOLIA_PRIVATE_KEY;
+    const disputeAddress = process.env.DISPUTE_CONTRACT_ADDRESS || process.env.DISPUTE_ADDRESS;
+    const rpcUrl = process.env.SEPOLIA_RPC_URL;
+
+    if (privateKey && disputeAddress && rpcUrl && project) {
+      try {
+        const { createWalletClient, http } = require("viem");
+        const { privateKeyToAccount } = require("viem/accounts");
+        const { sepolia } = require("viem/chains");
+        const formattedKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+        const account = privateKeyToAccount(formattedKey);
+        const client = createWalletClient({ account, chain: sepolia, transport: http(rpcUrl) });
+        const winnerEnum = winner === "client" ? 1 : 2;
+        const DISPUTE_ABI = [
+          {
+            type: "function",
+            name: "resolveByArbitrator",
+            stateMutability: "nonpayable",
+            inputs: [{ type: "string", name: "projectId" }, { type: "uint8", name: "winner" }],
+            outputs: [],
+          },
+        ];
+        const txHash = await client.writeContract({
+          address: disputeAddress,
+          abi: DISPUTE_ABI,
+          functionName: "resolveByArbitrator",
+          args: [String(project._id), winnerEnum],
         });
+        dispute.blockchainTxn = txHash;
+      } catch (relayErr) {
+        console.warn("[ArbitratorRelay] On-chain admin resolve relay warning:", relayErr.message);
       }
-    } else {
-      return res.status(404).json({ message: "Dispute not found" });
     }
+
+    dispute.status = "resolved";
+    dispute.winner = winner;
+    await dispute.save();
+
+    if (project) {
+      const resolvedStatus = winner === "client" ? "refunded" : "completed";
+      project.status = resolvedStatus;
+      project.escrowDisputed = false;
+      project.escrowCompleted = true;
+      await project.save();
+
+      recordActivitySafely({
+        userIds: [project.clientId, project.freelancerId],
+        eventKey: `dispute-resolved:${dispute._id}`,
+        actorId: req.user.id,
+        type: "dispute_resolved",
+        title: "Dispute resolved",
+        message: `A dispute was resolved on “${project.title}” favoring the ${winner}.`,
+        projectId: project._id,
+        disputeId: dispute._id,
+      });
+    }
+
     res.json(dispute);
   } catch (err) {
     if (err.name === "CastError") {

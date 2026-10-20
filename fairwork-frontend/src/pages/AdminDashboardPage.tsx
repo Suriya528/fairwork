@@ -25,10 +25,12 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Modal } from "@/components/ui/Modal"
 import { Input } from "@/components/ui/Input"
+import { useToast } from "@/components/ui/Toast"
 import { ErrorState } from "@/components/feedback/ErrorState"
 import { LoadingState } from "@/components/feedback/LoadingState"
 import { formatCurrency, formatDate, truncateAddress } from "@/lib/format"
 import { useAuth } from "@/context/AuthContext"
+import { resolveDispute } from "@/services/disputesApi"
 import {
   getAdminAnalytics,
   getAdminApplications,
@@ -94,6 +96,7 @@ const toneFor = (status: string): BadgeTone =>
 
 export function AdminDashboardPage() {
   const { token, user: currentUser } = useAuth()
+  const { toast } = useToast()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const view = (pathname.split("/")[2] || "overview") as AdminView
@@ -145,6 +148,36 @@ export function AdminDashboardPage() {
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null)
   const [reportStatus, setReportStatus] = useState<"under_review" | "resolved" | "dismissed">("resolved")
   const [resolutionNotes, setResolutionNotes] = useState("")
+
+  // Dispute Resolution state
+  const [resolvingDisputeId, setResolvingDisputeId] = useState<string | null>(null)
+
+  const handleResolveDispute = async (disputeId: string, winner: "client" | "freelancer") => {
+    if (!token) return
+    const confirmMsg = `Are you sure you want to resolve this dispute in favor of the ${winner}? This will execute the resolution and update the project escrow.`
+    if (!window.confirm(confirmMsg)) return
+
+    setResolvingDisputeId(disputeId)
+    try {
+      await resolveDispute(disputeId, winner, token)
+      toast({
+        title: "Dispute Resolved",
+        description: `Dispute settled favoring the ${winner}. Escrow updated.`,
+        tone: "success",
+      })
+      const [disp, arb] = await Promise.all([getAdminDisputes(token), getAdminArbitrators(token)])
+      setDisputes(disp.items)
+      setArbitrators(arb)
+    } catch (err) {
+      toast({
+        title: "Resolution Failed",
+        description: err instanceof Error ? err.message : "Failed to resolve dispute.",
+        tone: "error",
+      })
+    } finally {
+      setResolvingDisputeId(null)
+    }
+  }
 
   const loadData = useCallback(async () => {
     if (!token) return
@@ -874,6 +907,39 @@ export function AdminDashboardPage() {
                 key: "winner",
                 header: "Outcome / Winner",
                 cell: (row) => <Badge tone={row.winner === "none" ? "neutral" : "primary"}>{row.winner}</Badge>,
+              },
+              {
+                key: "actions",
+                header: "Arbitration Action",
+                cell: (row) =>
+                  row.status === "pending" ? (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        loading={resolvingDisputeId === row.id}
+                        disabled={Boolean(resolvingDisputeId)}
+                        onClick={() => handleResolveDispute(row.id, "client")}
+                        className="text-[11px] h-7 px-2 cursor-pointer font-medium"
+                        title="Refund escrow back to client"
+                      >
+                        Refund Client
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        loading={resolvingDisputeId === row.id}
+                        disabled={Boolean(resolvingDisputeId)}
+                        onClick={() => handleResolveDispute(row.id, "freelancer")}
+                        className="text-[11px] h-7 px-2 cursor-pointer font-medium"
+                        title="Release escrow payment to freelancer"
+                      >
+                        Pay Freelancer
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted">Resolved</span>
+                  ),
               },
             ]}
             data={disputes}

@@ -92,7 +92,7 @@ export function CreateProjectPage() {
     addUsdcToWallet,
   } = useWallet()
 
-  const hasVerifiedWallet = Boolean(isVerified)
+  const hasVerifiedWallet = Boolean(isVerified || user?.walletAddress)
   const [tokenBalance, setTokenBalance] = useState<{
     formattedBalance: string
     symbol: string
@@ -155,11 +155,16 @@ export function CreateProjectPage() {
     setMintSuccess("")
     setError("")
     try {
-      const res = await claimMockUsdc(token)
+      const res = await claimMockUsdc(token, activeAccount || undefined)
       setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
       await refreshBalance()
       if (refreshUser) {
         await refreshUser()
+      }
+      try {
+        await addUsdcToWallet()
+      } catch {
+        // ignore watchAsset error if dismissed
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to claim mock USDC.")
@@ -580,7 +585,7 @@ export function CreateProjectPage() {
                       <strong className="font-semibold">Insufficient wallet balance:</strong> Your wallet has {tokenBalance?.formattedBalance} {tokenBalance?.symbol}, but this project budget requires {numBudget} {tokenBalance?.symbol}. You must have enough funds before posting.
                     </span>
                   </div>
-                  {!user?.hasClaimedMockUSDC && (
+                  {(!user?.hasClaimedMockUSDC || (tokenBalance && tokenBalance.numericBalance === 0)) && (
                     <Button
                       type="button"
                       size="sm"
@@ -862,7 +867,7 @@ export function CreateProjectPage() {
               )
             ) : isBalanceInsufficient ? (
               <div className="flex flex-wrap items-center gap-3">
-                {!user?.hasClaimedMockUSDC && (
+                {(!user?.hasClaimedMockUSDC || (tokenBalance && tokenBalance.numericBalance === 0)) && (
                   <Button
                     type="button"
                     variant="secondary"

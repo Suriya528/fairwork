@@ -139,7 +139,6 @@ export function getNavSectionsForRole(role?: string): NavSection[] {
         : [
             { label: "Posted Projects", path: "/projects/mine", icon: FiList },
             { label: "Create Project", path: "/projects/new", icon: FiPlusCircle },
-            { label: "Browse Marketplace", path: "/projects", icon: FiFolder },
           ],
     },
     {

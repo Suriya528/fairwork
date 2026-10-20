@@ -31,7 +31,11 @@ export function ChatNotificationBell() {
     isFetchingRef.current = true
     try {
       const data = await getChatSummary(token)
-      setSummary(data)
+      if (data && Array.isArray(data.threads)) {
+        setSummary(data)
+      } else if (Array.isArray(data)) {
+        setSummary({ totalUnread: 0, threads: [] })
+      }
     } catch {
       // Ignore background fetch errors
     } finally {
@@ -88,8 +92,8 @@ export function ChatNotificationBell() {
     navigate(`/chat?project=${thread.projectId}`)
   }
 
-  const unreadCount = summary.totalUnread
-  const threads = summary.threads.slice(0, 6)
+  const unreadCount = summary?.totalUnread || 0
+  const threads = (summary?.threads || []).slice(0, 6)
 
   return (
     <Dropdown
