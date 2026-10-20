@@ -533,5 +533,60 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       Message.create = origMessageCreate;
     }
   });
+
+  await t.test("Scenario 41: Client one-time mock USDC claim enforcement & non-client rejection", async () => {
+    const { claimMockUsdc } = require("../src/controllers/userController");
+    const User = require("../src/models/User");
+
+    const origUserFindById = User.findById;
+
+    try {
+      const mockClient = {
+        _id: "66f000000000000000000001",
+        role: "client",
+        walletAddress: "0x1234567890123456789012345678901234567890",
+        hasClaimedMockUSDC: false,
+        save: async function () { return this; },
+      };
+
+      User.findById = async () => mockClient;
+
+      // 1. Successful first claim
+      let statusCode = 200;
+      let payload = null;
+      const res = {
+        status: (c) => { statusCode = c; return res; },
+        json: (d) => { payload = d; return res; },
+      };
+
+      await claimMockUsdc({ user: { id: "66f000000000000000000001" }, body: {} }, res);
+      assert.equal(statusCode, 200);
+      assert.equal(payload.success, true);
+      assert.equal(payload.amount, 5000);
+      assert.equal(mockClient.hasClaimedMockUSDC, true);
+
+      // 2. Second claim attempt must reject with 400
+      statusCode = 200;
+      payload = null;
+      await claimMockUsdc({ user: { id: "66f000000000000000000001" }, body: {} }, res);
+      assert.equal(statusCode, 400);
+      assert.match(payload.message, /already claimed/i);
+
+      // 3. Freelancer role rejection
+      const mockFreelancer = {
+        _id: "66f000000000000000000002",
+        role: "freelancer",
+        walletAddress: "0x1234567890123456789012345678901234567890",
+        hasClaimedMockUSDC: false,
+      };
+      User.findById = async () => mockFreelancer;
+      statusCode = 200;
+      payload = null;
+      await claimMockUsdc({ user: { id: "66f000000000000000000002" }, body: {} }, res);
+      assert.equal(statusCode, 403);
+    } finally {
+      User.findById = origUserFindById;
+    }
+  });
 });
 

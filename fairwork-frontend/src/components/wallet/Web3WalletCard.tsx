@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/Badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { useWallet, OFFICIAL_METAMASK_INSTALL_URL } from "@/context/WalletContext"
-import { mintTestnetUsdc } from "@/services/web3"
+import { useAuth } from "@/context/AuthContext"
+import { claimMockUsdc } from "@/services/userApi"
 
 export function Web3WalletCard({
   title = "Web3 Wallet Ownership & Connection",
@@ -47,6 +48,7 @@ export function Web3WalletCard({
     cancelPendingAction,
     addUsdcToWallet,
   } = useWallet()
+  const { user, token, refreshUser } = useAuth()
 
   const [copied, setCopied] = useState(false)
   const [addingToken, setAddingToken] = useState(false)
@@ -55,18 +57,26 @@ export function Web3WalletCard({
   const [mintSuccess, setMintSuccess] = useState("")
   const [mintError, setMintError] = useState("")
 
-  const handleMint = async () => {
-    if (!connectedAccount) return
+  const handleClaimMockUsdc = async () => {
+    if (!token) return
     setMintingToken(true)
     setMintSuccess("")
     setMintError("")
     try {
-      await mintTestnetUsdc(connectedAccount, "1000")
-      setMintSuccess("Successfully minted 1,000 Testnet USDC into your wallet!")
-      setTimeout(() => setMintSuccess(""), 5000)
+      const res = await claimMockUsdc(token)
+      setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
+      if (refreshUser) {
+        await refreshUser()
+      }
+      try {
+        await addUsdcToWallet()
+      } catch {
+        // ignore watchAsset error if dismissed
+      }
+      setTimeout(() => setMintSuccess(""), 6000)
     } catch (err) {
-      setMintError(err instanceof Error ? err.message : "Failed to mint test USDC")
-      setTimeout(() => setMintError(""), 5000)
+      setMintError(err instanceof Error ? err.message : "Failed to claim mock USDC")
+      setTimeout(() => setMintError(""), 6000)
     } finally {
       setMintingToken(false)
     }
@@ -390,19 +400,26 @@ export function Web3WalletCard({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={mintingToken}
-                onClick={handleMint}
-                disabled={!connectedAccount || mintingToken}
-                leftIcon={<FiZap className="h-3.5 w-3.5" />}
-                className="text-xs shrink-0 cursor-pointer shadow-xs"
-                title="Mint 1,000 free testnet USDC on Sepolia"
-              >
-                Mint 1,000 Free USDC
-              </Button>
+              {user?.role === "client" && !user?.hasClaimedMockUSDC ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  loading={mintingToken}
+                  onClick={handleClaimMockUsdc}
+                  disabled={!activeAddress || mintingToken}
+                  leftIcon={<FiZap className="h-3.5 w-3.5" />}
+                  className="text-xs shrink-0 cursor-pointer shadow-xs"
+                  title="Claim 5,000 free testnet USDC (one-time allocation for clients)"
+                >
+                  Claim 5,000 Mock USDC
+                </Button>
+              ) : user?.role === "client" && user?.hasClaimedMockUSDC ? (
+                <Badge tone="success" className="text-xs py-1 px-2.5 font-medium flex items-center gap-1.5">
+                  <FiCheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  Mock USDC Claimed (5,000 mUSDC ✓)
+                </Badge>
+              ) : null}
               <Button
                 type="button"
                 size="sm"

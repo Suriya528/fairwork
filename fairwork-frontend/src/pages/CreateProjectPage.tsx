@@ -24,7 +24,8 @@ import { useAuth } from "@/context/AuthContext"
 import { useWallet } from "@/context/WalletContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { createProject } from "@/services/projectsApi"
-import { getUsdcBalance, mintTestnetUsdc } from "@/services/web3"
+import { getUsdcBalance } from "@/services/web3"
+import { claimMockUsdc } from "@/services/userApi"
 import { PROJECT_CATEGORIES } from "@/data/categories"
 import { formatDateTime, formatDeadlineCountdown } from "@/lib/format"
 import { AiProjectGeneratorModal } from "@/components/ai/AiProjectGeneratorModal"
@@ -45,7 +46,7 @@ const draft = (): Draft => ({
 })
 
 export function CreateProjectPage() {
-  const { user, token } = useAuth()
+  const { user, token, refreshUser } = useAuth()
   const { formatAmount } = useCurrency()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -149,16 +150,19 @@ export function CreateProjectPage() {
   }, [refreshBalance])
 
   const handleMintUsdc = async () => {
-    if (!activeAccount) return
+    if (!token) return
     setMintingToken(true)
     setMintSuccess("")
     setError("")
     try {
-      await mintTestnetUsdc(activeAccount, "1000")
-      setMintSuccess("Successfully minted 1,000 testnet USDC into your connected wallet!")
+      const res = await claimMockUsdc(token)
+      setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
       await refreshBalance()
+      if (refreshUser) {
+        await refreshUser()
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to mint testnet USDC.")
+      setError(err instanceof Error ? err.message : "Failed to claim mock USDC.")
     } finally {
       setMintingToken(false)
     }
@@ -576,16 +580,18 @@ export function CreateProjectPage() {
                       <strong className="font-semibold">Insufficient wallet balance:</strong> Your wallet has {tokenBalance?.formattedBalance} {tokenBalance?.symbol}, but this project budget requires {numBudget} {tokenBalance?.symbol}. You must have enough funds before posting.
                     </span>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    loading={mintingToken}
-                    onClick={handleMintUsdc}
-                    className="shrink-0 text-xs h-7"
-                  >
-                    Mint 1,000 Testnet USDC
-                  </Button>
+                  {!user?.hasClaimedMockUSDC && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      loading={mintingToken}
+                      onClick={handleMintUsdc}
+                      className="shrink-0 text-xs h-7"
+                    >
+                      Claim 5,000 Mock USDC
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -856,14 +862,16 @@ export function CreateProjectPage() {
               )
             ) : isBalanceInsufficient ? (
               <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  loading={mintingToken}
-                  onClick={handleMintUsdc}
-                >
-                  Mint 1,000 Testnet USDC
-                </Button>
+                {!user?.hasClaimedMockUSDC && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={mintingToken}
+                    onClick={handleMintUsdc}
+                  >
+                    Claim 5,000 Mock USDC
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"

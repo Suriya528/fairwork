@@ -61,6 +61,10 @@ export interface AuthUser {
   rating: number
   /** Backend field is totalReviews. */
   reviewCount: number
+  hasClaimedMockUSDC?: boolean
+  mockUSDCClaimedAt?: string
+  mockUSDCTxHash?: string
+  mockUSDCAmount?: number
   createdAt: string
 }
 
@@ -151,6 +155,10 @@ interface BackendUser {
   reputationScore?: number
   /** Only present on GET /me — register/login responses don't include it. */
   totalReviews?: number
+  hasClaimedMockUSDC?: boolean
+  mockUSDCClaimedAt?: string
+  mockUSDCTxHash?: string
+  mockUSDCAmount?: number
   createdAt?: string
 }
 
@@ -184,6 +192,10 @@ function toAuthUser(user: BackendUser): AuthUser {
     portfolioItems: user.portfolioItems ?? [],
     rating: user.reputationScore ?? 0,
     reviewCount: user.totalReviews ?? 0,
+    hasClaimedMockUSDC: Boolean(user.hasClaimedMockUSDC),
+    mockUSDCClaimedAt: user.mockUSDCClaimedAt ?? "",
+    mockUSDCTxHash: user.mockUSDCTxHash ?? "",
+    mockUSDCAmount: user.mockUSDCAmount ?? 0,
     createdAt: user.createdAt ?? "",
   }
 }

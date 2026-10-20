@@ -88,6 +88,10 @@ const userSchema = new mongoose.Schema({
   isSuspended: { type: Boolean, default: false },
   suspendedAt: { type: Date },
   suspendedReason: { type: String, default: "" },
+  hasClaimedMockUSDC: { type: Boolean, default: false },
+  mockUSDCClaimedAt: { type: Date, default: undefined },
+  mockUSDCTxHash: { type: String, default: "" },
+  mockUSDCAmount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 userSchema.index({ walletAddress: 1 }, { unique: true, sparse: true });

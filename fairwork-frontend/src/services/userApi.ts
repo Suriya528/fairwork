@@ -202,3 +202,25 @@ export async function updateGithubVisibility(
   })
 }
 
+export interface ClaimMockUsdcResponse {
+  success: boolean
+  message: string
+  txHash: string
+  amount: number
+  user: {
+    id: string
+    hasClaimedMockUSDC: boolean
+    walletAddress?: string
+    mockUSDCClaimedAt?: string
+    mockUSDCTxHash?: string
+    mockUSDCAmount?: number
+  }
+}
+
+export async function claimMockUsdc(token: string): Promise<ClaimMockUsdcResponse> {
+  return apiFetch<ClaimMockUsdcResponse>("/users/claim-mock-usdc", {
+    method: "POST",
+    token,
+  })
+}
+

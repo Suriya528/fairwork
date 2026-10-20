@@ -52,7 +52,7 @@ test.describe("Profile, Workroom Chat & Settings Production E2E Suite", () => {
     await clientPage.route("**/api/messages/project-1/read", (route) => route.fulfill({ json: { message: "Marked as read" } }))
 
     await clientPage.goto("/chat")
-    await expect(clientPage.getByText("Workroom Chat")).toBeVisible()
+    await expect(clientPage.getByRole("heading", { name: "Workroom Chat", exact: true })).toBeVisible()
     await expect(clientPage.getByText("Hello Casey! Design milestone complete.")).toBeVisible()
     await expect(clientPage.getByText("Escrow Snapshot")).toBeVisible()
 

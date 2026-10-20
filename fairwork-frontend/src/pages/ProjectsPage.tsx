@@ -132,17 +132,24 @@ export function ProjectsPage() {
     }
   }, [token])
 
+  const isClient = user?.role === "client"
+
   const filteredProjects = useMemo(() => {
+    let baseList = [...projects]
+    if (isClient) {
+      baseList = baseList.filter((project) => String(project.clientId) === String(user?.id))
+    }
+
     const query = search.trim().toLowerCase()
     let result = query
-      ? projects.filter(
+      ? baseList.filter(
           (project) =>
             project.title.toLowerCase().includes(query) ||
             project.description.toLowerCase().includes(query) ||
             (project.category && project.category.toLowerCase().includes(query)) ||
             (project.customCategory && project.customCategory.toLowerCase().includes(query)),
         )
-      : [...projects]
+      : baseList
 
     if (selectedCategory) {
       const catLower = selectedCategory.toLowerCase().trim()
@@ -188,8 +195,12 @@ export function ProjectsPage() {
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       <PageHeader
-        title="Projects"
-        description="Browse open projects classified by discipline and secured by blockchain escrow."
+        title={isClient ? "My Posted Projects" : "Projects"}
+        description={
+          isClient
+            ? "Manage and track all the projects you have commissioned."
+            : "Browse open projects classified by discipline and secured by blockchain escrow."
+        }
         actions={
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-border bg-surface p-0.5">
@@ -307,22 +318,24 @@ export function ProjectsPage() {
         </div>
       ) : filteredProjects.length === 0 ? (
         <EmptyState
-          title={hasFilter ? "No projects match your filter" : "No open projects yet"}
+          title={hasFilter ? "No projects match your filter" : isClient ? "No posted projects yet" : "No open projects yet"}
           description={
             hasFilter
               ? "Try adjusting your search or category filter to find more projects."
-              : "New projects will appear here when they are posted."
+              : isClient
+                ? "You haven't posted any projects yet. Create a project to start hiring talented freelancers."
+                : "New projects will appear here when they are posted."
           }
           action={
             hasFilter ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 Clear filters
               </Button>
-            ) : (
+            ) : isClient ? (
               <Button variant="primary" size="sm" onClick={() => navigate("/projects/new")}>
-                Post a project
+                Post a Project
               </Button>
-            )
+            ) : undefined
           }
         />
       ) : viewMode === "grid" ? (

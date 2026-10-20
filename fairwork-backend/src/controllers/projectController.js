@@ -118,13 +118,24 @@ exports.getAllProjects = async (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
+    const filter = {};
+    if (req.user && req.user.role === "client") {
+      const clientIdQuery = [req.user.id];
+      if (mongoose.isValidObjectId(req.user.id)) {
+        clientIdQuery.push(new mongoose.Types.ObjectId(req.user.id));
+      }
+      filter.clientId = { $in: clientIdQuery };
+    } else {
+      filter.status = "open";
+    }
+
     const [projects, total] = await Promise.all([
-      Project.find({ status: "open" })
+      Project.find(filter)
         .populate("clientId", "firstName lastName")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Project.countDocuments({ status: "open" }),
+      Project.countDocuments(filter),
     ]);
     res.json({ projects, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (err) {

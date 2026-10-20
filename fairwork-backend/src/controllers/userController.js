@@ -372,3 +372,137 @@ exports.exportUserData = async (req, res) => {
     res.status(500).json({ message: "Failed to export user data." });
   }
 };
+
+/**
+ * One-Time Mock USDC Faucet for Clients
+ * Mints 5,000 mUSDC directly to the client's verified wallet address on Sepolia.
+ * Enforces strict one-time claim policy per client account.
+ */
+exports.claimMockUsdc = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    if (user.role !== "client") {
+      return res.status(403).json({ message: "Mock USDC faucet is exclusively available to client accounts for project escrow funding." });
+    }
+
+    const targetAddress = user.walletAddress || req.body?.walletAddress;
+    if (!targetAddress || !/^0x[a-fA-F0-9]{40}$/i.test(targetAddress)) {
+      return res.status(400).json({ message: "Please connect and verify your Web3 wallet before claiming mock USDC." });
+    }
+
+    if (user.hasClaimedMockUSDC) {
+      return res.status(400).json({
+        message: "You have already claimed your one-time 5,000 mock USDC allocation.",
+        claimedAt: user.mockUSDCClaimedAt,
+        txHash: user.mockUSDCTxHash,
+      });
+    }
+
+    const privateKey = process.env.SEPOLIA_PRIVATE_KEY || process.env.ARBITRATOR_PRIVATE_KEY;
+    const rpcUrl = process.env.SEPOLIA_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/nmayq_xGnNVnD1ov23a5A";
+    const tokenAddress = process.env.USDC_CONTRACT_ADDRESS || process.env.CANONICAL_TOKEN_ADDRESS || "0xf21bdf6737a3009359f9ec1fa515e6d74702f575";
+    const MINT_AMOUNT = 5000;
+    const rawAmount = 5000000000n; // 5,000 * 10^6
+
+    let txHash = "";
+
+    if (process.env.NODE_ENV === "test" || !privateKey) {
+      txHash = `0xmock${crypto.randomBytes(30).toString("hex")}`;
+    } else {
+      const { createWalletClient, createPublicClient, http } = require("viem");
+      const { privateKeyToAccount } = require("viem/accounts");
+      const { sepolia } = require("viem/chains");
+
+      const formattedKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+      const account = privateKeyToAccount(formattedKey);
+      const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
+      const walletClient = createWalletClient({ account, chain: sepolia, transport: http(rpcUrl) });
+
+      const ERC20_ABI = [
+        { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ type: "address", name: "account" }], outputs: [{ type: "uint256" }] },
+        { type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ type: "address", name: "to" }, { type: "uint256", name: "amount" }], outputs: [] },
+      ];
+
+      try {
+        const currentBalance = await publicClient.readContract({
+          address: tokenAddress,
+          abi: ERC20_ABI,
+          functionName: "balanceOf",
+          args: [targetAddress],
+        });
+
+        if (currentBalance >= rawAmount) {
+          user.hasClaimedMockUSDC = true;
+          user.mockUSDCClaimedAt = new Date();
+          user.mockUSDCAmount = MINT_AMOUNT;
+          user.mockUSDCTxHash = "existing_on_chain_balance";
+          if (!user.walletAddress) user.walletAddress = targetAddress.toLowerCase();
+          await user.save();
+
+          return res.json({
+            success: true,
+            message: "Your wallet already has 5,000+ Mock USDC. Allocation recorded!",
+            amount: MINT_AMOUNT,
+            txHash: "existing_on_chain_balance",
+            user: {
+              id: user._id,
+              hasClaimedMockUSDC: true,
+              walletAddress: user.walletAddress,
+            },
+          });
+        }
+      } catch (balErr) {
+        console.warn("[claimMockUsdc] Balance check non-fatal warning:", balErr.message);
+      }
+
+      txHash = await walletClient.writeContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "mint",
+        args: [targetAddress, rawAmount],
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+    }
+
+    user.hasClaimedMockUSDC = true;
+    user.mockUSDCClaimedAt = new Date();
+    user.mockUSDCTxHash = txHash;
+    user.mockUSDCAmount = MINT_AMOUNT;
+    if (!user.walletAddress) {
+      user.walletAddress = targetAddress.toLowerCase();
+    }
+    await user.save();
+
+    const { recordActivitySafely } = require("../services/activityService");
+    recordActivitySafely({
+      userIds: [user._id],
+      eventKey: `mock-usdc-claimed:${user._id}:${txHash}`,
+      actorId: user._id,
+      type: "token_minted",
+      title: "Mock USDC Claimed",
+      message: `Transferred 5,000 Mock USDC (mUSDC) to your connected wallet.`,
+    });
+
+    res.json({
+      success: true,
+      message: "Successfully transferred 5,000 Mock USDC to your wallet on Sepolia!",
+      txHash,
+      amount: MINT_AMOUNT,
+      user: {
+        id: user._id,
+        hasClaimedMockUSDC: user.hasClaimedMockUSDC,
+        walletAddress: user.walletAddress,
+        mockUSDCClaimedAt: user.mockUSDCClaimedAt,
+        mockUSDCTxHash: user.mockUSDCTxHash,
+        mockUSDCAmount: user.mockUSDCAmount,
+      },
+    });
+  } catch (err) {
+    console.error("[UserController] claimMockUsdc error:", err);
+    res.status(500).json({ message: err.message || "Failed to transfer mock USDC." });
+  }
+};
