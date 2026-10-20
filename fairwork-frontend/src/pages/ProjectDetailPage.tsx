@@ -80,6 +80,7 @@ import {
 } from "@/services/contractsApi"
 import {
   fundEscrow,
+  releaseEscrowMilestone,
   raiseEscrowDispute,
   requestEscrowRefund,
   cancelEscrowRefund,
@@ -1111,18 +1112,48 @@ export function ProjectDetailPage() {
     try {
       setActionState("Triggering smart contract release on-chain via platform relayer...")
 
-      const updated = await approveAndReleaseMilestone(
-        project.id,
-        milestoneId,
-        token,
-      )
-      setProject(updated)
-      setPendingApproveMilestone(null)
-      setActionState("✅ Payment automatically released to freelancer wallet!")
-      setTimeout(() => setActionState(""), 4000)
+      try {
+        const updated = await approveAndReleaseMilestone(
+          project.id,
+          milestoneId,
+          token,
+        )
+        setProject(updated)
+        setPendingApproveMilestone(null)
+        setActionState("✅ Payment automatically released to freelancer wallet!")
+        setTimeout(() => setActionState(""), 4000)
 
-      if (updated.status === "completed" && !hasReviewed) {
-        setRatingModalOpen(true)
+        if (updated.status === "completed" && !hasReviewed) {
+          setRatingModalOpen(true)
+        }
+        return
+      } catch (relayerErr: any) {
+        // Fallback if backend deployment is syncing or requires direct signature
+        if (relayerErr?.message && relayerErr.message.toLowerCase().includes("releasetxhash is required")) {
+          setActionState("Connecting to MetaMask to release milestone funds on-chain...")
+          const releaseTxHash = await releaseEscrowMilestone(
+            project.id,
+            milestoneIndex,
+            user.walletAddress,
+          )
+          setActionState("Reconciling release on server...")
+          const updated = await approveAndReleaseMilestone(
+            project.id,
+            milestoneId,
+            token,
+            releaseTxHash,
+          )
+          setProject(updated)
+          setPendingApproveMilestone(null)
+          setActionState("✅ Payment released to freelancer wallet!")
+          setTimeout(() => setActionState(""), 4000)
+
+          if (updated.status === "completed" && !hasReviewed) {
+            setRatingModalOpen(true)
+          }
+          return
+        }
+        throw relayerErr
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to approve and release payment."
