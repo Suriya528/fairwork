@@ -662,5 +662,104 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       Project.findById = origProjectFindById;
     }
   });
+
+  await t.test("Scenario 43: Client one-click milestone approval releases payment via platform relayer without client MetaMask", async () => {
+    const { approveAndReleaseMilestone } = require("../src/controllers/milestoneController");
+    const reconciliationService = require("../src/services/reconciliationService");
+    const Project = require("../src/models/Project");
+
+    const origProjectFindById = Project.findById;
+    const origProjectFindOne = Project.findOne;
+    const origReconcile = reconciliationService.reconcileMilestoneRelease;
+
+    try {
+      process.env.SKIP_CHAIN_VERIFICATION = "true";
+
+      const dummyProjectId = new mongoose.Types.ObjectId();
+      const dummyMilestoneId = new mongoose.Types.ObjectId();
+      const dummyClientId = new mongoose.Types.ObjectId();
+      const dummyFreelancerId = new mongoose.Types.ObjectId();
+
+      const mockMilestone = {
+        _id: dummyMilestoneId,
+        title: "Backend API Integration",
+        amount: 500,
+        status: "submitted",
+        paymentReleased: false,
+      };
+
+      const mockMilestones = [mockMilestone];
+      mockMilestones.id = (id) => (String(id) === String(dummyMilestoneId) ? mockMilestone : null);
+
+      const mockProject = {
+        _id: dummyProjectId,
+        title: "Relayer Test Project",
+        clientId: dummyClientId,
+        freelancerId: dummyFreelancerId,
+        status: "in_progress",
+        escrowFunded: true,
+        milestones: mockMilestones,
+        save: async function () { return this; },
+      };
+
+      Project.findById = async () => mockProject;
+      Project.findOne = async () => null;
+      reconciliationService.reconcileMilestoneRelease = async (pId, idx, txHash, callerId) => {
+        mockMilestone.paymentReleased = true;
+        mockMilestone.status = "approved";
+        return mockProject;
+      };
+
+      let statusCode = 200;
+      let payload = null;
+      const res = {
+        status: (code) => { statusCode = code; return res; },
+        json: (data) => { payload = data; return res; },
+      };
+
+      // 1. Non-client caller must be rejected with 403
+      await approveAndReleaseMilestone(
+        {
+          params: { id: dummyProjectId.toString(), milestoneId: dummyMilestoneId.toString() },
+          user: { id: dummyFreelancerId.toString() },
+          body: {},
+          app: { get: () => null },
+        },
+        res
+      );
+      assert.equal(statusCode, 403, "Non-client caller must be rejected with 403");
+
+      // 2. Client caller with empty body (no releaseTxHash from MetaMask) -> relayer succeeds
+      statusCode = 200;
+      payload = null;
+      let emittedNotification = null;
+      const mockIo = {
+        to: (room) => ({
+          emit: (event, data) => { emittedNotification = { room, event, data }; },
+        }),
+      };
+
+      await approveAndReleaseMilestone(
+        {
+          params: { id: dummyProjectId.toString(), milestoneId: dummyMilestoneId.toString() },
+          user: { id: dummyClientId.toString() },
+          body: {},
+          app: { get: (name) => (name === "io" ? mockIo : null) },
+        },
+        res
+      );
+
+      assert.equal(statusCode, 200, "Approval with relayer must succeed with 200");
+      assert.equal(payload.success, true);
+      assert.ok(payload.releaseTxHash, "Platform relayer must generate and return releaseTxHash");
+      assert.equal(mockMilestone.paymentReleased, true, "Milestone paymentReleased flag must be set");
+      assert.equal(emittedNotification.event, "notification");
+      assert.equal(emittedNotification.data.type, "PAYMENT_RELEASED");
+    } finally {
+      Project.findById = origProjectFindById;
+      Project.findOne = origProjectFindOne;
+      reconciliationService.reconcileMilestoneRelease = origReconcile;
+    }
+  });
 });
 
