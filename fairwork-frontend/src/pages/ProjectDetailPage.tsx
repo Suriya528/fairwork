@@ -353,6 +353,118 @@ function SubmitWorkModal({
   )
 }
 
+function ApproveReleaseModal({
+  open,
+  onClose,
+  onConfirm,
+  milestone,
+  releasing,
+  freelancerName,
+  freelancerWallet,
+}: {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => Promise<void>
+  milestone: ApiMilestone | null
+  releasing: boolean
+  freelancerName: string
+  freelancerWallet?: string
+}) {
+  const { formatAmount } = useCurrency()
+  if (!open || !milestone) return null
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="approve-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      <div
+        className="fixed inset-0 bg-backdrop backdrop-blur-sm transition-opacity"
+        onClick={releasing ? undefined : onClose}
+      />
+      <div className="relative z-10 w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl">
+        <div className="flex items-center justify-between pb-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/15 text-success">
+              <FiCheckCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 id="approve-modal-title" className="text-base font-bold text-foreground">
+                Approve &amp; Release Payout
+              </h3>
+              <p className="text-xs text-muted">Smart Contract Vault Payout Authorization</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={releasing}
+            className="rounded-lg p-1.5 text-subtle hover:bg-elevated hover:text-foreground transition-colors"
+          >
+            <FiX className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="py-4 space-y-4">
+          <div className="rounded-xl border border-border bg-base p-4 space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-muted">Milestone</span>
+              <span className="font-semibold text-foreground">{milestone.title}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-muted">Release Amount</span>
+              <span className="font-bold text-primary text-sm">{formatAmount(milestone.amount)}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-muted">Recipient Freelancer</span>
+              <span className="font-semibold text-foreground">{freelancerName}</span>
+            </div>
+            {freelancerWallet && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted">Freelancer Wallet</span>
+                <span className="font-mono text-[11px] text-foreground truncate max-w-[200px]" title={freelancerWallet}>
+                  {freelancerWallet.slice(0, 6)}...{freelancerWallet.slice(-4)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-xs space-y-2">
+            <div className="flex items-center gap-2 text-primary font-semibold">
+              <FiShield className="h-4 w-4" />
+              <span>Funds Already Secured in Escrow Vault</span>
+            </div>
+            <p className="text-muted leading-relaxed">
+              The {formatAmount(milestone.amount)} payment was already deposited into the smart contract escrow vault when the contract was activated.
+            </p>
+            <p className="text-muted leading-relaxed">
+              Confirming in MetaMask triggers the smart contract (<code className="font-mono text-primary text-[11px] px-1 bg-elevated rounded">releaseMilestone</code>) to disburse the funds directly to the freelancer. <strong className="text-foreground">No additional USDC is deducted from your wallet</strong> (only standard network gas).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={releasing}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={releasing}
+            leftIcon={<FiCheckCircle className="h-4 w-4" />}
+            onClick={onConfirm}
+          >
+            {releasing ? "Authorizing Release..." : "Confirm & Trigger Smart Contract Release"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MilestoneRow({
   milestone,
   index,
@@ -374,7 +486,7 @@ function MilestoneRow({
   deliverables: ApiDeliverable[]
   onSubmit: (milestoneId: string, notes: string, files: File[]) => Promise<void>
   onRequestRevision: (milestoneId: string, notes: string) => Promise<void>
-  onApprove: (milestoneId: string, index: number) => Promise<void>
+  onApprove: (milestoneId: string, index: number, milestone: ApiMilestone) => void
 }) {
   const { formatAmount } = useCurrency()
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
@@ -429,7 +541,7 @@ function MilestoneRow({
               <Button
                 size="sm"
                 variant="primary"
-                onClick={() => onApprove(milestone.id, index)}
+                onClick={() => onApprove(milestone.id, index, milestone)}
                 disabled={releasing}
                 loading={releasing}
               >
@@ -455,7 +567,7 @@ function MilestoneRow({
                 <Button
                   size="sm"
                   variant="primary"
-                  onClick={() => onApprove(milestone.id, index)}
+                  onClick={() => onApprove(milestone.id, index, milestone)}
                   disabled={releasing}
                   loading={releasing}
                 >
@@ -467,11 +579,24 @@ function MilestoneRow({
             )
           )}
 
-          {/* Freelancer Submit Action */}
+          {/* Freelancer Submit Action — Gated by Smart Contract Escrow Funding */}
           {isFreelancer && (milestone.status === "pending" || milestone.status === "in_progress" || milestone.status === "revision_requested") && (
-            <Button size="sm" variant="primary" onClick={() => setSubmitModalOpen(true)}>
-              {milestone.status === "revision_requested" ? "Resubmit Work" : "Submit Work"}
-            </Button>
+            project.escrowFunded ? (
+              <Button size="sm" variant="primary" onClick={() => setSubmitModalOpen(true)}>
+                {milestone.status === "revision_requested" ? "Resubmit Work" : "Submit Work"}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled
+                title="The client must deposit funds into escrow before you can submit deliverables."
+                leftIcon={<FiLock className="h-3.5 w-3.5 text-muted" />}
+                className="opacity-75 cursor-not-allowed"
+              >
+                Awaiting Escrow Deposit
+              </Button>
+            )
           )}
         </div>
       </div>
@@ -618,6 +743,7 @@ export function ProjectDetailPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [verificationModalOpen, setVerificationModalOpen] = useState(false)
   const [verificationActionName, setVerificationActionName] = useState("fund escrow")
+  const [pendingApproveMilestone, setPendingApproveMilestone] = useState<{ id: string; index: number; milestone: ApiMilestone } | null>(null)
   const [ratingModalOpen, setRatingModalOpen] = useState(false)
   const [existingReview, setExistingReview] = useState<ApiProjectReviewResponse["review"] | null>(null)
   const [hasReviewed, setHasReviewed] = useState(false)
@@ -1004,6 +1130,7 @@ export function ProjectDetailPage() {
         fundTxHash ?? undefined,
       )
       setProject(updated)
+      setPendingApproveMilestone(null)
       setActionState("✅ Payment released to freelancer wallet!")
       setTimeout(() => setActionState(""), 4000)
 
@@ -1013,6 +1140,7 @@ export function ProjectDetailPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to approve and release payment."
       setActionError(msg)
+      setPendingApproveMilestone(null)
       setTimeout(() => setActionState(""), 3000)
     }
   }
@@ -1671,6 +1799,55 @@ export function ProjectDetailPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Step 2: Escrow Funding Callout & Mutual Authenticity Status */}
+                      {contract.signedByClient && !project.escrowFunded && isClient && (
+                        <div className="rounded-xl border border-primary/40 bg-primary/10 p-5 mt-4 shadow-sm">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                                <h5 className="font-bold text-foreground text-sm">Step 2: Deposit Escrow Funds ({formatAmount(project.budget)})</h5>
+                              </div>
+                              <p className="text-xs text-muted max-w-xl">
+                                Contract agreement signed! To authorize the freelancer to begin work and submit deliverables, deposit the project budget into the smart contract escrow vault. Funds are locked securely on-chain until you review and approve completed work.
+                              </p>
+                            </div>
+                            <Button
+                              size="md"
+                              variant="primary"
+                              onClick={fund}
+                              loading={Boolean(actionState)}
+                              disabled={Boolean(actionState)}
+                              leftIcon={<FiLock className="h-4 w-4" />}
+                              className="shrink-0 font-semibold"
+                            >
+                              Fund Escrow Vault
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {contract.signedByFreelancer && !project.escrowFunded && isAssignedFreelancer && (
+                        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 mt-4 text-xs">
+                          <div className="flex items-start gap-3">
+                            <FiShield className="h-5 w-5 shrink-0 text-warning mt-0.5" />
+                            <div>
+                              <p className="font-semibold text-foreground">Awaiting Client Escrow Deposit</p>
+                              <p className="mt-1 text-muted">
+                                Contract signed! For your financial protection and mutual authenticity, deliverable submissions unlock automatically as soon as the client deposits the project funds into the smart contract escrow vault.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {project.escrowFunded && (
+                        <div className="rounded-xl border border-success/30 bg-success/5 p-4 mt-4 text-xs">
+                          <div className="flex items-center gap-2.5 text-success font-medium">
+                            <FiCheckCircle className="h-4 w-4" />
+                            <span>Escrow Vault Funded &amp; Active — Project budget ({formatAmount(project.budget)}) is locked in the smart contract. Work in progress.</span>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ) : hasFreelancer ? (
@@ -1704,23 +1881,42 @@ export function ProjectDetailPage() {
             {tab === "milestones" && (
               <div className="flex flex-col gap-4">
                 {isClient && !escrowActive && hasFreelancer && (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-xs">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-primary/40 bg-primary/10 p-4 text-xs">
                     <div className="flex items-start gap-3">
-                      <FiShield className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+                      <FiLock className="h-5 w-5 shrink-0 text-primary mt-0.5" />
                       <div>
-                        <p className="font-semibold text-sm text-foreground">Smart Contract Escrow Protected</p>
+                        <p className="font-bold text-sm text-foreground">Smart Contract Escrow Funding Required</p>
                         <p className="mt-1 text-muted">
-                          When you approve submitted milestone deliverables, USDC payment will be automatically funded and released directly to the freelancer's wallet via smart contract in one seamless flow.
+                          Deposit the project budget ({formatAmount(project.budget)}) into the smart contract escrow vault to activate the project. Freelancer deliverable submissions remain locked until funds are deposited into escrow.
                         </p>
                       </div>
                     </div>
                     {(!project.freelancerWalletAddress && !(project.freelancerId as any)?.walletAddress) ? (
                       <span className="shrink-0 text-xs text-warning font-medium">⚠️ Freelancer Web3 wallet pending</span>
                     ) : (
-                      <Button size="sm" variant="secondary" onClick={fund} loading={Boolean(actionState)} disabled={Boolean(actionState)} leftIcon={<FiLock className="h-3.5 w-3.5" />}>
-                        Pre-fund Escrow (Optional)
+                      <Button size="sm" variant="primary" onClick={fund} loading={Boolean(actionState)} disabled={Boolean(actionState)} leftIcon={<FiLock className="h-3.5 w-3.5" />}>
+                        Fund Escrow Vault
                       </Button>
                     )}
+                  </div>
+                )}
+
+                {isAssignedFreelancer && !escrowActive && (
+                  <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 text-xs">
+                    <FiShield className="h-5 w-5 shrink-0 text-warning mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-foreground">Escrow Not Yet Funded by Client</p>
+                      <p className="mt-1 text-muted">
+                        For your financial safety and guaranteed payout, work deliverable submissions unlock automatically as soon as the client deposits the project funds into the smart contract escrow vault.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {escrowActive && (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/5 px-4 py-3 text-xs text-success font-medium">
+                    <FiCheckCircle className="h-4 w-4 shrink-0" />
+                    <span>Smart Contract Escrow Vault Funded ({formatAmount(project.budget)} USDC locked on-chain) — Milestone deliverables are protected.</span>
                   </div>
                 )}
                 {(!project.milestones || project.milestones.length === 0) ? (
@@ -1738,7 +1934,7 @@ export function ProjectDetailPage() {
                       deliverables={deliverables || []}
                       onSubmit={handleMilestoneSubmit}
                       onRequestRevision={handleMilestoneRevisionRequest}
-                      onApprove={(mId, idx) => handleMilestoneApprove(mId, idx ?? index)}
+                      onApprove={(mId, idx, m) => setPendingApproveMilestone({ id: mId, index: idx, milestone: m })}
                     />
                   ))
                 )}
@@ -2128,6 +2324,27 @@ export function ProjectDetailPage() {
           }
           void loadProject()
         }}
+      />
+
+      <ApproveReleaseModal
+        open={Boolean(pendingApproveMilestone)}
+        onClose={() => {
+          if (!actionState) setPendingApproveMilestone(null)
+        }}
+        onConfirm={async () => {
+          if (pendingApproveMilestone) {
+            await handleMilestoneApprove(pendingApproveMilestone.id, pendingApproveMilestone.index)
+          }
+        }}
+        milestone={pendingApproveMilestone?.milestone || null}
+        releasing={Boolean(actionState)}
+        freelancerName={project.freelancerName || "Freelancer"}
+        freelancerWallet={
+          project.freelancerWalletAddress ||
+          (typeof project.freelancerId === "object" && project.freelancerId !== null
+            ? (project.freelancerId as any).walletAddress
+            : undefined)
+        }
       />
     </div>
   )

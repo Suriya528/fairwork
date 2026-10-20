@@ -16,6 +16,54 @@ exports.depositEscrow = async (req, res) => {
     if (!txnHash) return res.status(400).json({ message: "Transaction hash (txnHash) is required" });
 
     const project = await reconcileEscrowFunding(projectId, txnHash, req.user.id);
+
+    // Real-time notification to assigned freelancer confirming escrow deposit
+    const freelancerId = project.freelancerId
+      ? (typeof project.freelancerId === 'object' && project.freelancerId !== null ? project.freelancerId._id : project.freelancerId)
+      : null;
+
+    try {
+      const io = req.app.get("io");
+      if (io && freelancerId) {
+        io.to(`user:${freelancerId}`).emit("notification", {
+          type: "ESCROW_FUNDED",
+          title: "Escrow Deposit Confirmed! 🛡️",
+          message: `The client has securely funded the escrow for "${project.title}". Your payout is locked on-chain in the smart contract vault. You may now begin work and submit deliverables.`,
+          txHash: txnHash,
+          projectId: project._id,
+        });
+      }
+    } catch (socketErr) {
+      console.warn("[EscrowController] Socket notification skipped:", socketErr.message);
+    }
+
+    // Activity log notifications for mutual transparency & authenticity
+    try {
+      const { recordActivitySafely } = require("../services/activityService");
+      recordActivitySafely({
+        userIds: [req.user.id],
+        eventKey: `escrow-funded-client:${project._id}:${txnHash}`,
+        actorId: req.user.id,
+        type: "escrow_funded",
+        title: "Escrow Funded",
+        message: `You deposited and locked escrow funds for "${project.title}".`,
+        projectId: project._id,
+      });
+      if (freelancerId) {
+        recordActivitySafely({
+          userIds: [freelancerId],
+          eventKey: `escrow-funded-freelancer:${project._id}:${txnHash}`,
+          actorId: req.user.id,
+          type: "escrow_funded",
+          title: "Escrow Funds Locked & Guaranteed 🛡️",
+          message: `The client has funded the escrow for "${project.title}". Your payout is secured in the smart contract vault. You can now submit deliverables.`,
+          projectId: project._id,
+        });
+      }
+    } catch (actErr) {
+      console.warn("[EscrowController] Activity log skipped:", actErr.message);
+    }
+
     res.json({ message: "Escrow recorded successfully", project });
   } catch (err) {
     const status = err.status || (err.message && /^[A-Z_]+/.test(err.message) ? 400 : 500);

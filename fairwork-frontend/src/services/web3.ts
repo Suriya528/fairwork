@@ -376,10 +376,10 @@ export async function fundAndReleaseMilestone(
     fundTxHash = _fundHash
   }
 
-  // Release the specific milestone to the freelancer
+  // Release the specific milestone to the freelancer from the already-funded escrow vault
   onStage(fundTxHash
     ? "Step 4/4 — Releasing milestone payment to freelancer (confirm in MetaMask)..."
-    : "Releasing milestone payment to freelancer (confirm in MetaMask)...")
+    : "Triggering smart contract payout: Releasing locked vault funds to freelancer (confirm zero-deposit release in MetaMask)...")
   const releaseTxHash = await wallet.writeContract({
     account,
     address: c.escrowAddress,

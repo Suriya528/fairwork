@@ -12,6 +12,7 @@ const { canAccessProject } = require("../src/services/projectAccess");
 const { isUserActiveAndAuthorized } = require("../src/index");
 const { initiateGoogleAuth, initiateGithubAuth, exchangeOAuthCode } = require("../src/controllers/oauthController");
 const { getCatchUpMessages, getChatSummary, sendMessage } = require("../src/controllers/messageController");
+const { submitMilestone } = require("../src/controllers/projectController");
 const { FINANCIAL_INVARIANTS } = require("../src/services/reconciliationService");
 
 const User = require("../src/models/User");
@@ -586,6 +587,79 @@ test("Authorization Test Suite — 14 Production Scenarios", async (t) => {
       assert.equal(statusCode, 403);
     } finally {
       User.findById = origUserFindById;
+    }
+  });
+
+  await t.test("Scenario 42: Freelancer milestone deliverable submission gated until escrow is funded", async () => {
+    const origProjectFindById = Project.findById;
+
+    try {
+      const dummyProjectId = new mongoose.Types.ObjectId();
+      const dummyClientId = new mongoose.Types.ObjectId();
+      const dummyFreelancerId = new mongoose.Types.ObjectId();
+      const dummyMilestoneId = new mongoose.Types.ObjectId();
+
+      const mockMilestone = {
+        _id: dummyMilestoneId,
+        title: "Initial Deliverable",
+        amount: 500,
+        status: "pending",
+      };
+
+      const mockProject = {
+        _id: dummyProjectId,
+        title: "Escrow Gated Deliverable Project",
+        clientId: dummyClientId,
+        freelancerId: dummyFreelancerId,
+        status: "in_progress",
+        escrowFunded: false,
+        milestones: {
+          id: (id) => (String(id) === String(dummyMilestoneId) ? mockMilestone : null),
+        },
+        save: async function () { return this; },
+      };
+
+      Project.findById = async () => mockProject;
+
+      let statusCode = 200;
+      let payload = null;
+      const res = {
+        status: (code) => { statusCode = code; return res; },
+        json: (data) => { payload = data; return res; },
+      };
+
+      // 1. Submit work when escrowFunded is false -> MUST be rejected with 400
+      await submitMilestone(
+        {
+          params: { id: dummyProjectId.toString(), milestoneId: dummyMilestoneId.toString() },
+          user: { id: dummyFreelancerId.toString() },
+          body: { submissionNotes: "Here is my completed work" },
+        },
+        res
+      );
+
+      assert.equal(statusCode, 400, "Must return HTTP 400 when client has not funded escrow");
+      assert.match(payload.message, /Cannot submit deliverables before the client has deposited funds/i);
+      assert.equal(mockMilestone.status, "pending", "Milestone status must remain pending");
+
+      // 2. Client funds escrow -> escrowFunded = true -> Submission now succeeds
+      mockProject.escrowFunded = true;
+      statusCode = 200;
+      payload = null;
+
+      await submitMilestone(
+        {
+          params: { id: dummyProjectId.toString(), milestoneId: dummyMilestoneId.toString() },
+          user: { id: dummyFreelancerId.toString() },
+          body: { submissionNotes: "Here is my completed work" },
+        },
+        res
+      );
+
+      assert.equal(statusCode, 200, "Must succeed with HTTP 200 after escrow is funded");
+      assert.equal(mockMilestone.status, "submitted", "Milestone status must transition to submitted");
+    } finally {
+      Project.findById = origProjectFindById;
     }
   });
 });

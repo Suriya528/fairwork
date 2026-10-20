@@ -314,6 +314,13 @@ exports.uploadProjectDeliverable = async (req, res) => {
       });
     }
 
+    // Escrow Protection Gate: Escrow MUST be funded before submitting deliverables
+    if (!project.escrowFunded) {
+      return res.status(400).json({
+        message: "Cannot submit deliverables before the client has deposited funds into the escrow vault."
+      });
+    }
+
     const milestoneId = req.body.milestoneId || null;
     const submissionNotes = req.body.submissionNotes || "";
     const githubPrUrl = req.body.githubPrUrl ? String(req.body.githubPrUrl).trim() : "";
@@ -438,6 +445,13 @@ exports.submitMilestone = async (req, res) => {
 
     if (!project.freelancerId || String(project.freelancerId) !== String(req.user.id)) {
       return res.status(403).json({ message: "Only the assigned freelancer can submit milestones." });
+    }
+
+    // Escrow Protection Gate: Escrow MUST be funded before submitting deliverables
+    if (!project.escrowFunded) {
+      return res.status(400).json({
+        message: "Cannot submit deliverables before the client has deposited funds into the escrow vault."
+      });
     }
 
     const milestone = project.milestones.id(req.params.milestoneId);
