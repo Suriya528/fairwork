@@ -98,10 +98,12 @@ function IdentityCard({
   role,
   name,
   walletAddress,
+  onClick,
 }: {
   role: "Client" | "Freelancer"
   name: string | null
   walletAddress: string | null
+  onClick?: () => void
 }) {
   if (!name) {
     return (
@@ -113,11 +115,26 @@ function IdentityCard({
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4">
+    <div
+      className={`flex items-start gap-3 rounded-xl border border-border bg-surface p-4 ${
+        onClick ? "cursor-pointer group hover:border-primary/40 hover:bg-elevated/40 transition" : ""
+      }`}
+      onClick={onClick}
+      title={onClick ? `Click to view verified ${role} profile & credentials` : undefined}
+    >
       <Avatar name={name} size="md" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-subtle">{role}</span>
-        <span className="truncate text-sm font-medium text-foreground">{name}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-subtle">{role}</span>
+          {onClick && (
+            <span className="text-[10px] text-primary font-semibold underline opacity-0 group-hover:opacity-100 transition">
+              View Profile
+            </span>
+          )}
+        </div>
+        <span className={`truncate text-sm font-medium ${onClick ? "group-hover:text-primary transition" : "text-foreground"}`}>
+          {name}
+        </span>
         {walletAddress && <WalletAddress address={walletAddress} className="mt-1 w-fit" />}
       </div>
     </div>
@@ -1389,9 +1406,19 @@ export function ProjectDetailPage() {
                   <span className="flex items-center gap-1.5" title={`Target Deadline: ${formatDateTime(project.deadlineAt)}`}>
                     <FiClock className="h-4 w-4 text-subtle" />
                     Deadline: <strong className="font-semibold text-foreground">{formatDateTime(project.deadlineAt)}</strong>
-                    <Badge tone={formatDeadlineCountdown(project.deadlineAt).isUrgent ? "warning" : "neutral"}>
-                      {formatDeadlineCountdown(project.deadlineAt).text}
-                    </Badge>
+                    {project.status === "completed" ? (
+                      <Badge tone="success" className="gap-1 font-semibold">
+                        <FiCheck className="h-3 w-3" /> Completed
+                      </Badge>
+                    ) : project.status === "cancelled" || project.status === "refunded" ? (
+                      <Badge tone="neutral" className="capitalize">
+                        {project.status}
+                      </Badge>
+                    ) : (
+                      <Badge tone={formatDeadlineCountdown(project.deadlineAt).isUrgent ? "warning" : "neutral"}>
+                        {formatDeadlineCountdown(project.deadlineAt).text}
+                      </Badge>
+                    )}
                   </span>
                 )}
               </div>
@@ -1487,7 +1514,12 @@ export function ProjectDetailPage() {
                 </Card>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <IdentityCard role="Client" name={project.clientName} walletAddress={project.clientWalletAddress} />
-                  <IdentityCard role="Freelancer" name={project.freelancerName} walletAddress={project.freelancerWalletAddress} />
+                  <IdentityCard
+                    role="Freelancer"
+                    name={project.freelancerName}
+                    walletAddress={project.freelancerWalletAddress}
+                    onClick={projectFreelancerId ? () => setSelectedProfileFreelancerId(projectFreelancerId) : undefined}
+                  />
                 </div>
                 <Card>
                   <CardContent className="flex flex-col gap-3 p-6">
@@ -1562,9 +1594,11 @@ export function ProjectDetailPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex flex-col items-end">
                               <span className="text-sm font-bold text-foreground">{formatAmount(app.proposedAmount)}</span>
-                              <span className="block text-[11px] text-muted">Est. delivery: {app.estimatedDelivery}</span>
+                              <Badge tone="primary" className="mt-1 text-[11px] font-semibold gap-1">
+                                <FiClock className="h-3 w-3" /> Stated Delivery: {app.estimatedDelivery}
+                              </Badge>
                             </div>
                           </div>
 
@@ -2351,6 +2385,7 @@ export function ProjectDetailPage() {
         projectId={project.id}
         projectTitle={project.title}
         projectBudget={project.budget}
+        projectDeadline={project.deadlineAt}
         open={applyModalOpen}
         onClose={() => setApplyModalOpen(false)}
         onSuccess={() => {
@@ -2365,20 +2400,39 @@ export function ProjectDetailPage() {
         actionName={verificationActionName}
       />
 
-      <FreelancerProfileModal
-        open={Boolean(selectedProfileFreelancerId)}
-        onClose={() => setSelectedProfileFreelancerId(null)}
-        freelancerId={selectedProfileFreelancerId}
-        onHire={() => {
-          const app = (applications as ApiApplication[]).find(
-            (a) => (a.freelancerId || a.freelancer?.id) === selectedProfileFreelancerId
-          )
-          if (app) void handleHire(app.id)
-        }}
-        hiring={Boolean(hiringId)}
-        isHired={Boolean(hasFreelancer && projectFreelancerId === selectedProfileFreelancerId?.toLowerCase())}
-        canHire={isClient && !hasFreelancer}
-      />
+      {(() => {
+        const selectedApp = (applications as ApiApplication[]).find((a) => {
+          const aId = a.freelancerId || (typeof a.freelancer === "object" ? a.freelancer?.id || (a.freelancer as any)?._id : null)
+          return String(aId || "").toLowerCase() === String(selectedProfileFreelancerId || "").toLowerCase()
+        })
+
+        return (
+          <FreelancerProfileModal
+            open={Boolean(selectedProfileFreelancerId)}
+            onClose={() => setSelectedProfileFreelancerId(null)}
+            freelancerId={selectedProfileFreelancerId}
+            onHire={() => {
+              if (selectedApp) void handleHire(selectedApp.id)
+            }}
+            hiring={Boolean(hiringId)}
+            isHired={Boolean(hasFreelancer && projectFreelancerId === selectedProfileFreelancerId?.toLowerCase())}
+            canHire={isClient && !hasFreelancer}
+            applicationProposal={
+              selectedApp
+                ? {
+                    estimatedDelivery: selectedApp.estimatedDelivery,
+                    proposedAmount: selectedApp.proposedAmount,
+                    proposalText: selectedApp.proposalText,
+                    status: selectedApp.status,
+                    createdAt: selectedApp.createdAt,
+                  }
+                : null
+            }
+            projectDeadline={project.deadlineAt}
+            projectBudget={project.budget}
+          />
+        )
+      })()}
 
       <OnChainRatingModal
         isOpen={ratingModalOpen}

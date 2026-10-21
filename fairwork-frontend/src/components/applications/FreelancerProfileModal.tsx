@@ -10,6 +10,8 @@ import {
   FiGlobe,
   FiUserCheck,
   FiShield,
+  FiClock,
+  FiFileText,
 } from "react-icons/fi"
 import { Modal } from "@/components/ui/Modal"
 import { Avatar } from "@/components/ui/Avatar"
@@ -18,6 +20,15 @@ import { Button } from "@/components/ui/Button"
 import { Spinner } from "@/components/ui/Spinner"
 import { getPublicProfile } from "@/services/userApi"
 import type { UserProfileDTO } from "@/services/userApi"
+import { formatDateTime } from "@/lib/format"
+
+export interface ApplicationProposalContext {
+  estimatedDelivery?: string
+  proposedAmount?: number
+  proposalText?: string
+  status?: string
+  createdAt?: string | Date
+}
 
 interface FreelancerProfileModalProps {
   open: boolean
@@ -27,6 +38,9 @@ interface FreelancerProfileModalProps {
   hiring?: boolean
   isHired?: boolean
   canHire?: boolean
+  applicationProposal?: ApplicationProposalContext | null
+  projectDeadline?: string | Date | null
+  projectBudget?: number | null
 }
 
 function formatDate(dateStr?: string) {
@@ -56,6 +70,9 @@ export function FreelancerProfileModal({
   hiring = false,
   isHired = false,
   canHire = false,
+  applicationProposal = null,
+  projectDeadline = null,
+  projectBudget = null,
 }: FreelancerProfileModalProps) {
   const [profile, setProfile] = useState<UserProfileDTO | null>(null)
   const [loading, setLoading] = useState(false)
@@ -176,6 +193,110 @@ export function FreelancerProfileModal({
             </div>
           ) : user ? (
             <>
+              {/* Project Proposal & Delivery Commitment */}
+              {applicationProposal && (
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4.5 space-y-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold shadow-sm">
+                        <FiClock className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                          Project Proposal &amp; Delivery Commitment
+                        </h4>
+                        <p className="text-[11px] text-muted">
+                          Turnaround timeline and terms promised by the freelancer for this project
+                        </p>
+                      </div>
+                    </div>
+                    {applicationProposal.status && (
+                      <Badge
+                        tone={
+                          applicationProposal.status === "accepted"
+                            ? "success"
+                            : applicationProposal.status === "rejected"
+                            ? "danger"
+                            : "warning"
+                        }
+                      >
+                        {applicationProposal.status === "accepted"
+                          ? "Hired for this Project ✓"
+                          : applicationProposal.status === "rejected"
+                          ? "Proposal Rejected"
+                          : "Proposal Under Review"}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {/* Freelancer's Committed Deadline / Delivery Time */}
+                    <div className="rounded-xl border border-primary/30 bg-surface p-3.5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted flex items-center gap-1.5">
+                          <FiClock className="h-3.5 w-3.5 text-primary" />
+                          Freelancer&apos;s Stated Delivery
+                        </span>
+                        <Badge tone="primary" className="text-[10px]">Turnaround</Badge>
+                      </div>
+                      <p className="text-base font-bold text-primary">
+                        {applicationProposal.estimatedDelivery || "Not specified"}
+                      </p>
+                      <p className="text-[11px] text-subtle">
+                        Deadline timeline told by freelancer to complete all milestones
+                      </p>
+                    </div>
+
+                    {/* Client's Project Target Deadline */}
+                    <div className="rounded-xl border border-border bg-surface p-3.5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted flex items-center gap-1.5">
+                          <FiCalendar className="h-3.5 w-3.5 text-subtle" />
+                          Client Project Deadline
+                        </span>
+                        {projectDeadline && (
+                          <Badge tone="neutral" className="text-[10px]">Client Target</Badge>
+                        )}
+                      </div>
+                      <p className="text-base font-bold text-foreground">
+                        {projectDeadline ? formatDateTime(projectDeadline) : "Flexible / None set"}
+                      </p>
+                      <p className="text-[11px] text-subtle">
+                        Target completion date specified in client project scope
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Financial Quote vs Project Budget */}
+                  {(applicationProposal.proposedAmount !== undefined || projectBudget !== null) && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted">Freelancer Quote:</span>
+                        <span className="font-bold text-foreground text-sm">
+                          ${applicationProposal.proposedAmount ?? "—"} USDC
+                        </span>
+                      </div>
+                      {projectBudget !== null && projectBudget !== undefined && (
+                        <span className="text-muted text-[11px]">
+                          Client Budget: <strong className="text-foreground">${projectBudget} USDC</strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Proposal Pitch / Scope */}
+                  {applicationProposal.proposalText && (
+                    <div className="rounded-xl border border-border bg-surface/90 p-3.5 text-xs text-muted leading-relaxed whitespace-pre-wrap">
+                      <span className="block text-[11px] font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                        <FiFileText className="h-3.5 w-3.5 text-subtle" />
+                        Freelancer&apos;s Work Proposal &amp; Approach:
+                      </span>
+                      {applicationProposal.proposalText}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Highlights & Reputation Grid */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl border border-border bg-base p-3.5 text-center">

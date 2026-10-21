@@ -82,7 +82,11 @@ export function formatDateTime(input?: string | Date | null): string {
 }
 
 /** User-friendly countdown badge string, e.g. "⚡ Due in 18 hours" or "Overdue by 2 hours". */
-export function formatDeadlineCountdown(input?: string | Date | null): { text: string; isUrgent: boolean; isOverdue: boolean } {
+export function formatDeadlineCountdown(
+  input?: string | Date | null,
+  isCompleted = false
+): { text: string; isUrgent: boolean; isOverdue: boolean } {
+  if (isCompleted) return { text: "Completed", isUrgent: false, isOverdue: false }
   if (!input) return { text: "No deadline", isUrgent: false, isOverdue: false }
   const date = typeof input === "string" ? new Date(input) : input
   if (isNaN(date.getTime())) return { text: "No deadline", isUrgent: false, isOverdue: false }

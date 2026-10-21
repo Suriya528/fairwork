@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/Input"
 import { applyToProject, type ApiApplication } from "@/services/applicationsApi"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
+import { formatDateTime } from "@/lib/format"
 
 interface ApplyModalProps {
   projectId: string
   projectTitle: string
   projectBudget: number
+  projectDeadline?: string | null
   open: boolean
   onClose: () => void
   onSuccess: (application: ApiApplication) => void
@@ -19,6 +21,7 @@ export function ApplyModal({
   projectId,
   projectTitle,
   projectBudget,
+  projectDeadline,
   open,
   onClose,
   onSuccess,
@@ -144,6 +147,15 @@ export function ApplyModal({
                 leftIcon={<FiPaperclip className="h-4 w-4" />}
                 placeholder="e.g. 7 days, 2 weeks"
               />
+              {projectDeadline ? (
+                <span className="mt-1 block text-[11px] text-primary">
+                  Client target deadline: {formatDateTime(projectDeadline)}
+                </span>
+              ) : (
+                <span className="mt-1 block text-[11px] text-subtle">
+                  Specify your committed turnaround
+                </span>
+              )}
             </div>
           </div>
 
