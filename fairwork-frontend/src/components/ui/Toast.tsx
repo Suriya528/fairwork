@@ -14,11 +14,19 @@ import {
   FiInfo,
   FiXCircle,
   FiX,
+  FiExternalLink,
 } from "react-icons/fi"
 import type { IconType } from "react-icons"
 import { cn } from "@/lib/utils"
 
 export type ToastTone = "success" | "error" | "warning" | "info"
+
+export interface ToastAction {
+  label: string
+  onClick?: () => void
+  href?: string
+  external?: boolean
+}
 
 export interface ToastOptions {
   title: string
@@ -26,11 +34,13 @@ export interface ToastOptions {
   tone?: ToastTone
   /** Auto-dismiss delay in ms. Defaults to 4500. Pass 0 to disable. */
   duration?: number
+  action?: ToastAction
 }
 
-interface ToastRecord extends Required<Omit<ToastOptions, "description">> {
+interface ToastRecord extends Required<Omit<ToastOptions, "description" | "action">> {
   id: string
   description?: string
+  action?: ToastAction
 }
 
 interface ToastContextValue {
@@ -65,6 +75,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       description: options.description,
       tone: options.tone ?? "info",
       duration: options.duration ?? 4500,
+      action: options.action,
     }
     setToasts((prev) => [...prev, record])
     return id
@@ -139,6 +150,29 @@ function ToastCard({
         </p>
         {toast.description && (
           <p className="text-sm leading-relaxed text-muted">{toast.description}</p>
+        )}
+        {toast.action && (
+          <div className="mt-1.5 flex items-center">
+            {toast.action.href ? (
+              <a
+                href={toast.action.href}
+                target={toast.action.external !== false ? "_blank" : undefined}
+                rel={toast.action.external !== false ? "noreferrer" : undefined}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-hover hover:underline"
+              >
+                <span>{toast.action.label}</span>
+                {toast.action.external !== false && <FiExternalLink className="h-3 w-3" />}
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={toast.action.onClick}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary-hover hover:underline"
+              >
+                <span>{toast.action.label}</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
       <button

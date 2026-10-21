@@ -103,6 +103,12 @@ export function OnChainRatingModal({
           ? "Your rating was written to the Sepolia blockchain and saved to the profile!"
           : "Your review was saved successfully!",
         tone: "success",
+        duration: 8000,
+        action: minedTxHash ? {
+          label: "View on Sepolia Etherscan",
+          href: `https://sepolia.etherscan.io/tx/${minedTxHash}`,
+          external: true,
+        } : undefined,
       })
 
       onSuccess?.()

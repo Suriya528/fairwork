@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { FiShield } from "react-icons/fi"
 import { Link, useNavigate } from "react-router-dom"
 import { EmptyState } from "@/components/feedback/EmptyState"
@@ -7,6 +7,7 @@ import { ProjectStatusBadge } from "@/components/common/ProjectStatusBadge"
 import { useAuth } from "@/context/AuthContext"
 import { Web3WalletCard } from "@/components/wallet/Web3WalletCard"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
+import { connectChat } from "@/services/chatApi"
 
 export function EscrowPage() {
   const { user, token } = useAuth()
@@ -22,9 +23,44 @@ export function EscrowPage() {
     }
   }, [user?.role, navigate])
 
-  useEffect(() => {
-    if (token) getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
+  const loadProjects = useCallback(async () => {
+    if (token) {
+      try {
+        const data = await getMyProjects(token)
+        setProjects(data)
+      } catch (e: any) {
+        setError(e.message)
+      }
+    }
   }, [token])
+
+  useEffect(() => {
+    void loadProjects()
+  }, [loadProjects])
+
+  // Real-time synchronization via WebSockets + tab focus auto-refresh
+  useEffect(() => {
+    if (!token) return
+    const socket = connectChat(token)
+    const handleUpdate = () => {
+      void loadProjects()
+    }
+    socket.on("project_updated", handleUpdate)
+    socket.on("notification", handleUpdate)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadProjects()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      socket.off("project_updated", handleUpdate)
+      socket.off("notification", handleUpdate)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [token, loadProjects])
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

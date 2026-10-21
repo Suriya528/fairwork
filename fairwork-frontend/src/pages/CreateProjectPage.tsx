@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { useWallet } from "@/context/WalletContext"
 import { useCurrency } from "@/context/CurrencyContext"
+import { useToast } from "@/components/ui/Toast"
 import { createProject } from "@/services/projectsApi"
 import { getUsdcBalance } from "@/services/web3"
 import { claimMockUsdc } from "@/services/userApi"
@@ -48,6 +49,7 @@ const draft = (): Draft => ({
 export function CreateProjectPage() {
   const { user, token, refreshUser } = useAuth()
   const { formatAmount } = useCurrency()
+  const { toast } = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -157,6 +159,19 @@ export function CreateProjectPage() {
     try {
       const res = await claimMockUsdc(token, activeAccount || undefined)
       setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
+      if (res?.txHash) {
+        toast({
+          title: "5,000 Mock USDC Claimed! 💵",
+          description: "Tokens transferred directly to your wallet on Sepolia.",
+          tone: "success",
+          duration: 8000,
+          action: {
+            label: "View on Sepolia Etherscan",
+            href: `https://sepolia.etherscan.io/tx/${res.txHash}`,
+            external: true,
+          },
+        })
+      }
       // Allow Sepolia node 1.5s to index the confirmed receipt before re-querying on-chain balance
       await new Promise((r) => setTimeout(r, 1500))
       await refreshBalance()

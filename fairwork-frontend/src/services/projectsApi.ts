@@ -459,14 +459,18 @@ export async function approveAndReleaseMilestone(
   token: string,
   releaseTxHash?: string,
   fundTxHash?: string,
-): Promise<ApiProject> {
-  const data = await apiFetch<BackendProject | { project: BackendProject }>(`/projects/${projectId}/milestones/${milestoneId}/approve-and-release`, {
+): Promise<ApiProject & { releaseTxHash?: string }> {
+  const data = await apiFetch<any>(`/projects/${projectId}/milestones/${milestoneId}/approve-and-release`, {
     method: "POST",
     body: { ...(releaseTxHash ? { releaseTxHash } : {}), ...(fundTxHash ? { fundTxHash } : {}) },
     token,
   })
-  const projectObj = (data && typeof data === "object" && "project" in data) ? (data as { project: BackendProject }).project : (data as BackendProject)
-  return toProject(projectObj)
+  const projectObj = (data && typeof data === "object" && "project" in data) ? data.project : data
+  const converted = toProject(projectObj) as ApiProject & { releaseTxHash?: string }
+  if (data?.releaseTxHash) {
+    converted.releaseTxHash = data.releaseTxHash
+  }
+  return converted
 }
 
 export async function getProjectReferenceFiles(projectId: string, token: string): Promise<ApiReferenceFile[]> {

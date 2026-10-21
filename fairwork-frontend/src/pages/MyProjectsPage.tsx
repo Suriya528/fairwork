@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { FiBriefcase, FiCheckCircle, FiDollarSign, FiFolder, FiPlus } from "react-icons/fi"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { ApiProjectCard } from "@/components/projects/ApiProjectCard"
@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 import { getReleasedAmount } from "@/lib/financial"
+import { connectChat } from "@/services/chatApi"
 
 type Filter = "active" | "completed" | "all" | "in_progress" | "escrow_funded"
 
@@ -35,9 +36,44 @@ export function MyProjectsPage() {
     }
   }, [user?.role, navigate])
 
-  useEffect(() => {
-    if (token && user?.role !== "admin") getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
+  const loadProjects = useCallback(async () => {
+    if (token && user?.role !== "admin") {
+      try {
+        const data = await getMyProjects(token)
+        setProjects(data)
+      } catch (e: any) {
+        setError(e.message)
+      }
+    }
   }, [token, user?.role])
+
+  useEffect(() => {
+    void loadProjects()
+  }, [loadProjects])
+
+  // Real-time synchronization via WebSockets + tab focus auto-refresh
+  useEffect(() => {
+    if (!token) return
+    const socket = connectChat(token)
+    const handleUpdate = () => {
+      void loadProjects()
+    }
+    socket.on("project_updated", handleUpdate)
+    socket.on("notification", handleUpdate)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadProjects()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      socket.off("project_updated", handleUpdate)
+      socket.off("notification", handleUpdate)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [token, loadProjects])
 
   const roleProjects = useMemo(() => {
     if (!user) return []

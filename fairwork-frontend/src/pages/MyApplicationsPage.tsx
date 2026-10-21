@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { FiFileText } from "react-icons/fi"
 import { PageHeader } from "@/components/common/PageHeader"
@@ -10,6 +10,7 @@ import { getMyApplications, withdrawApplication, type ApiApplication } from "@/s
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { formatDate } from "@/lib/format"
+import { connectChat } from "@/services/chatApi"
 
 export function MyApplicationsPage() {
   const { token } = useAuth()
@@ -19,22 +20,46 @@ export function MyApplicationsPage() {
   const [error, setError] = useState("")
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = async () => {
+  const load = useCallback(async (silent = false) => {
     if (!token) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const data = await getMyApplications(token)
       setApplications(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load applications.")
+      if (!silent) setError(err instanceof Error ? err.message : "Could not load applications.")
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [token])
 
   useEffect(() => {
     void load()
-  }, [token])
+  }, [load])
+
+  // Real-time synchronization via WebSockets + tab focus auto-refresh
+  useEffect(() => {
+    if (!token) return
+    const socket = connectChat(token)
+    const handleUpdate = () => {
+      void load(true)
+    }
+    socket.on("project_updated", handleUpdate)
+    socket.on("notification", handleUpdate)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void load(true)
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      socket.off("project_updated", handleUpdate)
+      socket.off("notification", handleUpdate)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [token, load])
 
   const handleWithdraw = async (id: string) => {
     if (!token) return

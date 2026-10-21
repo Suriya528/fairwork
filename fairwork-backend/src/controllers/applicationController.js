@@ -88,6 +88,32 @@ exports.createApplication = async (req, res) => {
       projectId: project._id,
     });
 
+    // Real-time synchronization for application submission
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "APPLICATION_CREATED",
+        applicationId: application._id,
+        freelancerId: req.user.id,
+      },
+      [project.clientId, req.user.id]
+    );
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user:${project.clientId}`).emit("notification", {
+          type: "application_submitted",
+          title: "New Application Received",
+          message: `${applicantName} submitted a proposal for “${project.title}”.`,
+          projectId: project._id,
+        });
+      }
+    } catch (socketErr) {
+      console.warn("[ApplicationController] Socket notification warning:", socketErr.message);
+    }
+
     res.status(201).json(populated);
   } catch (err) {
     if (err.name === "CastError") {
@@ -324,6 +350,32 @@ exports.rejectApplication = async (req, res) => {
       projectId: project._id,
     });
 
+    // Real-time synchronization for application rejection
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "APPLICATION_REJECTED",
+        applicationId: application._id,
+        freelancerId: application.freelancerId,
+      },
+      [project.clientId, application.freelancerId]
+    );
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user:${application.freelancerId}`).emit("notification", {
+          type: "application_rejected",
+          title: "Proposal Status Update",
+          message: `Your application for “${project.title}” was not selected.`,
+          projectId: project._id,
+        });
+      }
+    } catch (socketErr) {
+      console.warn("[ApplicationController] Socket notification warning:", socketErr.message);
+    }
+
     res.json(application);
   } catch (err) {
     if (err.name === "CastError") {
@@ -355,6 +407,18 @@ exports.withdrawApplication = async (req, res) => {
 
     application.status = "withdrawn";
     await application.save();
+
+    // Real-time synchronization for application withdrawal
+    notifyProjectUpdate(
+      req,
+      application.projectId,
+      {
+        type: "APPLICATION_WITHDRAWN",
+        applicationId: application._id,
+        freelancerId: req.user.id,
+      },
+      [req.user.id]
+    );
 
     res.json(application);
   } catch (err) {

@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { WalletAddress } from "@/components/common/WalletAddress"
 import { useWallet, OFFICIAL_METAMASK_INSTALL_URL } from "@/context/WalletContext"
 import { useAuth } from "@/context/AuthContext"
+import { useToast } from "@/components/ui/Toast"
 import { claimMockUsdc } from "@/services/userApi"
 import { getUsdcBalance } from "@/services/web3"
 
@@ -50,6 +51,7 @@ export function Web3WalletCard({
     addUsdcToWallet,
   } = useWallet()
   const { user, token, refreshUser } = useAuth()
+  const { toast } = useToast()
 
   const [copied, setCopied] = useState(false)
   const [addingToken, setAddingToken] = useState(false)
@@ -91,6 +93,19 @@ export function Web3WalletCard({
       setMintSuccess(res.message || "Successfully received 5,000 Mock USDC!")
       if (refreshUser) {
         await refreshUser()
+      }
+      if (res?.txHash) {
+        toast({
+          title: "5,000 Mock USDC Claimed! 💵",
+          description: "Tokens transferred directly to your wallet on Sepolia.",
+          tone: "success",
+          duration: 8000,
+          action: {
+            label: "View on Sepolia Etherscan",
+            href: `https://sepolia.etherscan.io/tx/${res.txHash}`,
+            external: true,
+          },
+        })
       }
       // Give the RPC node 1.5s to index the confirmed mint receipt before fetching balance
       await new Promise((r) => setTimeout(r, 1500))

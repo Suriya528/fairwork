@@ -13,6 +13,7 @@ import { StatsGrid } from "@/components/dashboard/StatsGrid"
 import { useAuth } from "@/context/AuthContext"
 import { getMyProjects, type ApiProject } from "@/services/projectsApi"
 import { getGreeting } from "@/data/dashboard"
+import { connectChat } from "@/services/chatApi"
 
 export function DashboardPage() {
   const { user, token } = useAuth()
@@ -29,16 +30,46 @@ export function DashboardPage() {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [projectError, setProjectError] = useState<string | null>(null)
 
-  const loadProjects = useCallback(async () => {
+  const loadProjects = useCallback(async (silent = false) => {
     if (!token) return
-    setLoadingProjects(true)
+    if (!silent) setLoadingProjects(true)
     setProjectError(null)
-    try { setProjects(await getMyProjects(token)) }
-    catch (error) { setProjectError(error instanceof Error ? error.message : "Unable to load projects.") }
-    finally { setLoadingProjects(false) }
+    try {
+      setProjects(await getMyProjects(token))
+    } catch (error) {
+      if (!silent) setProjectError(error instanceof Error ? error.message : "Unable to load projects.")
+    } finally {
+      if (!silent) setLoadingProjects(false)
+    }
   }, [token])
 
-  useEffect(() => { void loadProjects() }, [loadProjects])
+  useEffect(() => {
+    void loadProjects()
+  }, [loadProjects])
+
+  // Real-time synchronization via WebSockets + active tab focus auto-refresh
+  useEffect(() => {
+    if (!token) return
+    const socket = connectChat(token)
+    const handleUpdate = () => {
+      void loadProjects(true)
+    }
+    socket.on("project_updated", handleUpdate)
+    socket.on("notification", handleUpdate)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadProjects(true)
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      socket.off("project_updated", handleUpdate)
+      socket.off("notification", handleUpdate)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [token, loadProjects])
   const isClient = role === "client"
 
   return <div className="flex flex-col gap-8 animate-fade-in">

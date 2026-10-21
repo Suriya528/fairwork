@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Dispute = require("../models/Dispute");
 const Project = require("../models/Project");
 const { recordActivitySafely } = require("../services/activityService");
+const { notifyProjectUpdate } = require("../utils/socketNotifier");
 
 exports.raiseDispute = async (req, res) => {
   try {
@@ -44,6 +45,36 @@ exports.raiseDispute = async (req, res) => {
       projectId: project._id,
       disputeId: dispute._id,
     });
+
+    // Real-time synchronization for dispute opening
+    notifyProjectUpdate(
+      req,
+      project._id,
+      {
+        type: "DISPUTE_RAISED",
+        disputeId: dispute._id,
+        project,
+      },
+      [project.clientId, project.freelancerId]
+    );
+
+    try {
+      const io = req.app.get("io");
+      if (io) {
+        [project.clientId, project.freelancerId].forEach((uid) => {
+          if (uid) {
+            io.to(`user:${uid}`).emit("notification", {
+              type: "dispute_opened",
+              title: "Dispute Raised ⚠️",
+              message: `A dispute was raised on “${project.title}”. Escrow release is frozen pending resolution.`,
+              projectId: project._id,
+            });
+          }
+        });
+      }
+    } catch (socketErr) {
+      console.warn("[DisputeController] Socket notification warning:", socketErr.message);
+    }
 
     res.status(201).json(dispute);
   } catch (err) {
@@ -171,6 +202,37 @@ exports.resolveDispute = async (req, res) => {
         projectId: project._id,
         disputeId: dispute._id,
       });
+
+      // Real-time synchronization for dispute resolution
+      notifyProjectUpdate(
+        req,
+        project._id,
+        {
+          type: "DISPUTE_RESOLVED",
+          disputeId: dispute._id,
+          winner,
+          project,
+        },
+        [project.clientId, project.freelancerId]
+      );
+
+      try {
+        const io = req.app.get("io");
+        if (io) {
+          [project.clientId, project.freelancerId].forEach((uid) => {
+            if (uid) {
+              io.to(`user:${uid}`).emit("notification", {
+                type: "dispute_resolved",
+                title: "Dispute Resolved ⚖️",
+                message: `A dispute was resolved on “${project.title}” favoring the ${winner}.`,
+                projectId: project._id,
+              });
+            }
+          });
+        }
+      } catch (socketErr) {
+        console.warn("[DisputeController] Socket notification warning:", socketErr.message);
+      }
     }
 
     res.json(dispute);

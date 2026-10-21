@@ -46,6 +46,7 @@ import { formatDate, formatDateTime, formatDeadlineCountdown, toPercent } from "
 import { sanitizeUrl } from "@/lib/sanitizeUrl"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
+import { useToast } from "@/components/ui/Toast"
 import { ApiError } from "@/services/apiClient"
 import { VerificationRequiredModal } from "@/components/auth/VerificationRequiredModal"
 import {
@@ -721,6 +722,7 @@ export function ProjectDetailPage() {
   const navigate = useNavigate()
   const { token, user } = useAuth()
   const { formatAmount } = useCurrency()
+  const { toast } = useToast()
   const [searchParams] = useSearchParams()
   const validTabs: TabValue[] = ["overview", "applications", "proposals", "contract", "milestones", "files", "disputes"]
   const initialTab = (searchParams.get("tab") as TabValue | null)
@@ -1165,6 +1167,19 @@ export function ProjectDetailPage() {
         setActionState("✅ Payment automatically released to freelancer wallet!")
         setTimeout(() => setActionState(""), 4000)
 
+        const minedHash = updated.releaseTxHash
+        toast({
+          title: "Milestone Payment Released! 💸",
+          description: "Payment released directly to freelancer wallet via platform relayer.",
+          tone: "success",
+          duration: 8000,
+          action: minedHash ? {
+            label: "View on Sepolia Etherscan",
+            href: `https://sepolia.etherscan.io/tx/${minedHash}`,
+            external: true,
+          } : undefined,
+        })
+
         if (updated.status === "completed" && !hasReviewed) {
           setRatingModalOpen(true)
         }
@@ -1192,6 +1207,18 @@ export function ProjectDetailPage() {
           setPendingApproveMilestone(null)
           setActionState("✅ Payment released to freelancer wallet!")
           setTimeout(() => setActionState(""), 4000)
+
+          toast({
+            title: "Milestone Payment Released! 💸",
+            description: "Transaction confirmed on Sepolia blockchain.",
+            tone: "success",
+            duration: 8000,
+            action: {
+              label: "View on Sepolia Etherscan",
+              href: `https://sepolia.etherscan.io/tx/${releaseTxHash}`,
+              external: true,
+            },
+          })
 
           if (updated.status === "completed" && !hasReviewed) {
             setRatingModalOpen(true)
@@ -1254,6 +1281,17 @@ export function ProjectDetailPage() {
         setActionState("Transaction confirmed on-chain! Finalizing with blockchain indexer...")
         setTimeout(() => loadProject(), 4000)
       }
+      toast({
+        title: "Escrow Deposit Confirmed! 🛡️",
+        description: "Funds securely locked in the smart contract escrow vault on Sepolia.",
+        tone: "success",
+        duration: 8000,
+        action: {
+          label: "View on Sepolia Etherscan",
+          href: `https://sepolia.etherscan.io/tx/${fundTxHash}`,
+          external: true,
+        },
+      })
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to fund escrow.")
     } finally {
@@ -1301,6 +1339,12 @@ export function ProjectDetailPage() {
       await requestEscrowRefund(project.id, user.walletAddress)
       setActionState("Refund request submitted! Reloading project state...")
       await loadProject()
+      toast({
+        title: "Refund Request Submitted ⏳",
+        description: "48-hour mutual review window is now active.",
+        tone: "warning",
+        duration: 7000,
+      })
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to request refund.")
     } finally {
@@ -1320,6 +1364,12 @@ export function ProjectDetailPage() {
       await cancelEscrowRefund(project.id, user.walletAddress)
       setActionState("Refund request cancelled! Reloading project state...")
       await loadProject()
+      toast({
+        title: "Refund Request Cancelled",
+        description: "Your escrow refund request was cancelled on-chain.",
+        tone: "info",
+        duration: 5000,
+      })
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to cancel refund.")
     } finally {
@@ -1339,6 +1389,12 @@ export function ProjectDetailPage() {
       await claimEscrowRefund(project.id, user.walletAddress)
       setActionState("Refund claimed successfully! Reloading project state...")
       await loadProject()
+      toast({
+        title: "Escrow Refund Claimed! 💰",
+        description: "Remaining escrow funds have been refunded to your wallet on Sepolia.",
+        tone: "success",
+        duration: 8000,
+      })
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to claim refund. Note: 48-hour timelock must elapse.")
     } finally {

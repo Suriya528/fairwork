@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { FiCheckSquare, FiClock } from "react-icons/fi"
 import { EmptyState } from "@/components/feedback/EmptyState"
@@ -8,6 +8,7 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs"
 import { useAuth } from "@/context/AuthContext"
 import { useCurrency } from "@/context/CurrencyContext"
 import { getMyProjects, type ApiMilestone, type ApiProject } from "@/services/projectsApi"
+import { connectChat } from "@/services/chatApi"
 
 type Tab = "active" | "completed" | "all"
 type PaymentFilter = "unreleased" | "released"
@@ -32,9 +33,44 @@ export function MilestonesPage() {
     }
   }, [user?.role, nav])
 
-  useEffect(() => {
-    if (token && user?.role !== "admin") getMyProjects(token).then(setProjects).catch((e: Error) => setError(e.message))
+  const loadProjects = useCallback(async () => {
+    if (token && user?.role !== "admin") {
+      try {
+        const data = await getMyProjects(token)
+        setProjects(data)
+      } catch (e: any) {
+        setError(e.message)
+      }
+    }
   }, [token, user?.role])
+
+  useEffect(() => {
+    void loadProjects()
+  }, [loadProjects])
+
+  // Real-time synchronization via WebSockets + tab focus auto-refresh
+  useEffect(() => {
+    if (!token) return
+    const socket = connectChat(token)
+    const handleUpdate = () => {
+      void loadProjects()
+    }
+    socket.on("project_updated", handleUpdate)
+    socket.on("notification", handleUpdate)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadProjects()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      socket.off("project_updated", handleUpdate)
+      socket.off("notification", handleUpdate)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [token, loadProjects])
 
   const all = useMemo<Item[]>(
     () => projects.flatMap((p) => p.milestones.map((m) => ({ ...m, projectTitle: p.title }))),

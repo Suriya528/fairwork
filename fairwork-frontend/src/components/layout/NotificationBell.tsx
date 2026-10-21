@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { FiBell, FiActivity, FiCheckCircle, FiShield, FiUnlock, FiAlertTriangle, FiPlusCircle } from "react-icons/fi"
 import type { IconType } from "react-icons"
@@ -7,6 +7,7 @@ import { formatRelativeTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { getActivities, markActivitiesRead, type ApiActivity } from "@/services/activityApi"
+import { connectChat } from "@/services/chatApi"
 
 const MAX_PREVIEW = 5
 
@@ -30,22 +31,51 @@ export function NotificationBell() {
   const { token } = useAuth()
   const [items, setItems] = useState<ApiActivity[]>([])
 
+  const loadNotifications = useCallback(async () => {
+    if (!token) return
+    try {
+      const data = await getActivities(token, 1, MAX_PREVIEW)
+      if (data && Array.isArray(data.activities)) {
+        setItems(data.activities)
+      } else if (Array.isArray(data)) {
+        setItems(data)
+      } else {
+        setItems([])
+      }
+    } catch {
+      // transient network errors ignored
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadNotifications()
+  }, [loadNotifications])
+
+  // Real-time synchronization via WebSockets + tab visibility auto-refresh
   useEffect(() => {
     if (!token) return
-    let cancelled = false
-    void getActivities(token, 1, MAX_PREVIEW).then((data) => {
-      if (!cancelled) {
-        if (data && Array.isArray(data.activities)) {
-          setItems(data.activities)
-        } else if (Array.isArray(data)) {
-          setItems(data)
-        } else {
-          setItems([])
-        }
+    const socket = connectChat(token)
+
+    const onLiveEvent = () => {
+      void loadNotifications()
+    }
+
+    socket.on("notification", onLiveEvent)
+    socket.on("project_updated", onLiveEvent)
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadNotifications()
       }
-    }).catch(() => {})
-    return () => { cancelled = true }
-  }, [token])
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      socket.off("notification", onLiveEvent)
+      socket.off("project_updated", onLiveEvent)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [token, loadNotifications])
 
   const safeItems = Array.isArray(items) ? items : []
   const unreadCount = safeItems.filter((n) => !n.read).length
